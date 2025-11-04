@@ -8,13 +8,21 @@ use crate::{CheckResult, Diagnostic, Result};
 
 /// Get the path to the bundled typescript-go binary
 pub(crate) fn get_tsgo_binary_path() -> Option<std::path::PathBuf> {
+    // Check if the build script set the binary path at compile time
+    if let Some(build_path) = option_env!("TSGO_BINARY_PATH") {
+        let path = std::path::PathBuf::from(build_path);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+
     let binary_name = if cfg!(target_os = "windows") {
         "tsgo.exe"
     } else {
         "tsgo"
     };
 
-    // (development)
+    // (development) - fallback if build script didn't set the path
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dev_path = std::path::Path::new(manifest_dir)
         .join(".bin")
@@ -23,7 +31,7 @@ pub(crate) fn get_tsgo_binary_path() -> Option<std::path::PathBuf> {
         return Some(dev_path);
     }
 
-    // (production)
+    // (production) - check next to the executable
     if let Ok(exe_path) = std::env::current_exe()
         && let Some(exe_dir) = exe_path.parent()
     {
