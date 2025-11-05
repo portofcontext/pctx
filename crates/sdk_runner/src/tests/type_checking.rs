@@ -26,8 +26,7 @@ export default greeting;"#;
     assert!(
         result.success,
         "Valid TypeScript should pass type checking, got: diagnostics={:?}, runtime_error={:?}",
-        result.diagnostics,
-        result.runtime_error
+        result.diagnostics, result.runtime_error
     );
     assert!(
         result.diagnostics.is_empty(),
