@@ -9,11 +9,28 @@ default-run = "ptx"
 
 [[bin]]
 name = "ptx"
-path = "src/main.rs"
+path = "src/cli.rs"
 
 [dependencies]
 sdk_runner = { path = "../sdk_runner" }
 clap = { workspace = true, features = ["derive", "env", "wrap_help"] }
+rmcp = { version = "0.8.0", features = [
+    "server",
+    "transport-streamable-http-server",
+    "macros",
+    "schemars",
+] }
+axum = { version = "0.8", features = ["macros"] }
+serde = "1.0.228"
+indexmap = { version = "2.12.0", features = ["serde"] }
+serde_json = "1.0.145"
+tokio = { version = "1", features = [
+    "macros",
+    "rt",
+    "rt-multi-thread",
+    "io-std",
+    "signal",
+] }
 
 [target.'cfg(all(not(target_env = "msvc"), any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))'.dependencies]
 tikv-jemallocator = "0.6.0"

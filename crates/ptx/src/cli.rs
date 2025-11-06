@@ -13,30 +13,29 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
-use clap::Parser;
+mod commands;
+mod mcp;
+
+use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
 #[command(name = "ptx")]
-#[command(about = "PTX CLI", long_about = None)]
+#[command(version, about = "PTX CLI", long_about = None)]
 struct Cli {
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
-#[derive(Parser)]
+#[derive(Subcommand)]
 enum Commands {
-    #[command(about = "Show version information")]
-    Version,
+    Dev(commands::dev::DevCmd),
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let cli = Cli::parse();
-    match cli.command {
-        Some(Commands::Version) => {
-            println!("ptx {}", sdk_runner::version());
-        }
-        None => {
-            println!("ptx {}", sdk_runner::version());
-        }
+
+    match &cli.command {
+        Commands::Dev(dev_cmd) => dev_cmd.handle().await,
     }
 }
