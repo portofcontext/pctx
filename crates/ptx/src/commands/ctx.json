@@ -1,7 +1,7 @@
 {
   "namespace": "BankingApi",
   "name": "banking-api",
-  "url": "",
+  "url": "http://127.0.0.1:8081/mcp",
   "description": "Payment processing API for compliance, routing, and settlement",
   "tools": {
     "getAccountBalance": {

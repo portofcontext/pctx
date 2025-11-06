@@ -119,7 +119,7 @@ namespace {namespace} {{
         You are a skilled programmer writing code to interact with the available namespaced functions.
 
         Always define an async function called `run` that accepts no arguments:
-        
+
         async function run() {
             // YOUR CODE GOES HERE
 
@@ -157,7 +157,7 @@ namespace {namespace} {{
             .upstream
             .iter()
             .map(|m| {
-                let fns: Vec<String> = m.tools.iter().map(|(_, t)| t.fn_signature(true)).collect();
+                let fns: Vec<String> = m.tools.iter().map(|(_, t)| t.fn_impl(&m.name)).collect();
 
                 format!(
                     "{docstring}
@@ -176,9 +176,13 @@ namespace {namespace} {{
             "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\n run();"
         );
 
-        // let result = deno_executor::c
+        // println!("Executing...");
 
-        todo!()
+        // let result = deno_executor::execute(&to_execute).await;
+
+        // println!("Result {result:#?}");
+
+        todo!("tool")
     }
 }
 
