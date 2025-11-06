@@ -176,6 +176,8 @@ namespace {namespace} {{
             "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\n run();"
         );
 
+        // let result = deno_executor::c
+
         todo!()
     }
 }
