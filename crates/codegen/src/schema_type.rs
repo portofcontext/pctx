@@ -6,7 +6,9 @@ use schemars::schema::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::utils;
+use crate::utils::{self, anything_schema};
+
+pub static X_TYPE_NAME: &str = "x-type-name";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RefSchemaType {
@@ -71,7 +73,7 @@ pub struct MapSchemaType {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ArraySchemaType {
     pub nullable: bool,
-    pub arr: ArrayValidation,
+    pub item_schema: Schema,
     pub schema_obj: SchemaObject,
 }
 
@@ -208,6 +210,9 @@ impl SchemaType {
 
 impl From<&Schema> for SchemaType {
     fn from(schema: &Schema) -> Self {
+        if let Schema::Object(obj) = &schema {
+            return SchemaType::from(obj);
+        }
         // Fallback for non-object schemas
         SchemaType::Any(AnySchemaType {
             nullable: false,
@@ -399,7 +404,11 @@ fn handle_object_type(obj: &SchemaObject, nullable: bool) -> SchemaType {
         } else {
             SchemaType::Object(ObjectSchemaType {
                 nullable,
-                type_name: "TODO".into(),
+                type_name: obj
+                    .extensions
+                    .get(X_TYPE_NAME)
+                    .map(|e| e.as_str().map(String::from).unwrap_or_default())
+                    .unwrap_or_default(),
                 obj: *obj_validation.clone(),
                 schema_obj: obj.clone(),
             })
@@ -419,9 +428,20 @@ fn handle_object_type(obj: &SchemaObject, nullable: bool) -> SchemaType {
 
 fn handle_array_type(obj: &SchemaObject, nullable: bool) -> SchemaType {
     if let Some(ref arr) = obj.array {
+        let item_schema = match arr.items.clone() {
+            Some(SingleOrVec::Single(s)) => *s,
+            Some(SingleOrVec::Vec(s)) => Schema::Object(SchemaObject {
+                subschemas: Some(Box::new(SubschemaValidation {
+                    one_of: Some(s),
+                    ..Default::default()
+                })),
+                ..Default::default()
+            }),
+            None => anything_schema(),
+        };
         SchemaType::Array(ArraySchemaType {
             nullable,
-            arr: (**arr).clone(),
+            item_schema,
             schema_obj: obj.clone(),
         })
     } else {

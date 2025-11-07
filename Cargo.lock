@@ -982,7 +982,7 @@ name = "codegen"
 version = "0.1.0"
 dependencies = [
  "heck",
- "indexmap 2.12.0",
+ "indexmap 1.9.3",
  "insta",
  "schemars 0.8.22",
  "serde",
