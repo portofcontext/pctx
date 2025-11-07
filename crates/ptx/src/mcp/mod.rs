@@ -1,7 +1,7 @@
 pub(crate) mod auth;
+pub(crate) mod client;
 pub(crate) mod config;
 pub(crate) mod deno_pool;
-pub(crate) mod inspect;
 pub(crate) mod tools;
 pub(crate) mod upstream;
 

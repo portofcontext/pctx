@@ -1,5 +1,7 @@
+use anyhow::Result;
 use codegen::{case::Case, generate_docstring};
 use indexmap::{IndexMap, IndexSet};
+use log::debug;
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -13,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use super::deno_pool::DenoExecutor;
+
+type McpResult<T> = Result<T, McpError>;
 
 #[derive(Clone)]
 pub(crate) struct PtxTools {
@@ -39,7 +43,7 @@ impl PtxTools {
         title = "List Functions",
         description = "List functions organized in namespaces based on available services"
     )]
-    async fn list_functions(&self) -> Result<CallToolResult, McpError> {
+    async fn list_functions(&self) -> McpResult<CallToolResult> {
         let namespaces: Vec<String> = self
             .upstream
             .iter()
@@ -70,7 +74,7 @@ namespace {namespace} {{
     async fn get_function_details(
         &self,
         Parameters(GetFunctionDetailsInput { functions }): Parameters<GetFunctionDetailsInput>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> McpResult<CallToolResult> {
         // organize tool input by namespace and handle any deduping
         let mut by_namespace: IndexMap<String, IndexSet<String>> = IndexMap::new();
         for func in functions {
@@ -146,7 +150,7 @@ namespace {namespace} {{
     async fn execute(
         &self,
         Parameters(ExecuteInput { code }): Parameters<ExecuteInput>,
-    ) -> Result<CallToolResult, McpError> {
+    ) -> McpResult<CallToolResult> {
         let registrations = self
             .upstream
             .iter()
@@ -261,29 +265,53 @@ pub(crate) struct UpstreamTool {
     pub(crate) title: Option<String>,
     pub(crate) description: Option<String>,
     pub(crate) fn_name: String,
-    pub(crate) input_type: Option<String>,
+    pub(crate) input_type: String,
     pub(crate) output_type: String,
     pub(crate) types: String,
 }
 
 impl UpstreamTool {
-    pub(crate) fn from_tool(tool: Tool) -> Self {
+    pub(crate) fn from_tool(tool: Tool) -> Result<Self> {
         let fn_name = Case::Camel.sanitize(&tool.name);
-        let input_types = codegen::typegen::generate_types(
-            json!(tool.input_schema),
-            &Case::Pascal.sanitize(&format!("{fn_name} Input")),
-        )
-        .unwrap();
+        debug!(
+            "Generating Typescript interface for tool: '{}' -> function {fn_name}",
+            &tool.name
+        );
 
-        Self {
+        let input_types =
+            codegen::typegen::generate_types(json!(tool.input_schema), &format!("{fn_name}Input"))?;
+        debug!(
+            "Generated {} types for input schema",
+            input_types.types_generated
+        );
+
+        let mut types = input_types.types;
+
+        let output_type = if let Some(output_schema) = tool.output_schema {
+            let output_types = codegen::typegen::generate_types(
+                json!(output_schema),
+                &format!("{fn_name}Output"),
+            )?;
+            debug!(
+                "Generated {} types for output schema",
+                output_types.types_generated
+            );
+            types = format!("{types}\n\n{}", output_types.types);
+            output_types.type_signature
+        } else {
+            debug!("No output type listed, falling back on `string`");
+            "string".to_string()
+        };
+
+        Ok(Self {
             tool_name: tool.name.to_string(),
             title: tool.title,
             description: tool.description.map(String::from),
             fn_name: codegen::case::Case::Camel.sanitize(&tool.name),
-            input_type: Some(input_types.type_signature),
-            output_type: "todo".into(),
-            types: "todo".into(),
-        }
+            input_type: input_types.type_signature,
+            output_type,
+            types,
+        })
     }
 
     pub(crate) fn fn_signature(&self, include_types: bool) -> String {
@@ -296,11 +324,6 @@ impl UpstreamTool {
                 .unwrap_or_default(),
             desc = &self.description.clone().unwrap_or_default()
         );
-        let args = self
-            .input_type
-            .as_ref()
-            .map(|t| format!("input: {t}"))
-            .unwrap_or_default();
 
         let types = if include_types && !self.types.is_empty() {
             format!("{}\n\n", &self.types)
@@ -309,9 +332,10 @@ impl UpstreamTool {
         };
 
         format!(
-            "{types}{docstring}\nasync function {fn_name}({args}): Promise<{output}>",
+            "{types}{docstring}\nasync function {fn_name}(input: {input}): Promise<{output}>",
             docstring = generate_docstring(&docstring_content),
             fn_name = &self.fn_name,
+            input = &self.input_type,
             output = &self.output_type
         )
     }
@@ -319,16 +343,16 @@ impl UpstreamTool {
     pub(crate) fn fn_impl(&self, mcp_name: &str) -> String {
         format!(
             "{fn_sig} {{
-  return await callMCPTool({{
+  return await callMCPTool<{output}>({{
     name: {name},
     tool: {tool},
-    arguments: {args},
+    arguments: input,
   }});
 }}",
             fn_sig = self.fn_signature(true),
             name = json!(mcp_name),
             tool = json!(&self.tool_name),
-            args = self.input_type.as_ref().map_or("undefined", |_| "input")
+            output = &self.output_type,
         )
     }
 }

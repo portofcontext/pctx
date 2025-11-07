@@ -21,18 +21,19 @@ pub fn generate_types(
     json_schema: serde_json::Value,
     type_name: &str,
 ) -> CodegenResult<TypegenResult> {
-    // println!("{json_schema}");
     let root_schema: RootSchema = serde_json::from_value(json_schema)?;
 
     // ensure all objects have type names
     let mut defs: SchemaDefinitions = IndexMap::new();
     for (ref_key, s) in root_schema.definitions {
-        let type_name = Case::Pascal.sanitize(&ref_key);
+        // TODO: clashing type names?
+        let type_name = Case::Pascal.sanitize(&format!("{type_name} {ref_key}"));
         defs.insert(ref_key, assign_type_names(s, &type_name));
     }
-    let schema = assign_type_names(Schema::Object(root_schema.schema), type_name);
-
-    // println!("{}", serde_json::to_string_pretty(&defs).unwrap());
+    let schema = assign_type_names(
+        Schema::Object(root_schema.schema),
+        &Case::Pascal.sanitize(type_name),
+    );
 
     // collect and generate types with handlebars
     let to_generate = ObjectSchemaData::collect(&schema, &defs)?;
