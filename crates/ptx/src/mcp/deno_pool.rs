@@ -21,7 +21,6 @@ impl DenoExecutor {
     /// Create a new Deno executor on a dedicated thread
     pub(crate) fn new(allowed_hosts: Option<Vec<String>>) -> Self {
         let (tx, mut rx) = mpsc::channel::<DenoJob>(100);
-        let allowed_hosts_clone = allowed_hosts.clone();
 
         // Spawn dedicated thread for Deno/V8
         std::thread::spawn(move || {
@@ -34,20 +33,19 @@ impl DenoExecutor {
             rt.block_on(async move {
                 // Process jobs sequentially on this thread
                 while let Some(job) = rx.recv().await {
-                    let result =
-                        deno_executor::execute(&job.code, allowed_hosts_clone.clone())
-                            .await
-                            .unwrap_or_else(|e| ExecuteResult {
-                                success: false,
-                                diagnostics: vec![],
-                                runtime_error: Some(deno_executor::RuntimeError {
-                                    message: e.to_string(),
-                                    stack: None,
-                                }),
-                                output: None,
-                                stdout: String::new(),
-                                stderr: String::new(),
-                            });
+                    let result = deno_executor::execute(&job.code, None) // TODO: re-implement allowed_hosts
+                        .await
+                        .unwrap_or_else(|e| ExecuteResult {
+                            success: false,
+                            diagnostics: vec![],
+                            runtime_error: Some(deno_executor::RuntimeError {
+                                message: e.to_string(),
+                                stack: None,
+                            }),
+                            output: None,
+                            stdout: String::new(),
+                            stderr: String::new(),
+                        });
 
                     // Send result back (ignore if receiver dropped)
                     let _ = job.response.send(result);

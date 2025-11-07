@@ -186,6 +186,8 @@ namespace {namespace} {{
             "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\nexport default await run();"
         );
 
+        // std::fs::write("./execute.ts", &to_execute).unwrap();
+
         let result = self
             .executor
             .execute(to_execute)
@@ -332,7 +334,7 @@ impl UpstreamTool {
         };
 
         format!(
-            "{types}{docstring}\nasync function {fn_name}(input: {input}): Promise<{output}>",
+            "{types}{docstring}\nexport async function {fn_name}(input: {input}): Promise<{output}>",
             docstring = generate_docstring(&docstring_content),
             fn_name = &self.fn_name,
             input = &self.input_type,
