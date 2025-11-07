@@ -52,13 +52,6 @@ globalThis.TextEncoderStream = encoding.TextEncoderStream;
 globalThis.__stdout = [];
 globalThis.__stderr = [];
 
-// Store original console methods
-const originalLog = console.log;
-const originalError = console.error;
-const originalWarn = console.warn;
-const originalInfo = console.info;
-const originalDebug = console.debug;
-
 // Override console.log to capture stdout
 console.log = (...args) => {
     const message = args.map(arg => {
@@ -72,7 +65,6 @@ console.log = (...args) => {
         }
     }).join(' ');
     globalThis.__stdout.push(message);
-    originalLog(...args);
 };
 
 // Override console.error to capture stderr
@@ -88,7 +80,6 @@ console.error = (...args) => {
         }
     }).join(' ');
     globalThis.__stderr.push(message);
-    originalError(...args);
 };
 
 // console.warn, console.info, and console.debug also go to stderr
@@ -104,7 +95,6 @@ console.warn = (...args) => {
         }
     }).join(' ');
     globalThis.__stderr.push(message);
-    originalWarn(...args);
 };
 
 console.info = (...args) => {
@@ -119,7 +109,6 @@ console.info = (...args) => {
         }
     }).join(' ');
     globalThis.__stdout.push(message);
-    originalInfo(...args);
 };
 
 console.debug = (...args) => {
@@ -134,5 +123,4 @@ console.debug = (...args) => {
         }
     }).join(' ');
     globalThis.__stdout.push(message);
-    originalDebug(...args);
 };
