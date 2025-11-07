@@ -3,7 +3,7 @@ use deno_runtime::deno_core::futures::FutureExt;
 use deno_runtime::deno_core::{ModuleCodeString, error::AnyError, extension};
 use deno_runtime::deno_fetch::dns::Resolver;
 use deno_runtime::deno_fs::RealFs;
-use deno_runtime::deno_permissions::{Permissions, PermissionsContainer};
+use deno_runtime::deno_permissions::{Permissions, PermissionsContainer, PermissionsOptions};
 use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::{MainWorker, WorkerOptions, WorkerServiceOptions};
 use serde::{Deserialize, Serialize};
@@ -205,6 +205,9 @@ pub struct ExecuteResult {
 ///
 /// # Arguments
 /// * `code` - The TypeScript/JavaScript code to execute
+/// * `allowed_hosts` - Optional list of hosts that network requests are allowed to access.
+///   Format: "hostname:port" or just "hostname" (e.g., "localhost:3000", "api.example.com").
+///   If None or empty, all network access is denied.
 ///
 /// # Returns
 /// * `Ok(ExecuteResult)` - Contains execution result or error information
@@ -214,7 +217,7 @@ pub struct ExecuteResult {
 ///
 /// # Examples
 /// ```no_run
-/// use deno_executor::execute_raw;
+/// use deno_executor::execute_code;
 ///
 /// # async fn example() {
 /// let code = r#"
@@ -224,11 +227,15 @@ pub struct ExecuteResult {
 ///     const result = await callMCPTool({ name, tool: "echo", arguments: { message: "hello" } });
 ///     export default result;
 /// "#;
-/// let result = execute_raw(code).await.expect("execution should not fail");
+/// let allowed_hosts = Some(vec!["localhost:3000".to_string()]);
+/// let result = execute_code(code, allowed_hosts).await.expect("execution should not fail");
 /// assert!(result.success);
 /// # }
 /// ```
-pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
+pub async fn execute_code(
+    code: &str,
+    allowed_hosts: Option<Vec<String>>,
+) -> Result<ExecuteResult, AnyError> {
     // Transpile TypeScript to JavaScript
     let js_code = match deno_transpiler::transpile(code, None) {
         Ok(js) => js,
@@ -253,8 +260,30 @@ pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
     let sys = RealSys;
     let permission_desc_parser = Arc::new(RuntimePermissionDescriptorParser::new(sys.clone()));
 
-    // Create permissions container with all permissions allowed
-    let permissions = PermissionsContainer::new(permission_desc_parser, Permissions::allow_all());
+    // Create permissions with restricted network access
+    let permissions_options = PermissionsOptions {
+        allow_net: allowed_hosts,
+        deny_net: None,
+        allow_env: None,
+        deny_env: None,
+        allow_run: None,
+        deny_run: None,
+        allow_read: None,
+        deny_read: None,
+        allow_write: None,
+        deny_write: None,
+        allow_ffi: None,
+        deny_ffi: None,
+        allow_sys: None,
+        deny_sys: None,
+        allow_import: None,
+        deny_import: None,
+        prompt: false,
+    };
+
+    let permissions =
+        Permissions::from_options(permission_desc_parser.as_ref(), &permissions_options)?;
+    let permissions = PermissionsContainer::new(permission_desc_parser, permissions);
 
     // Create the MainWorker with required services
     let mut worker = MainWorker::bootstrap_from_options::<DummyNpmChecker, DummyNpmResolver, RealSys>(

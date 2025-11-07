@@ -12,16 +12,20 @@ use rmcp::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 
+use super::deno_pool::DenoExecutor;
+
 #[derive(Clone)]
 pub(crate) struct PtxTools {
+    executor: DenoExecutor,
     upstream: Vec<UpstreamMcp>,
     tool_router: ToolRouter<PtxTools>,
 }
 #[tool_router]
 impl PtxTools {
-    pub(crate) fn new(upstream: Vec<UpstreamMcp>) -> Self {
+    pub(crate) fn with_executor(executor: DenoExecutor) -> Self {
         Self {
-            upstream,
+            executor,
+            upstream: vec![],
             tool_router: Self::tool_router(),
         }
     }
@@ -170,16 +174,18 @@ namespace {namespace} {{
             .join("\n\n");
 
         let to_execute = format!(
-            "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\n run();"
+            "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\nexport default await run();"
         );
 
-        // println!("Executing...");
+        let result = self
+            .executor
+            .execute(to_execute)
+            .await
+            .map_err(|e| McpError::internal_error(e, None))?;
 
-        // let result = deno_executor::execute(&to_execute).await;
-
-        // println!("Result {result:#?}");
-
-        todo!("tool")
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "{result:#?}"
+        ))]))
     }
 }
 
@@ -208,8 +214,8 @@ pub(crate) struct GetFunctionDetailsInput {
 pub(crate) struct ExecuteInput {
     /// Typescript code to execute.
     /// Example:
-    /// async function run() {
-    ///   // YOUR CODE GOES HERE e.g. const result = await client.method();
+    /// async function ``run()`` {
+    ///   // YOUR CODE GOES HERE e.g. const result = await ``client.method();``
     ///   // ALWAYS RETURN THE RESULT e.g. return result;
     /// }
     ///

@@ -1,7 +1,7 @@
 mod deno_execute;
 mod ts_go_check;
 
-pub use deno_execute::{ExecutionError as RuntimeError, execute_code as execute_raw};
+pub use deno_execute::{ExecutionError as RuntimeError, execute_code};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -48,6 +48,9 @@ pub enum DenoExecutorError {
 ///
 /// # Arguments
 /// * `code` - The TypeScript code to check and execute
+/// * `allowed_hosts` - Optional list of hosts that network requests are allowed to access.
+///   Format: "hostname:port" or just "hostname" (e.g., "localhost:3000", "api.example.com").
+///   If None or empty, all network access is denied.
 ///
 /// # Returns
 /// * `Ok(ExecuteResult)` - Contains type diagnostics, runtime errors, and output
@@ -55,7 +58,7 @@ pub enum DenoExecutorError {
 /// # Errors
 /// * Returns error only if internal tooling fails (not for type errors or runtime errors)
 ///
-pub async fn execute(code: &str) -> Result<ExecuteResult> {
+pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<ExecuteResult> {
     let check_result = check(code)?;
     if !check_result.success {
         return Ok(ExecuteResult {
@@ -68,7 +71,7 @@ pub async fn execute(code: &str) -> Result<ExecuteResult> {
         });
     }
 
-    let exec_result = execute_raw(code)
+    let exec_result = execute_code(code, allowed_hosts)
         .await
         .map_err(|e| DenoExecutorError::InternalError(e.to_string()))?;
 

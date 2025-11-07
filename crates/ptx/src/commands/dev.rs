@@ -1,3 +1,4 @@
+use anyhow::Result;
 use clap::Parser;
 
 use crate::mcp::{
@@ -18,7 +19,7 @@ pub(crate) struct DevCmd {
 }
 
 impl DevCmd {
-    pub(crate) async fn handle(&self) {
+    pub(crate) async fn handle(&self) -> Result<()> {
         let ctx = include_str!("./ctx.json");
 
         let mut upstream: Vec<UpstreamMcp> = vec![];
@@ -37,5 +38,7 @@ impl DevCmd {
         }
 
         PtxMcp::serve(&self.host, self.port, upstream).await;
+
+        Ok(())
     }
 }

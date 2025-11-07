@@ -48,10 +48,6 @@ fn main() -> io::Result<()> {
     }
 
     println!("cargo:rustc-env=TSGO_BINARY_PATH={}", binary_path.display());
-    println!(
-        "cargo:warning=Using TypeScript binary at: {}",
-        binary_path.display()
-    );
 
     Ok(())
 }

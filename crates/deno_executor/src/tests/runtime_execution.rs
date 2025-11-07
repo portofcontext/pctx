@@ -7,7 +7,7 @@ const x = 1 + 1;
 export default x;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Simple code should execute successfully");
     assert!(
         result.runtime_error.is_none(),
@@ -22,7 +22,7 @@ async fn test_execute_runtime_error() {
 throw new Error("This is a runtime error");
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Code with runtime error should fail");
     assert!(result.runtime_error.is_some(), "Should have runtime error");
 
@@ -39,7 +39,7 @@ async fn test_execute_syntax_error() {
 const x = ;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Code with syntax error should fail");
     // Syntax errors are caught during execution
     assert!(

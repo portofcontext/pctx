@@ -7,7 +7,7 @@ const x: int = 1 + 1;
 export default x;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
     assert_eq!(
@@ -24,7 +24,7 @@ const greeting = "Hello, World!";
 export default greeting;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
     assert_eq!(
@@ -41,7 +41,7 @@ const data = { name: "Alice", age: 30 };
 export default data;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
 
@@ -57,7 +57,7 @@ const numbers = [1, 2, 3, 4, 5];
 export default numbers;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
     assert_eq!(
@@ -74,7 +74,7 @@ const x = 42;
 console.log(x);
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(
         result.output.is_none(),
@@ -95,7 +95,7 @@ console.log("Done!");
 export default result;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
     assert_eq!(
@@ -120,7 +120,7 @@ const isValid = true;
 export default isValid;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
     assert_eq!(
@@ -136,7 +136,7 @@ async fn test_capture_null_export() {
 export default null;
 ";
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture null export");
     assert_eq!(
@@ -153,7 +153,7 @@ const x: number = "string";
 export default x;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Type error should cause failure");
     assert!(
         result.output.is_none(),
@@ -172,7 +172,7 @@ throw new Error("Runtime error");
 export default 42;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Runtime error should cause failure");
     assert!(
         result.output.is_none(),
@@ -200,7 +200,7 @@ const data = {
 export default data;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(result.output.is_some(), "Should capture default export");
 
