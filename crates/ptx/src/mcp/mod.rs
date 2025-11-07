@@ -18,7 +18,21 @@ use crate::mcp::{
 pub(crate) struct PtxMcp;
 impl PtxMcp {
     pub(crate) async fn serve(host: &str, port: u16, mcps: Vec<UpstreamMcp>) {
-        let allowed_hosts = mcps.iter().map(|m| m.url.clone()).collect::<Vec<_>>();
+        let allowed_hosts = mcps
+            .iter()
+            .filter_map(|m| {
+                url::Url::parse(&m.url).ok().and_then(|url| {
+                    let host = url.host_str()?;
+                    if let Some(port) = url.port() {
+                        Some(format!("{host}:{port}"))
+                    } else {
+                        let default_port = if url.scheme() == "https" { 443 } else { 80 };
+                        Some(format!("{host}:{default_port}"))
+                    }
+                })
+            })
+            .collect::<Vec<_>>();
+
         let executor = DenoExecutor::new(Some(allowed_hosts.clone()));
         log::info!("Starting sandbox with access to host: {allowed_hosts:?}...");
 

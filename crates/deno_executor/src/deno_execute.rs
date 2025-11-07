@@ -336,37 +336,42 @@ pub async fn execute_code(
     // Evaluate the module
     let eval_result = worker.js_runtime.mod_evaluate(mod_id);
 
-    // Run the event loop to completion
-    match worker.run_event_loop(false).await {
-        Ok(()) => {}
-        Err(e) => {
+    // Drive the module evaluation and event loop together using tokio::select
+    // This allows async operations (like HTTP requests) to complete while module evaluates
+    let eval_with_event_loop = async {
+        tokio::select! {
+            eval_res = eval_result => eval_res,
+            loop_res = worker.run_event_loop(false) => loop_res
+        }
+    };
+
+    let eval_final_result =
+        tokio::time::timeout(std::time::Duration::from_secs(10), eval_with_event_loop).await;
+
+    let (success, error) = match eval_final_result {
+        Ok(Ok(())) => (true, None),
+        Ok(Err(e)) => (
+            false,
+            Some(ExecutionError {
+                message: e.to_string(),
+                stack: None,
+            }),
+        ),
+        Err(_) => {
             return Ok(ExecuteResult {
                 success: false,
                 output: None,
                 error: Some(ExecutionError {
-                    message: e.to_string(),
+                    message: "Execution timed out after 10 seconds".to_string(),
                     stack: None,
                 }),
                 stdout: String::new(),
                 stderr: String::new(),
             });
         }
-    }
-
-    // Check evaluation result
-    let (success, error) = match eval_result.await {
-        Ok(()) => (true, None),
-        Err(e) => {
-            let error_string = e.to_string();
-            (
-                false,
-                Some(ExecutionError {
-                    message: error_string.clone(),
-                    stack: Some(error_string),
-                }),
-            )
-        }
     };
+
+    // success and error are already set above
 
     // Get v8 globals before creating the handle scope
     let capture_script = r"
@@ -429,7 +434,7 @@ pub async fn execute_code(
         (String::new(), String::new())
     };
 
-    // Extract default export value
+    // Extract default export value - if it's a Promise, resolve it
     let output = module_namespace_global.and_then(|module_namespace| {
         let namespace = deno_runtime::deno_core::v8::Local::new(context_scope, module_namespace);
         let default_key = deno_runtime::deno_core::v8::String::new(context_scope, "default")?;
@@ -439,6 +444,21 @@ pub async fn execute_code(
             .and_then(|default_value| {
                 // Check if the value is undefined (no explicit default export)
                 if default_value.is_undefined() {
+                    return None;
+                }
+
+                // Check if it's a Promise - extract the resolved value
+                if default_value.is_promise() {
+                    let promise = default_value.cast::<deno_runtime::deno_core::v8::Promise>();
+                    if promise.state() == deno_runtime::deno_core::v8::PromiseState::Fulfilled {
+                        let result = promise.result(context_scope);
+                        return deno_runtime::deno_core::serde_v8::from_v8::<serde_json::Value>(
+                            context_scope,
+                            result,
+                        )
+                        .ok();
+                    }
+                    // Promise is not fulfilled (might be pending or rejected)
                     return None;
                 }
 

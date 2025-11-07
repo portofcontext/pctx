@@ -49,6 +49,10 @@ env_logger = "0.11"
 reqwest = { version = "0.12", features = ["json"] }
 open = "5.3"
 oauth2 = "5.0"
+url = "2.5"
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+] }
 
 [target.'cfg(all(not(target_env = "msvc"), any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))'.dependencies]
 tikv-jemallocator = "0.6.0"

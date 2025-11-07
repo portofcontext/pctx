@@ -195,6 +195,9 @@ External Command:\n\
 
 #[tokio::main]
 async fn main() {
+    // Install default crypto provider for rustls (required for TLS/HTTPS in Deno)
+    let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
     let cli = Cli::parse();
 
     // Initialize logger

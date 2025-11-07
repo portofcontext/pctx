@@ -6260,12 +6260,14 @@ dependencies = [
  "open",
  "reqwest",
  "rmcp",
+ "rustls",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
  "tikv-jemallocator",
  "tokio",
  "toml",
+ "url",
 ]
 
 [[package]]

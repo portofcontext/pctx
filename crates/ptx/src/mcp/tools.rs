@@ -183,16 +183,20 @@ namespace {namespace} {{
             .join("\n\n");
 
         let to_execute = format!(
-            "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\nexport default await run();"
+            "import {{ registerMCP, callMCPTool }} from \"mcp-client\"\n{registrations}\n{namespaces}\n{code}\n\nexport default run();"
         );
 
-        // std::fs::write("./execute.ts", &to_execute).unwrap();
+        log::info!("Executing code in sandbox");
+        let result = self.executor.execute(to_execute).await.map_err(|e| {
+            log::error!("Sandbox execution error: {e}");
+            McpError::internal_error(e, None)
+        })?;
 
-        let result = self
-            .executor
-            .execute(to_execute)
-            .await
-            .map_err(|e| McpError::internal_error(e, None))?;
+        if result.success {
+            log::info!("Sandbox execution completed successfully");
+        } else {
+            log::warn!("Sandbox execution failed: {:?}", result.runtime_error);
+        }
 
         Ok(CallToolResult::success(vec![Content::text(format!(
             "{result:#?}"

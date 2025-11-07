@@ -14,16 +14,20 @@ struct DenoJob {
 #[derive(Clone)]
 pub(crate) struct DenoExecutor {
     sender: mpsc::Sender<DenoJob>,
-    allowed_hosts: Option<Vec<String>>,
 }
 
 impl DenoExecutor {
     /// Create a new Deno executor on a dedicated thread
+    #[allow(clippy::needless_pass_by_value)]
     pub(crate) fn new(allowed_hosts: Option<Vec<String>>) -> Self {
         let (tx, mut rx) = mpsc::channel::<DenoJob>(100);
+        let allowed_hosts_clone = allowed_hosts.clone();
 
         // Spawn dedicated thread for Deno/V8
         std::thread::spawn(move || {
+            // Install default crypto provider for rustls (required for TLS/HTTPS)
+            let _ = rustls::crypto::aws_lc_rs::default_provider().install_default();
+
             // Create single-threaded tokio runtime on this thread
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -33,7 +37,7 @@ impl DenoExecutor {
             rt.block_on(async move {
                 // Process jobs sequentially on this thread
                 while let Some(job) = rx.recv().await {
-                    let result = deno_executor::execute(&job.code, None) // TODO: re-implement allowed_hosts
+                    let result = deno_executor::execute(&job.code, allowed_hosts_clone.clone())
                         .await
                         .unwrap_or_else(|e| ExecuteResult {
                             success: false,
@@ -53,10 +57,7 @@ impl DenoExecutor {
             });
         });
 
-        Self {
-            sender: tx,
-            allowed_hosts,
-        }
+        Self { sender: tx }
     }
 
     /// Execute TypeScript code
