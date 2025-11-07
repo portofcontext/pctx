@@ -1,6 +1,7 @@
 pub(crate) mod auth;
 pub(crate) mod client;
 pub(crate) mod config;
+pub(crate) mod token_resolver;
 pub(crate) mod tools;
 pub(crate) mod upstream;
 

@@ -32,16 +32,33 @@ pub(crate) struct ServerConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub(crate) enum AuthConfig {
-    Env {
-        token: String,
+    /// Bearer token (supports ${VAR}, keychain://, command://, plain://)
+    Bearer { token: String },
+    /// Custom headers and query parameters
+    Custom {
+        #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+        headers: std::collections::HashMap<String, String>,
+        #[serde(default, skip_serializing_if = "std::collections::HashMap::is_empty")]
+        query: std::collections::HashMap<String, String>,
     },
-    Keychain {
-        service: String,
-        account: String,
+    /// Legacy: Environment variable (migrated to Bearer)
+    Env { token: String },
+    /// Legacy: Keychain (migrated to Bearer with keychain://)
+    Keychain { service: String, account: String },
+    /// Legacy: Command (migrated to Bearer with command://)
+    Command { command: String },
+    /// OAuth 2.1 Client Credentials Flow (machine-to-machine)
+    #[serde(rename = "oauth-client-credentials")]
+    OAuthClientCredentials {
+        client_id: String,
+        client_secret: String, // Supports ${VAR}, keychain://, command://, plain://
+        token_url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        scope: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        credentials: Option<OAuth2Credentials>,
     },
-    Command {
-        command: String,
-    },
+    /// NOT USABLE IN PRODUCTION OAuth 2.1 Authorization Code Flow (user-interactive, browser-based)
     #[serde(rename = "oauth2")]
     OAuth2 {
         /// Optional client ID (stored after dynamic registration)
@@ -55,6 +72,10 @@ pub(crate) enum AuthConfig {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 pub(crate) enum AuthType {
+    Bearer,
+    Custom,
+    #[value(name = "oauth-client-credentials")]
+    OAuthClientCredentials,
     Env,
     Keychain,
     Command,
@@ -65,6 +86,9 @@ pub(crate) enum AuthType {
 impl std::fmt::Display for AuthType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            AuthType::Bearer => write!(f, "bearer"),
+            AuthType::Custom => write!(f, "custom"),
+            AuthType::OAuthClientCredentials => write!(f, "oauth-client-credentials"),
             AuthType::Env => write!(f, "env"),
             AuthType::Keychain => write!(f, "keychain"),
             AuthType::Command => write!(f, "command"),
@@ -153,6 +177,143 @@ impl ServerConfig {
             name,
             url,
             auth: None,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_auth_config_bearer_serialization() {
+        let auth = AuthConfig::Bearer {
+            token: "${MY_TOKEN}".to_string(),
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("type = \"bearer\""));
+        assert!(toml.contains("token = \"${MY_TOKEN}\""));
+
+        let deserialized: AuthConfig = toml::from_str(&toml).unwrap();
+        matches!(deserialized, AuthConfig::Bearer { .. });
+    }
+
+    #[test]
+    fn test_auth_config_custom_serialization() {
+        let mut headers = std::collections::HashMap::new();
+        headers.insert("X-API-Key".to_string(), "${API_KEY}".to_string());
+
+        let mut query = std::collections::HashMap::new();
+        query.insert("client_id".to_string(), "my-client".to_string());
+
+        let auth = AuthConfig::Custom { headers, query };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("type = \"custom\""));
+
+        let deserialized: AuthConfig = toml::from_str(&toml).unwrap();
+        matches!(deserialized, AuthConfig::Custom { .. });
+    }
+
+    #[test]
+    fn test_auth_config_bearer_with_keychain() {
+        let auth = AuthConfig::Bearer {
+            token: "keychain://pctx/my-server".to_string(),
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("keychain://pctx/my-server"));
+    }
+
+    #[test]
+    fn test_auth_config_bearer_with_command() {
+        let auth = AuthConfig::Bearer {
+            token: "command://op read op://vault/token".to_string(),
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("command://op read"));
+    }
+
+    #[test]
+    fn test_auth_config_legacy_env_still_works() {
+        let auth = AuthConfig::Env {
+            token: "${OLD_TOKEN}".to_string(),
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("type = \"env\""));
+    }
+
+    #[test]
+    fn test_server_config_roundtrip() {
+        let mut server = ServerConfig::new(
+            "test-server".to_string(),
+            "https://api.example.com/mcp".to_string(),
+        );
+
+        server.auth = Some(AuthConfig::Bearer {
+            token: "${TOKEN}".to_string(),
+        });
+
+        let toml = toml::to_string(&server).unwrap();
+        let deserialized: ServerConfig = toml::from_str(&toml).unwrap();
+
+        assert_eq!(deserialized.name, "test-server");
+        assert_eq!(deserialized.url, "https://api.example.com/mcp");
+        assert!(deserialized.auth.is_some());
+    }
+
+    #[test]
+    fn test_oauth_client_credentials_serialization() {
+        let auth = AuthConfig::OAuthClientCredentials {
+            client_id: "my-client-id".to_string(),
+            client_secret: "${CLIENT_SECRET}".to_string(),
+            token_url: "https://auth.example.com/oauth/token".to_string(),
+            scope: Some("api:read api:write".to_string()),
+            credentials: None,
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("type = \"oauth-client-credentials\""));
+        assert!(toml.contains("client_id = \"my-client-id\""));
+        assert!(toml.contains("client_secret = \"${CLIENT_SECRET}\""));
+        assert!(toml.contains("token_url = \"https://auth.example.com/oauth/token\""));
+        assert!(toml.contains("scope = \"api:read api:write\""));
+
+        let deserialized: AuthConfig = toml::from_str(&toml).unwrap();
+        matches!(deserialized, AuthConfig::OAuthClientCredentials { .. });
+    }
+
+    #[test]
+    fn test_oauth_client_credentials_with_stored_token() {
+        let creds = OAuth2Credentials {
+            access_token: "acc_token_123".to_string(),
+            refresh_token: None,
+            expires_at: Some(1699999999),
+            token_type: Some("Bearer".to_string()),
+        };
+
+        let auth = AuthConfig::OAuthClientCredentials {
+            client_id: "my-client".to_string(),
+            client_secret: "keychain://pctx/secret".to_string(),
+            token_url: "https://auth.example.com/oauth/token".to_string(),
+            scope: None,
+            credentials: Some(creds),
+        };
+
+        let toml = toml::to_string(&auth).unwrap();
+        assert!(toml.contains("access_token = \"acc_token_123\""));
+        assert!(toml.contains("expires_at = 1699999999"));
+
+        let deserialized: AuthConfig = toml::from_str(&toml).unwrap();
+        if let AuthConfig::OAuthClientCredentials { credentials, .. } = deserialized {
+            assert!(credentials.is_some());
+            let creds = credentials.unwrap();
+            assert_eq!(creds.access_token, "acc_token_123");
+        } else {
+            panic!("Expected OAuthClientCredentials");
         }
     }
 }
