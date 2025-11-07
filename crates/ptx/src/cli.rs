@@ -61,7 +61,7 @@ struct Cli {
 enum Commands {
     /// Initialize PCTX configuration directory and files
     #[command(
-        long_about = "Creates the ~/.pctl directory and initializes the configuration file. \
+        long_about = "Creates the ~/.pctx directory and initializes the configuration file. \
 This command is safe to run multiple times - it will not overwrite existing configuration."
     )]
     Init,

@@ -62,12 +62,12 @@ pub(crate) async fn handle(name: &str) -> Result<()> {
                 .interact_text()?;
 
             // Store the token in the keychain
-            store_in_keychain("pctl", &account, &token)?;
+            store_in_keychain("pctx", &account, &token)?;
 
             info!("✓ Token stored in keychain");
 
             AuthConfig::Keychain {
-                service: "pctl".to_string(),
+                service: "pctx".to_string(),
                 account,
             }
         }

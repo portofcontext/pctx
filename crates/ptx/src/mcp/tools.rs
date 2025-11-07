@@ -1,7 +1,7 @@
 use anyhow::Result;
 use codegen::{case::Case, generate_docstring};
 use indexmap::{IndexMap, IndexSet};
-use log::debug;
+use log::{debug, trace};
 use rmcp::{
     ErrorData as McpError, ServerHandler,
     handler::server::{router::tool::ToolRouter, wrapper::Parameters},
@@ -62,8 +62,10 @@ namespace {namespace} {{
             })
             .collect();
 
+        let namespaced_functions = codegen::format::format_d_ts(&namespaces.join("\n\n"));
+
         Ok(CallToolResult::success(vec![Content::text(
-            namespaces.join("\n\n"),
+            namespaced_functions,
         )]))
     }
 
@@ -117,7 +119,7 @@ namespace {namespace} {{
         let content = if namespace_details.is_empty() {
             "No namespaces/functions match the request".to_string()
         } else {
-            namespace_details.join("\n\n")
+            codegen::format::format_d_ts(&namespace_details.join("\n\n"))
         };
 
         Ok(CallToolResult::success(vec![Content::text(content)]))
@@ -187,6 +189,8 @@ namespace {namespace} {{
         );
 
         log::info!("Executing code in sandbox");
+        trace!("Will execute: \n{to_execute}");
+
         let result = self.executor.execute(to_execute).await.map_err(|e| {
             log::error!("Sandbox execution error: {e}");
             McpError::internal_error(e, None)
@@ -203,20 +207,6 @@ namespace {namespace} {{
         ))]))
     }
 }
-
-// #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-// pub(crate) struct GetFunctionDetailsInput {
-//     /// List of functions, organized by their namespace to get more details on
-//     pub namespaced_functions: Vec<NamespacedFunctions>,
-// }
-
-// #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
-// pub(crate) struct NamespacedFunctions {
-//     /// The namespace the function is defined in, as returned by `list_functions`
-//     pub namespace: String,
-//     /// List of function names within the name space to get more details on
-//     pub functions: Vec<String>,
-// }
 
 #[derive(Debug, serde::Deserialize, schemars::JsonSchema)]
 pub(crate) struct GetFunctionDetailsInput {

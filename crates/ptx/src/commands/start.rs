@@ -9,7 +9,7 @@ pub(crate) async fn handle(host: &str, port: u16) -> Result<()> {
     let config = Config::load()?;
 
     if config.servers.is_empty() {
-        anyhow::bail!("No MCP servers configured. Add servers with 'pctl mcp add <name> <url>'");
+        anyhow::bail!("No MCP servers configured. Add servers with 'pctx mcp add <name> <url>'");
     }
 
     info!("Starting Intelligent MCP gateway...");

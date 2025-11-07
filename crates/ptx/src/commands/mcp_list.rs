@@ -56,7 +56,7 @@ pub(crate) async fn handle() -> Result<()> {
     if config.servers.is_empty() {
         info!("No MCP servers configured.");
         info!("");
-        info!("Add a server with: pctl mcp add <name> <url>");
+        info!("Add a server with: pctx mcp add <name> <url>");
         return Ok(());
     }
 

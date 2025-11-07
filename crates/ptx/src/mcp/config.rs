@@ -109,7 +109,7 @@ impl Config {
     pub(crate) fn config_path() -> Result<PathBuf> {
         let home = dirs::home_dir().context("Failed to determine home directory")?;
 
-        Ok(home.join(".pctl").join("config.toml"))
+        Ok(home.join(".pctx").join("config.toml"))
     }
 
     pub(crate) fn add_server(&mut self, server: ServerConfig) -> Result<()> {

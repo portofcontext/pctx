@@ -8,7 +8,7 @@ pub(crate) fn handle() -> Result<()> {
 
     if config_path.exists() {
         error!("Configuration already exists at: {}", config_path.display());
-        info!("Use 'pctl mcp add' to add MCP servers");
+        info!("Use 'pctx mcp add' to add MCP servers");
         return Ok(());
     }
 
@@ -19,8 +19,8 @@ pub(crate) fn handle() -> Result<()> {
     info!("✓ Configuration initialized at: {}", config_path.display());
     info!("");
     info!("Next steps:");
-    info!("  - Add an MCP server: pctl mcp add <name> <url>");
-    info!("  - Start the gateway: pctl start");
+    info!("  - Add an MCP server: pctx mcp add <name> <url>");
+    info!("  - Start the gateway: pctx start");
 
     Ok(())
 }

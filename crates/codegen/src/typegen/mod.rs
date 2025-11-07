@@ -6,7 +6,7 @@ use schemars::schema::{RootSchema, Schema};
 use serde_json::json;
 
 use crate::{
-    CodegenResult, SchemaDefinitions, case::Case, schema_type::SchemaType,
+    CodegenResult, SchemaDefinitions, case::Case, format::format_ts, schema_type::SchemaType,
     typegen::schema_data::ObjectSchemaData, utils::assign_type_names,
 };
 
@@ -42,7 +42,7 @@ pub fn generate_types(
         .unwrap();
 
     Ok(TypegenResult {
-        types,
+        types: format_ts(&types),
         types_generated: to_generate.len(),
         type_signature: SchemaType::from(&schema).type_signature(true, &defs)?,
     })
