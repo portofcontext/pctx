@@ -1,7 +1,7 @@
 use anyhow::Result;
 use log::info;
 
-use crate::mcp::PtxMcp;
+use crate::mcp::PtcxMcp;
 use crate::mcp::config::Config;
 use crate::mcp::upstream::fetch_upstream_tools;
 
@@ -39,7 +39,7 @@ pub(crate) async fn handle(host: &str, port: u16) -> Result<()> {
     info!("");
 
     // Start the gateway with multiple MCP servers
-    PtxMcp::serve(host, port, upstream_servers).await;
+    PtcxMcp::serve(host, port, upstream_servers).await;
 
     info!("Shutting down...");
 

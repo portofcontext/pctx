@@ -204,7 +204,7 @@ impl AuthProvider for OAuth2AuthProvider {
 
         let creds = credentials
             .as_ref()
-            .context("No OAuth2 credentials stored. Run 'ptx mcp auth <server>' to authorize.")?;
+            .context("No OAuth2 credentials stored. Run 'ptcx mcp auth <server>' to authorize.")?;
 
         // Check if token is expired (basic check)
         if let Some(expires_at) = creds.expires_at {
@@ -215,7 +215,7 @@ impl AuthProvider for OAuth2AuthProvider {
 
             if now >= expires_at {
                 anyhow::bail!(
-                    "OAuth2 access token is expired. Please re-authenticate with 'ptx mcp auth <server>'"
+                    "OAuth2 access token is expired. Please re-authenticate with 'ptcx mcp auth <server>'"
                 );
                 // TODO: Implement automatic token refresh using refresh_token
             }

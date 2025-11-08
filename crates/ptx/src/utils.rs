@@ -17,11 +17,11 @@ pub(crate) fn init_logger(quiet: bool, verbose: u8) {
     if level == log::Level::Trace {
         builder.filter_level(level.to_level_filter());
     } else if level == log::Level::Debug {
-        builder.filter_module("ptx", level.to_level_filter());
+        builder.filter_module("ptcx", level.to_level_filter());
     } else {
         // info, warn, error
         builder
-            .filter_module("ptx", level.to_level_filter())
+            .filter_module("ptcx", level.to_level_filter())
             .format(|buf, record| {
                 if record.level() == Level::Info {
                     writeln!(buf, "{}", record.args())

@@ -10,10 +10,10 @@ use rmcp::transport::{
     streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
 };
 
-use crate::mcp::tools::{PtxTools, UpstreamMcp};
+use crate::mcp::tools::{PtcxTools, UpstreamMcp};
 
-pub(crate) struct PtxMcp;
-impl PtxMcp {
+pub(crate) struct PtcxMcp;
+impl PtcxMcp {
     pub(crate) async fn serve(host: &str, port: u16, mcps: Vec<UpstreamMcp>) {
         let allowed_hosts = mcps
             .iter()
@@ -33,7 +33,7 @@ impl PtxMcp {
         log::info!("Starting sandbox with access to host: {allowed_hosts:?}...");
 
         let service = StreamableHttpService::new(
-            move || Ok(PtxTools::new(allowed_hosts.clone()).with_upstream_mcps(mcps.clone())),
+            move || Ok(PtcxTools::new(allowed_hosts.clone()).with_upstream_mcps(mcps.clone())),
             LocalSessionManager::default().into(),
             StreamableHttpServerConfig {
                 stateful_mode: false,

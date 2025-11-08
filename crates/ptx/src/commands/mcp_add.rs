@@ -42,7 +42,7 @@ pub(crate) async fn handle(
                 if let Ok(auth) = prompt_for_auth(name) {
                     Some(auth)
                 } else {
-                    info!("You can configure authentication later with: ptx mcp auth {name}");
+                    info!("You can configure authentication later with: ptcx mcp auth {name}");
                     None
                 }
             }
@@ -52,7 +52,7 @@ pub(crate) async fn handle(
                 if let Ok(auth) = prompt_for_auth(name) {
                     Some(auth)
                 } else {
-                    info!("You can configure authentication later with: ptx mcp auth {name}");
+                    info!("You can configure authentication later with: ptcx mcp auth {name}");
                     None
                 }
             }
@@ -106,13 +106,13 @@ fn create_auth_config(
         AuthType::Custom => {
             // Custom auth requires headers/query - redirect to interactive config
             anyhow::bail!(
-                "Custom auth type requires interactive configuration. Use 'ptx mcp auth <name>' command."
+                "Custom auth type requires interactive configuration. Use 'ptcx mcp auth <name>' command."
             );
         }
         AuthType::OAuthClientCredentials => {
             // OAuth Client Credentials requires interactive setup for client_id, client_secret, token_url
             anyhow::bail!(
-                "OAuth Client Credentials requires interactive configuration. Use 'ptx mcp auth <name>' command."
+                "OAuth Client Credentials requires interactive configuration. Use 'ptcx mcp auth <name>' command."
             );
         }
         AuthType::Env => {
@@ -135,7 +135,7 @@ fn create_auth_config(
             }
         }
         AuthType::OAuth2 => {
-            // OAuth2 is configured via `ptx mcp auth <name>` command
+            // OAuth2 is configured via `ptcx mcp auth <name>` command
             AuthConfig::OAuth2 {
                 client_id: None,
                 credentials: None,

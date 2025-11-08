@@ -1,6 +1,21 @@
-# PCTX - Code Mode MCP Gateway
+todo: centered large logo
 
-PCTX is a code mode MCP (Model Context Protocol) gateway that aggregates multiple MCP servers into a single endpoint and presents them as a TypeScript API for AI agents to call via code execution.
+# PCTX
+---
+todo: banners
+
+# Getting Started
+
+pctx enables you to create connected AI agents by aggregating multiple MCP servers, exposing tools as TypeScript functions for efficient code-mode execution.
+
+Visit our (Learn pctx)[todo] course to get started with pctx.
+Visit the (pctx Showcase)[todo] to see ai agents build with pctx.
+
+# Documentation
+
+Visit https://portofcontext.com/ptcx/docs to view the full documentation.
+
+
 
 ## What is Code Mode?
 

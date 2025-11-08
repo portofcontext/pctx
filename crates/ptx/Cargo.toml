@@ -1,14 +1,14 @@
 [package]
-name = "ptx"
+name = "pctx"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
-repository = "https://github.com/portofcontext/ptx"
-default-run = "ptx"
+repository = "https://github.com/portofcontext/pctx"
+default-run = "pctx"
 
 [[bin]]
-name = "ptx"
+name = "pctx"
 path = "src/cli.rs"
 
 [dependencies]

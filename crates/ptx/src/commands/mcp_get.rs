@@ -98,7 +98,7 @@ pub(crate) fn handle(name: &str) -> Result<()> {
                         }
                     }
                 } else {
-                    info!("    Status: not authorized (run 'ptx mcp auth {name}')");
+                    info!("    Status: not authorized (run 'ptcx mcp auth {name}')");
                 }
             }
         }

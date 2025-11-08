@@ -204,10 +204,10 @@ mod tests {
     // async fn test_resolve_token_keychain_success() {
     //     // First, store a test value
     //     use keyring::Entry;
-    //     let entry = Entry::new("ptx-test", "test-account").unwrap();
+    //     let entry = Entry::new("ptcx-test", "test-account").unwrap();
     //     entry.set_password("test_keychain_value").unwrap();
     //
-    //     let result = resolve_token("keychain://ptx-test/test-account").await;
+    //     let result = resolve_token("keychain://ptcx-test/test-account").await;
     //     assert!(result.is_ok(), "Should resolve keychain successfully");
     //     assert_eq!(result.unwrap(), "test_keychain_value");
     //

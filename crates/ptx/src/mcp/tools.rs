@@ -17,13 +17,13 @@ use serde_json::json;
 type McpResult<T> = Result<T, McpError>;
 
 #[derive(Clone)]
-pub(crate) struct PtxTools {
+pub(crate) struct PtcxTools {
     allowed_hosts: Vec<String>,
     upstream: Vec<UpstreamMcp>,
-    tool_router: ToolRouter<PtxTools>,
+    tool_router: ToolRouter<PtcxTools>,
 }
 #[tool_router]
-impl PtxTools {
+impl PtcxTools {
     pub(crate) fn new(allowed_hosts: Vec<String>) -> Self {
         Self {
             allowed_hosts,
@@ -270,7 +270,7 @@ pub(crate) struct ExecuteInput {
 }
 
 #[tool_handler]
-impl ServerHandler for PtxTools {
+impl ServerHandler for PtcxTools {
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             protocol_version: ProtocolVersion::V_2024_11_05,

@@ -6,7 +6,7 @@ members = ["crates/*"]
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
-repository = "https://github.com/portofcontext/ptx"
+repository = "https://github.com/portofcontext/pctx"
 
 [workspace.dependencies]
 thiserror = "2.0"
