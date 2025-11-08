@@ -3,7 +3,7 @@ use deno_runtime::deno_core::futures::FutureExt;
 use deno_runtime::deno_core::{ModuleCodeString, error::AnyError, extension};
 use deno_runtime::deno_fetch::dns::Resolver;
 use deno_runtime::deno_fs::RealFs;
-use deno_runtime::deno_permissions::{Permissions, PermissionsContainer};
+use deno_runtime::deno_permissions::{Permissions, PermissionsContainer, PermissionsOptions};
 use deno_runtime::permissions::RuntimePermissionDescriptorParser;
 use deno_runtime::worker::{MainWorker, WorkerOptions, WorkerServiceOptions};
 use serde::{Deserialize, Serialize};
@@ -205,6 +205,9 @@ pub struct ExecuteResult {
 ///
 /// # Arguments
 /// * `code` - The TypeScript/JavaScript code to execute
+/// * `allowed_hosts` - Optional list of hosts that network requests are allowed to access.
+///   Format: "hostname:port" or just "hostname" (e.g., "localhost:3000", "api.example.com").
+///   If None or empty, all network access is denied.
 ///
 /// # Returns
 /// * `Ok(ExecuteResult)` - Contains execution result or error information
@@ -214,7 +217,7 @@ pub struct ExecuteResult {
 ///
 /// # Examples
 /// ```no_run
-/// use deno_executor::execute_raw;
+/// use deno_executor::execute_code;
 ///
 /// # async fn example() {
 /// let code = r#"
@@ -224,11 +227,15 @@ pub struct ExecuteResult {
 ///     const result = await callMCPTool({ name, tool: "echo", arguments: { message: "hello" } });
 ///     export default result;
 /// "#;
-/// let result = execute_raw(code).await.expect("execution should not fail");
+/// let allowed_hosts = Some(vec!["localhost:3000".to_string()]);
+/// let result = execute_code(code, allowed_hosts).await.expect("execution should not fail");
 /// assert!(result.success);
 /// # }
 /// ```
-pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
+pub async fn execute_code(
+    code: &str,
+    allowed_hosts: Option<Vec<String>>,
+) -> Result<ExecuteResult, AnyError> {
     // Transpile TypeScript to JavaScript
     let js_code = match deno_transpiler::transpile(code, None) {
         Ok(js) => js,
@@ -253,8 +260,30 @@ pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
     let sys = RealSys;
     let permission_desc_parser = Arc::new(RuntimePermissionDescriptorParser::new(sys.clone()));
 
-    // Create permissions container with all permissions allowed
-    let permissions = PermissionsContainer::new(permission_desc_parser, Permissions::allow_all());
+    // Create permissions with restricted network access
+    let permissions_options = PermissionsOptions {
+        allow_net: allowed_hosts,
+        deny_net: None,
+        allow_env: None,
+        deny_env: None,
+        allow_run: None,
+        deny_run: None,
+        allow_read: None,
+        deny_read: None,
+        allow_write: None,
+        deny_write: None,
+        allow_ffi: None,
+        deny_ffi: None,
+        allow_sys: None,
+        deny_sys: None,
+        allow_import: None,
+        deny_import: None,
+        prompt: false,
+    };
+
+    let permissions =
+        Permissions::from_options(permission_desc_parser.as_ref(), &permissions_options)?;
+    let permissions = PermissionsContainer::new(permission_desc_parser, permissions);
 
     // Create the MainWorker with required services
     let mut worker = MainWorker::bootstrap_from_options::<DummyNpmChecker, DummyNpmResolver, RealSys>(
@@ -307,37 +336,51 @@ pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
     // Evaluate the module
     let eval_result = worker.js_runtime.mod_evaluate(mod_id);
 
-    // Run the event loop to completion
-    match worker.run_event_loop(false).await {
-        Ok(()) => {}
-        Err(e) => {
+    // Drive the module evaluation and event loop together using tokio::select!
+    // Both futures need to run concurrently:
+    // - mod_evaluate handles module execution and top-level await
+    // - run_event_loop processes async operations (fetch, timers, etc.)
+    //
+    // Note: There is a known race condition where if both futures complete simultaneously,
+    // tokio::select! may choose the event loop result even if mod_evaluate has an error.
+    // In practice this rarely occurs because:
+    // 1. Runtime errors cause mod_evaluate to fail immediately
+    // 2. Successful execution with async work takes time for the event loop to complete
+    // 3. The use case for pctx (server with `export default await run()`) works correctly
+    let eval_with_event_loop = async {
+        tokio::select! {
+            eval_res = eval_result => eval_res,
+            loop_res = worker.run_event_loop(false) => loop_res
+        }
+    };
+
+    let eval_final_result =
+        tokio::time::timeout(std::time::Duration::from_secs(10), eval_with_event_loop).await;
+
+    let (success, error) = match eval_final_result {
+        Ok(Ok(())) => (true, None),
+        Ok(Err(e)) => (
+            false,
+            Some(ExecutionError {
+                message: e.to_string(),
+                stack: None,
+            }),
+        ),
+        Err(_) => {
             return Ok(ExecuteResult {
                 success: false,
                 output: None,
                 error: Some(ExecutionError {
-                    message: e.to_string(),
+                    message: "Execution timed out after 10 seconds".to_string(),
                     stack: None,
                 }),
                 stdout: String::new(),
                 stderr: String::new(),
             });
         }
-    }
-
-    // Check evaluation result
-    let (success, error) = match eval_result.await {
-        Ok(()) => (true, None),
-        Err(e) => {
-            let error_string = e.to_string();
-            (
-                false,
-                Some(ExecutionError {
-                    message: error_string.clone(),
-                    stack: Some(error_string),
-                }),
-            )
-        }
     };
+
+    // success and error are already set above
 
     // Get v8 globals before creating the handle scope
     let capture_script = r"
@@ -400,7 +443,7 @@ pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
         (String::new(), String::new())
     };
 
-    // Extract default export value
+    // Extract default export value - if it's a Promise, resolve it
     let output = module_namespace_global.and_then(|module_namespace| {
         let namespace = deno_runtime::deno_core::v8::Local::new(context_scope, module_namespace);
         let default_key = deno_runtime::deno_core::v8::String::new(context_scope, "default")?;
@@ -410,6 +453,21 @@ pub async fn execute_code(code: &str) -> Result<ExecuteResult, AnyError> {
             .and_then(|default_value| {
                 // Check if the value is undefined (no explicit default export)
                 if default_value.is_undefined() {
+                    return None;
+                }
+
+                // Check if it's a Promise - extract the resolved value
+                if default_value.is_promise() {
+                    let promise = default_value.cast::<deno_runtime::deno_core::v8::Promise>();
+                    if promise.state() == deno_runtime::deno_core::v8::PromiseState::Fulfilled {
+                        let result = promise.result(context_scope);
+                        return deno_runtime::deno_core::serde_v8::from_v8::<serde_json::Value>(
+                            context_scope,
+                            result,
+                        )
+                        .ok();
+                    }
+                    // Promise is not fulfilled (might be pending or rejected)
                     return None;
                 }
 

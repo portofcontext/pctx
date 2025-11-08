@@ -1,0 +1,19 @@
+Generating typescript interface for Banking API(http://127.0.0.1:8081/mcp) containing 21 tools
+RootSchema {
+    meta_schema: None,
+    schema: SchemaObject {
+        metadata: None,
+        instance_type: None,
+        format: None,
+        enum_values: None,
+        const_value: None,
+        subschemas: None,
+        number: None,
+        string: None,
+        array: None,
+        object: None,
+        reference: None,
+        extensions: {},
+    },
+    definitions: {},
+}

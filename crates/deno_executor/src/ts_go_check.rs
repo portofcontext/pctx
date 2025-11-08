@@ -1,4 +1,5 @@
 use regex::Regex;
+use std::env::consts::{ARCH, OS};
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::OnceLock;
@@ -16,16 +17,23 @@ pub(crate) fn get_tsgo_binary_path() -> Option<std::path::PathBuf> {
         }
     }
 
-    let binary_name = if cfg!(target_os = "windows") {
-        "tsgo.exe"
-    } else {
-        "tsgo"
+    let binary_name = match (OS, ARCH) {
+        ("macos", "aarch64") => "tsgo-darwin-arm64",
+        ("macos", "x86_64") => "tsgo-darwin-x64",
+        ("linux", "aarch64") => "tsgo-linux-arm64",
+        ("linux", "x86_64") => "tsgo-linux-x64",
+        ("windows", "aarch64") => "tsgo-win32-arm64.exe",
+        ("windows", "x86_64") => "tsgo-win32-x64.exe",
+        _ => {
+            eprintln!("Unsupported os/arch: {OS}/{ARCH}");
+            return None;
+        }
     };
 
     // (development) - fallback if build script didn't set the path
     let manifest_dir = env!("CARGO_MANIFEST_DIR");
     let dev_path = std::path::Path::new(manifest_dir)
-        .join(".bin")
+        .join("bin")
         .join(binary_name);
     if dev_path.exists() {
         return Some(dev_path);

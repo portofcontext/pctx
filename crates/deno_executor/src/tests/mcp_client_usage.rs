@@ -16,7 +16,7 @@ const registered = REGISTRY.has("test-server");
 export default registered;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "MCP client registration should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -51,7 +51,7 @@ registerMCP({
 export default true;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Duplicate MCP registration should fail");
     assert!(result.runtime_error.is_some(), "Should have runtime error");
 
@@ -78,7 +78,7 @@ const config = REGISTRY.get("my-server");
 export default config;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Getting MCP config should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -119,7 +119,7 @@ const hasServer3 = REGISTRY.has("server3");
 export default { hasServer1, hasServer2, hasServer3 };
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(
         result.success,
         "Multiple server registration should succeed"
@@ -158,7 +158,7 @@ const existsAfter = REGISTRY.has("temp-server");
 export default { existsBefore, existsAfter };
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Registry operations should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -198,7 +198,7 @@ const hasAfter = REGISTRY.has("server1") || REGISTRY.has("server2");
 export default { hasBefore, hasAfter };
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Registry clear should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -226,7 +226,7 @@ const config = REGISTRY.get("nonexistent-server");
 export default { config, isUndefined: config === undefined };
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Getting nonexistent config should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -259,7 +259,7 @@ const deleteResult = REGISTRY.delete("nonexistent-server");
 export default deleteResult;
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Deleting nonexistent server should succeed");
     assert!(
         result.runtime_error.is_none(),
@@ -294,7 +294,7 @@ async function test() {
 export default await test();
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Execution should succeed even with error");
     assert!(
         result.runtime_error.is_none(),
@@ -355,7 +355,11 @@ async function test() {
 export default await test();
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    // Allow network access to localhost:9999 for this test
+    let allowed_hosts = Some(vec!["localhost:9999".to_string()]);
+    let result = execute(code, allowed_hosts)
+        .await
+        .expect("execution should succeed");
     assert!(result.success, "Execution should succeed");
 
     let output = result.output.expect("Should have output");

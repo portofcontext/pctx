@@ -8,7 +8,7 @@ console.log("Line 2");
 export default "result";
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(
         result.stdout.contains("Hello, stdout!"),
@@ -29,7 +29,7 @@ console.error("Error message");
 export default "result";
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(
         result.stderr.contains("Error message"),
@@ -47,7 +47,7 @@ console.log("More output");
 export default "result";
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(
         result.stdout.contains("Standard output") && result.stdout.contains("More output"),
@@ -65,7 +65,7 @@ export default "result";
 async fn test_execute_empty_stdout_stderr_on_type_error() {
     let code = r#"const x: number = "string";"#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Type error should cause failure");
     assert!(
         result.stdout.is_empty(),
@@ -83,7 +83,7 @@ async fn test_execute_stderr_contains_runtime_error() {
 throw new Error("Runtime failure");
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Code with runtime error should fail");
     assert!(result.runtime_error.is_some(), "Should have runtime error");
     assert!(
@@ -107,7 +107,7 @@ console.log("This prints before error");
 throw new Error("Then fails");
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Code should fail due to runtime error");
     // Note: Currently, stdout may not be captured if execution fails early.
     // This is a known limitation where console output before an error may not be
@@ -125,7 +125,7 @@ for (let i = 1; i <= 3; i++) {
 export default "done";
 "#;
 
-    let result = execute(code).await.expect("execution should succeed");
+    let result = execute(code, None).await.expect("execution should succeed");
     assert!(result.success, "Code should execute successfully");
     assert!(
         result.stdout.contains("Line 1")

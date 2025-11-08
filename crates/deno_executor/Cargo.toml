@@ -19,10 +19,14 @@ thiserror = { workspace = true }
 tokio = { version = "1.41", features = ["rt", "macros"] }
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = ["Win32_System_SystemInformation"] }
+windows-sys = { version = "0.59", features = [
+    "Win32_System_SystemInformation",
+] }
 
 [dev-dependencies]
-rustls = { version = "0.23", default-features = false, features = ["aws-lc-rs"] }
+rustls = { version = "0.23", default-features = false, features = [
+    "aws-lc-rs",
+] }
 
 [build-dependencies]
 # No dependencies needed - binaries are committed to git

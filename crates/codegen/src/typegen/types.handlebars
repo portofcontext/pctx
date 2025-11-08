@@ -1,0 +1,20 @@
+{{#each objects}}
+{{#if this.doc_string}}{{{this.doc_string}}}{{/if}}
+export type {{this.name}} = {
+  {{#each this.properties}}
+  {{#if this.doc_string}}{{{this.doc_string}}}{{/if}}
+  "{{{this.name}}}"{{#unless this.required}}?{{/unless}}: {{{this.sig}}};
+  {{/each}}
+
+  {{#if this.additional_props_sig}}
+  {{#if this.properties[0]}}
+  // Additional property types must also accommodate all defined properties if present (typescript limitation)
+  // In reality all additional properties should only have type `{{{this.additional_props.value_sig.signature}}}`
+  // (there might be some duplication here)
+  {{/if}}
+  [additionalProperty: string]: {{#each this.properties}}{{{this.sig.signature}}} | {{/each}}{{{this.additional_props_sig}}}
+  {{/if}}
+}
+
+
+{{/each}}
