@@ -3,15 +3,31 @@
 //! These tests verify that the MCP client works correctly when accessed from JavaScript
 
 use crate::mcp_client::MCPRegistry;
-use deno_core::{JsRuntime, RuntimeOptions};
+use deno_core::{op2, JsRuntime, RuntimeOptions};
 use serde_json::json;
 
-/// Helper function to create a JavaScript runtime with pctx_runtime extension
+// Custom op to capture test results
+#[op2]
+#[serde]
+fn op_test_set_result(#[serde] value: serde_json::Value) -> serde_json::Value {
+    value
+}
+
+/// Helper function to create a JavaScript runtime with pctx_runtime extension and test ops
 fn create_test_runtime() -> JsRuntime {
     let registry = MCPRegistry::new();
 
+    // Create a simple extension for test helpers
+    deno_core::extension!(
+        test_helpers,
+        ops = [op_test_set_result],
+    );
+
     JsRuntime::new(RuntimeOptions {
-        extensions: vec![crate::pctx_runtime::init(registry)],
+        extensions: vec![
+            test_helpers::init(),
+            crate::pctx_runtime::init(registry),
+        ],
         ..Default::default()
     })
 }
