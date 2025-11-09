@@ -80,6 +80,8 @@ impl MCPRegistry {
     ///
     /// # Panics
     ///
+    /// # Errors
+    ///
     /// Panics if the internal lock is poisoned (i.e., a thread panicked while holding the lock)
     pub fn add(&self, cfg: MCPServerConfig) -> Result<(), McpError> {
         let mut configs = self.configs.write().unwrap();
