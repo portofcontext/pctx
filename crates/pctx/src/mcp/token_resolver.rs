@@ -12,7 +12,7 @@ use tokio::process::Command;
 pub(crate) async fn resolve_token(token_ref: &str) -> Result<String> {
     match token_ref {
         // Environment variable: ${VAR_NAME}
-        ref_str if ref_str.starts_with("${") && ref_str.ends_with("}") => {
+        ref_str if ref_str.starts_with("${") && ref_str.ends_with('}') => {
             let var_name = &ref_str[2..ref_str.len() - 1];
             std::env::var(var_name)
                 .with_context(|| format!("Environment variable '{var_name}' not found"))

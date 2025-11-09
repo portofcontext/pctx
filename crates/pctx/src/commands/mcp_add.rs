@@ -241,7 +241,7 @@ fn prompt_for_auth(name: &str) -> Result<AuthConfig> {
                     // Store in keychain
                     let account: String = Input::new()
                         .with_prompt("Keychain account name?")
-                        .with_initial_text(&format!("{}-client-secret", name))
+                        .with_initial_text(format!("{name}-client-secret"))
                         .interact_text()?;
 
                     let secret: String = Input::new()

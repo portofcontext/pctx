@@ -228,7 +228,7 @@ async fn main() {
             McpCommands::Remove { name } => commands::mcp_remove::handle(name),
             McpCommands::List => commands::mcp_list::handle().await,
             McpCommands::Get { name } => commands::mcp_get::handle(name),
-            McpCommands::Auth { name } => commands::mcp_auth::handle(name).await,
+            McpCommands::Auth { name } => commands::mcp_auth::handle(name),
         },
     };
 

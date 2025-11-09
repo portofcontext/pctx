@@ -7,7 +7,7 @@ use crate::mcp::{
     config::{AuthConfig, Config},
 };
 
-pub(crate) async fn handle(name: &str) -> Result<()> {
+pub(crate) fn handle(name: &str) -> Result<()> {
     let mut config = Config::load()?;
 
     let server = config
@@ -111,7 +111,7 @@ pub(crate) async fn handle(name: &str) -> Result<()> {
                     // Store in keychain
                     let account: String = Input::new()
                         .with_prompt("Keychain account name?")
-                        .with_initial_text(&format!("{}-client-secret", name))
+                        .with_initial_text(format!("{name}-client-secret"))
                         .interact_text()?;
 
                     let secret: String = Input::new()

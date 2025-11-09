@@ -1,11 +1,33 @@
 use anyhow::{Context, Result};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::process::Stdio;
 use tokio::process::Command;
 
 use super::config::{AuthConfig, ServerConfig};
 use super::token_resolver::resolve_token;
+
+#[derive(Debug, Serialize)]
+struct TokenRequest {
+    grant_type: String,
+    client_id: String,
+    client_secret: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    scope: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct TokenResponse {
+    access_token: String,
+    #[serde(default)]
+    token_type: Option<String>,
+    #[serde(default)]
+    expires_in: Option<i64>,
+    #[serde(default)]
+    #[allow(dead_code)]
+    refresh_token: Option<String>,
+}
 
 /// Credentials returned by auth providers
 #[derive(Debug, Clone, Default)]
@@ -342,27 +364,27 @@ impl AuthProvider for OAuthClientCredentialsProvider {
         };
 
         // Check if we have valid cached credentials
-        if let Some(creds) = credentials {
-            if let Some(expires_at) = creds.expires_at {
-                let now = std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs() as i64;
+        if let Some(creds) = credentials
+            && let Some(expires_at) = creds.expires_at
+        {
+            let now = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_secs() as i64;
 
-                // If token is still valid (with 60s buffer), use it
-                if now < expires_at - 60 {
-                    let mut headers = HashMap::new();
-                    let token_type = creds.token_type.as_deref().unwrap_or("Bearer");
-                    headers.insert(
-                        "Authorization".to_string(),
-                        format!("{} {}", token_type, creds.access_token),
-                    );
+            // If token is still valid (with 60s buffer), use it
+            if now < expires_at - 60 {
+                let mut headers = HashMap::new();
+                let token_type = creds.token_type.as_deref().unwrap_or("Bearer");
+                headers.insert(
+                    "Authorization".to_string(),
+                    format!("{} {}", token_type, creds.access_token),
+                );
 
-                    return Ok(AuthCredentials {
-                        headers,
-                        query: HashMap::new(),
-                    });
-                }
+                return Ok(AuthCredentials {
+                    headers,
+                    query: HashMap::new(),
+                });
             }
         }
 
@@ -371,29 +393,6 @@ impl AuthProvider for OAuthClientCredentialsProvider {
         let secret_value = resolve_token(client_secret).await?;
 
         // Perform OAuth 2.1 Client Credentials flow using reqwest directly
-        use serde::{Deserialize, Serialize};
-
-        #[derive(Debug, Serialize)]
-        struct TokenRequest {
-            grant_type: String,
-            client_id: String,
-            client_secret: String,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            scope: Option<String>,
-        }
-
-        #[derive(Debug, Deserialize)]
-        struct TokenResponse {
-            access_token: String,
-            #[serde(default)]
-            token_type: Option<String>,
-            #[serde(default)]
-            expires_in: Option<i64>,
-            #[serde(default)]
-            #[allow(dead_code)]
-            refresh_token: Option<String>,
-        }
-
         let client = reqwest::Client::new();
         let request_body = TokenRequest {
             grant_type: "client_credentials".to_string(),
@@ -415,11 +414,7 @@ impl AuthProvider for OAuthClientCredentialsProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            anyhow::bail!(
-                "Token request failed with status {}: {}",
-                status,
-                error_text
-            );
+            anyhow::bail!("Token request failed with status {status}: {error_text}");
         }
 
         let token_response: TokenResponse = response
@@ -446,7 +441,7 @@ impl AuthProvider for OAuthClientCredentialsProvider {
         let mut headers = HashMap::new();
         headers.insert(
             "Authorization".to_string(),
-            format!("{} {}", token_type, access_token),
+            format!("{token_type} {access_token}"),
         );
 
         Ok(AuthCredentials {
@@ -473,29 +468,6 @@ impl AuthProvider for OAuthClientCredentialsProvider {
         let secret_value = resolve_token(client_secret).await?;
 
         // Perform OAuth 2.1 Client Credentials flow using reqwest directly
-        use serde::{Deserialize, Serialize};
-
-        #[derive(Debug, Serialize)]
-        struct TokenRequest {
-            grant_type: String,
-            client_id: String,
-            client_secret: String,
-            #[serde(skip_serializing_if = "Option::is_none")]
-            scope: Option<String>,
-        }
-
-        #[derive(Debug, Deserialize)]
-        #[allow(dead_code)]
-        struct TokenResponse {
-            access_token: String,
-            #[serde(default)]
-            token_type: Option<String>,
-            #[serde(default)]
-            expires_in: Option<i64>,
-            #[serde(default)]
-            refresh_token: Option<String>,
-        }
-
         let http_client = reqwest::Client::new();
         let request_body = TokenRequest {
             grant_type: "client_credentials".to_string(),
@@ -517,11 +489,7 @@ impl AuthProvider for OAuthClientCredentialsProvider {
                 .text()
                 .await
                 .unwrap_or_else(|_| "Unknown error".to_string());
-            anyhow::bail!(
-                "Token refresh failed with status {}: {}",
-                status,
-                error_text
-            );
+            anyhow::bail!("Token refresh failed with status {status}: {error_text}");
         }
 
         let token_response: TokenResponse = response

@@ -291,7 +291,7 @@ mod tests {
         let creds = OAuth2Credentials {
             access_token: "acc_token_123".to_string(),
             refresh_token: None,
-            expires_at: Some(1699999999),
+            expires_at: Some(1_699_999_999),
             token_type: Some("Bearer".to_string()),
         };
 
