@@ -1,24 +1,32 @@
 [workspace]
 members = ["cargo:."]
 
+# Config for 'dist'
 [dist]
-cargo-dist-version = "0.30.0"
+cargo-dist-version = "0.28.0"
 ci = "github"
-installers = ["shell", "powershell"]
+installers = ["shell", "powershell", "npm", "homebrew"]
 windows-archive = ".zip"
 unix-archive = ".tar.gz"
 create-release = true
 dispatch-releases = true
 github-release = "announce"
 install-path = "~/.local/bin"
-pr-run-mode = "skip"
+pr-run-mode = "plan"
 build-local-artifacts = true
 targets = [
-    "x86_64-unknown-linux-gnu",
-    "x86_64-unknown-linux-musl",
+    "aarch64-apple-darwin",
     "aarch64-unknown-linux-gnu",
     "aarch64-unknown-linux-musl",
     "x86_64-apple-darwin",
-    "aarch64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+    "x86_64-unknown-linux-musl",
     "x86_64-pc-windows-msvc",
 ]
+hosting = "github"
+install-updater = false
+github-attestations = true
+checksum = "sha256"
+npm-scope = "@portofcontext"
+tap = "portofcontext/homebrew-tap"
+publish-jobs = ["homebrew"]
