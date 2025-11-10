@@ -238,7 +238,6 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
     Ok(check_result)
 }
 
-
 /// Filters diagnostics to only include errors that indicate runtime failures
 ///
 /// This function determines whether a TypeScript diagnostic represents a real problem that
