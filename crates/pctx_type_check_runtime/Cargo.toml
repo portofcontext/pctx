@@ -5,6 +5,7 @@ edition = "2024"
 rust-version = "1.89"
 license = "MIT"
 description = "Isolated TypeScript type checking runtime for PCTX"
+publish = false
 
 [lib]
 path = "src/lib.rs"

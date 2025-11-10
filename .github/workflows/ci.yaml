@@ -3,7 +3,16 @@ name: CI
 on:
   push:
     branches: [main]
+    paths:
+      - 'Cargo.toml'
+      - 'crates/**'
+      - '.github/workflows/ci.yaml'
   pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'crates/**'
+      - '.github/workflows/ci.yaml'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

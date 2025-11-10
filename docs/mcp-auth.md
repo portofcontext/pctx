@@ -30,7 +30,7 @@ token = "${PROD_API_TOKEN}"
 **Setup**:
 ```bash
 # Add to ~/.bashrc or ~/.zshrc
-export PROD_API_TOKEN="sk_live_abc123xyz789"
+export PROD_API_TOKEN="s_abc123xyz789"
 
 # Use the server
 ptcx mcp list production
@@ -53,7 +53,7 @@ token = "keychain://pctx/production"
 
 **Setup (macOS)**:
 ```bash
-security add-generic-password -s pctx -a production -w "sk_live_abc123xyz789"
+security add-generic-password -s pctx -a production -w "s_abc123xyz789"
 ```
 
 **Setup (Linux)**:
@@ -64,7 +64,7 @@ secret-tool store --label='ptcx Production Token' service pctx account productio
 
 **Setup (Windows)**:
 ```powershell
-cmdkey /generic:pctx-production /user:production /pass:sk_live_abc123xyz789
+cmdkey /generic:pctx-production /user:production /pass:s_abc123xyz789
 ```
 
 ---

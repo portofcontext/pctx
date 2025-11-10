@@ -61,7 +61,7 @@ git push origin main
 
 The workflow will:
 - Build binaries for all supported platforms (Linux, macOS, Windows)
-- Create installers (shell, PowerShell, Homebrew, npm)
+- Create installers (shell, Homebrew, npm)
 - Generate checksums and attestations for supply chain security
 - Create a GitHub Release with all artifacts
 - Publish Homebrew formula to the tap repository
@@ -77,9 +77,6 @@ Once the workflow completes (~15-20 minutes):
 ```bash
 # Shell installer (Linux/macOS)
 curl --proto '=https' --tlsv1.2 -LsSf https://github.com/portofcontext/pctx/releases/latest/download/pctx-installer.sh | sh
-
-# PowerShell installer (Windows)
-powershell -c "irm https://github.com/portofcontext/pctx/releases/latest/download/pctx-installer.ps1 | iex"
 
 # Homebrew (macOS/Linux)
 brew install portofcontext/tap/pctx
@@ -140,12 +137,6 @@ Features:
 - Detects platform automatically
 - Verifies checksums
 - Installs to `~/.local/bin`
-
-#### PowerShell (Windows)
-
-```powershell
-powershell -c "irm https://github.com/portofcontext/pctx/releases/latest/download/pctx-installer.ps1 | iex"
-```
 
 #### Homebrew (macOS/Linux)
 

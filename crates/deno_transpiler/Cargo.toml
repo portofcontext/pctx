@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
+publish = false
 
 [dependencies]
 deno_ast = { version = "0.51", features = ["transpiling"] }

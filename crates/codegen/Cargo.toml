@@ -3,6 +3,7 @@ name = "codegen"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+publish = false
 
 [dependencies]
 biome_js_formatter = "0.3.1"
