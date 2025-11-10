@@ -109,7 +109,12 @@ impl PctxMcp {
                 if !upstream.is_empty() {
                     lines.push(format!("Upstream servers: {}", upstream.len()));
                     for u in upstream {
-                        lines.push(format!("  • {} ({} tools)", u.url, u.tools.len()));
+                        lines.push(format!(
+                            "  • {url} ({num_tools} tool{plural})",
+                            url = u.url,
+                            num_tools = u.tools.len(),
+                            plural = if u.tools.len() > 1 { "s" } else { "" }
+                        ));
                     }
                     lines.push(String::new());
                 }

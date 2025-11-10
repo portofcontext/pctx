@@ -70,7 +70,7 @@ pub fn assign_type_names(schema: Schema, type_name: &str) -> Schema {
                 .into_iter()
                 .map(|(prop_name, prop_schema)| {
                     let property_type_name =
-                        Case::Pascal.sanitize(&format!("{type_name} {prop_name}"));
+                        Case::Pascal.sanitize(format!("{type_name} {prop_name}"));
                     (
                         prop_name.clone(),
                         assign_type_names(prop_schema, &property_type_name),
@@ -134,7 +134,7 @@ pub fn assign_type_names(schema: Schema, type_name: &str) -> Schema {
                 .map(|(i, s)| {
                     let option_type = SchemaType::from(&s);
                     let option_type_name =
-                        Case::Pascal.sanitize(&format!("{type_name} {option_type} {i}"));
+                        Case::Pascal.sanitize(format!("{type_name} {option_type} {i}"));
                     assign_type_names(s, &option_type_name)
                 })
                 .collect();

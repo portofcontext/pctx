@@ -27,7 +27,7 @@ pub fn generate_types(
     let mut defs: SchemaDefinitions = IndexMap::new();
     for (ref_key, s) in root_schema.definitions {
         // TODO: clashing type names?
-        let type_name = Case::Pascal.sanitize(&format!("{type_name} {ref_key}"));
+        let type_name = Case::Pascal.sanitize(format!("{type_name} {ref_key}"));
         defs.insert(ref_key, assign_type_names(s, &type_name));
     }
     let schema = assign_type_names(
