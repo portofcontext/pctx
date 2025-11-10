@@ -3,7 +3,7 @@ use crate::*;
 #[tokio::test]
 async fn test_capture_simple_number_export() {
     let code = r"
-const x: int = 1 + 1;
+const x: number = 1 + 1;
 export default x;
 ";
 

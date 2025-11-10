@@ -107,6 +107,6 @@ console.log(`${pending.length} pending orders: $${total}`);
 
 ## Learn More
 
-- [Multi-Server Aggregation](multi-server.md) - Connect multiple MCP servers
+- [Upstream MCP Servers](upstream-mcp-servers.md) - Connect multiple MCP servers
 - [MCP Authentication](mcp-auth.md) - Secure credential management
 - [Model Context Protocol](https://modelcontextprotocol.io/) - MCP specification

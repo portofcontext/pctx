@@ -1,0 +1,33 @@
+[package]
+name = "pctx_code_execution_runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+deno_core = { version = "0.363.0", features = ["include_icu_data"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+reqwest = { version = "0.12", features = ["json"] }
+thiserror = { workspace = true }
+anyhow = "1.0"
+deno_error = "0.7"
+url = "2.5"
+
+[build-dependencies]
+deno_core = { version = "0.363.0", features = ["include_icu_data"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = { workspace = true }
+deno_error = "0.7"
+
+[dev-dependencies]
+rustls = { version = "0.23", features = ["ring"] }
+tokio = { version = "1.41", features = ["rt", "macros"] }
+
+[lints]
+workspace = true

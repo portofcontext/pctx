@@ -57,16 +57,16 @@ pub async fn execute_code(
     };
 
     // Create MCP registry and allowed hosts for this execution
-    let mcp_registry = pctx_runtime::MCPRegistry::new();
-    let allowed_hosts = pctx_runtime::AllowedHosts::new(allowed_hosts);
+    let mcp_registry = pctx_code_execution_runtime::MCPRegistry::new();
+    let allowed_hosts = pctx_code_execution_runtime::AllowedHosts::new(allowed_hosts);
 
     // Create JsRuntime with `pctx_runtime` snapshot and extension
     // The snapshot contains the ESM code pre-compiled, and init() registers both ops and ESM
     // Deno handles the deduplication when loading from snapshot
     let mut js_runtime = JsRuntime::new(RuntimeOptions {
         module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
-        startup_snapshot: Some(pctx_runtime::RUNTIME_SNAPSHOT),
-        extensions: vec![pctx_runtime::pctx_runtime_snapshot::init(
+        startup_snapshot: Some(pctx_code_execution_runtime::RUNTIME_SNAPSHOT),
+        extensions: vec![pctx_code_execution_runtime::pctx_runtime_snapshot::init(
             mcp_registry,
             allowed_hosts,
         )],
@@ -106,7 +106,7 @@ pub async fn execute_code(
     });
 
     // Drive both futures together - wait for BOTH to complete
-    let (eval_result, event_loop_result) = tokio::join!(eval_future, event_loop_future);
+    let (eval_result, event_loop_result) = futures::join!(eval_future, event_loop_future);
 
     // Check for errors from either future
     let (success, error) = match (eval_result, event_loop_result) {

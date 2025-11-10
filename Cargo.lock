@@ -2171,8 +2171,10 @@ dependencies = [
  "deno_resolver",
  "deno_runtime",
  "deno_transpiler",
+ "futures",
  "node_resolver",
- "pctx_runtime",
+ "pctx_code_execution_runtime",
+ "pctx_type_check_runtime",
  "regex",
  "rustls",
  "serde",
@@ -6272,7 +6274,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pctx_runtime"
+name = "pctx_code_execution_runtime"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -6285,6 +6287,20 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "url",
+]
+
+[[package]]
+name = "pctx_type_check_runtime"
+version = "0.1.0"
+dependencies = [
+ "deno_ast 0.51.0",
+ "deno_core",
+ "futures",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
 ]
 
 [[package]]
