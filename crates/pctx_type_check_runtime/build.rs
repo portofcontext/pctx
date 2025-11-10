@@ -54,5 +54,8 @@ fn main() {
         "cargo:rustc-env=PCTX_TYPE_CHECK_SNAPSHOT={}",
         snapshot_path.display()
     );
-    println!("Type check snapshot created at: {}", snapshot_path.display());
+    println!(
+        "Type check snapshot created at: {}",
+        snapshot_path.display()
+    );
 }

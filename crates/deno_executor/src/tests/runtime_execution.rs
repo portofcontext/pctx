@@ -1,5 +1,5 @@
-use crate::*;
 use super::serial;
+use crate::*;
 
 #[tokio::test]
 #[serial]
