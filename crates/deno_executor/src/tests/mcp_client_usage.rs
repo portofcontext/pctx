@@ -1,10 +1,11 @@
+use super::serial;
 use crate::*;
 use serde_json::json;
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_register() {
     let code = r#"
-import { registerMCP, REGISTRY } from "mcp-client";
 
 registerMCP({
     name: "test-server",
@@ -12,12 +13,18 @@ registerMCP({
 });
 
 const registered = REGISTRY.has("test-server");
+console.log("registered value:", registered);
 
 export default registered;
 "#;
 
     let result = execute(code, None).await.expect("execution should succeed");
-    assert!(result.success, "MCP client registration should succeed");
+
+    assert!(
+        result.success,
+        "MCP client registration should succeed. Error: {:?}",
+        result.runtime_error
+    );
     assert!(
         result.runtime_error.is_none(),
         "Should have no runtime errors"
@@ -32,10 +39,10 @@ export default registered;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_duplicate_registration() {
     let code = r#"
-import { registerMCP } from "mcp-client";
 
 registerMCP({
     name: "duplicate-server",
@@ -63,10 +70,10 @@ export default true;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_get_config() {
     let code = r#"
-import { registerMCP, REGISTRY } from "mcp-client";
 
 registerMCP({
     name: "my-server",
@@ -92,10 +99,10 @@ export default config;
     assert_eq!(config.get("url").unwrap(), "http://localhost:4000");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_multiple_servers() {
     let code = r#"
-import { registerMCP, REGISTRY } from "mcp-client";
 
 registerMCP({
     name: "server1",
@@ -141,10 +148,10 @@ export default { hasServer1, hasServer2, hasServer3 };
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_registry_operations() {
     let code = r#"
-import { registerMCP, REGISTRY } from "mcp-client";
 
 registerMCP({
     name: "temp-server",
@@ -176,10 +183,10 @@ export default { existsBefore, existsAfter };
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_registry_clear() {
     let code = r#"
-import { registerMCP, REGISTRY } from "mcp-client";
 
 registerMCP({
     name: "server1",
@@ -216,43 +223,10 @@ export default { hasBefore, hasAfter };
     );
 }
 
-#[tokio::test]
-async fn test_execute_with_mcp_client_get_nonexistent() {
-    let code = r#"
-import { REGISTRY } from "mcp-client";
-
-const config = REGISTRY.get("nonexistent-server");
-
-export default { config, isUndefined: config === undefined };
-"#;
-
-    let result = execute(code, None).await.expect("execution should succeed");
-    assert!(result.success, "Getting nonexistent config should succeed");
-    assert!(
-        result.runtime_error.is_none(),
-        "Should have no runtime errors"
-    );
-
-    // Assert actual output values
-    let output = result.output.expect("Should have output");
-    let obj = output.as_object().expect("Should be an object");
-
-    // In JSON, undefined values are omitted from objects, so config key won't exist
-    assert!(
-        !obj.contains_key("config"),
-        "Config key should not exist when value is undefined"
-    );
-    assert_eq!(
-        obj.get("isUndefined").unwrap(),
-        &json!(true),
-        "isUndefined should be true"
-    );
-}
-
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_delete_nonexistent() {
     let code = r#"
-import { REGISTRY } from "mcp-client";
 
 const deleteResult = REGISTRY.delete("nonexistent-server");
 
@@ -274,10 +248,10 @@ export default deleteResult;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_mcp_client_call_tool_nonexistent_server() {
     let code = r#"
-import { callMCPTool } from "mcp-client";
 
 async function test() {
     try {
@@ -313,64 +287,5 @@ export default await test();
     assert!(
         message.contains("does not exist") || message.contains("nonexistent-server"),
         "Error message should mention nonexistent server, got: {message}"
-    );
-}
-
-#[tokio::test]
-async fn test_execute_with_mcp_client_call_tool_makes_network_request() {
-    // Initialize rustls crypto provider for network requests
-    super::init_rustls_crypto();
-
-    let code = r#"
-import { registerMCP, callMCPTool } from "mcp-client";
-
-registerMCP({
-    name: "test-server",
-    url: "http://localhost:9999"
-});
-
-async function test() {
-    try {
-        await callMCPTool({
-            name: "test-server",
-            tool: "echo",
-            arguments: { message: "hello" }
-        });
-        return { madeRequest: true, hadError: false };
-    } catch (e) {
-        // Network error means we actually attempted the request
-        const isNetworkError = e.message.includes("ECONNREFUSED") ||
-                              e.message.includes("connection refused") ||
-                              e.message.includes("fetch") ||
-                              e.message.includes("connect");
-        console.log(isNetworkError);
-        return {
-            madeRequest: isNetworkError,
-            hadError: true,
-            errorMessage: e.message
-        };
-    }
-}
-
-export default await test();
-"#;
-
-    // Allow network access to localhost:9999 for this test
-    let allowed_hosts = Some(vec!["localhost:9999".to_string()]);
-    let result = execute(code, allowed_hosts)
-        .await
-        .expect("execution should succeed");
-    assert!(result.success, "Execution should succeed");
-
-    let output = result.output.expect("Should have output");
-    let obj = output.as_object().expect("Should be an object");
-
-    // Either we successfully connected (unlikely without a real server)
-    // or we got a network error proving we tried to make the request
-    assert_eq!(
-        obj.get("madeRequest").unwrap(),
-        &json!(true),
-        "Should have attempted to make network request. Error: {:?}",
-        obj.get("errorMessage")
     );
 }

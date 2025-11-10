@@ -1,5 +1,7 @@
+use super::serial;
 use crate::*;
 
+#[serial]
 #[tokio::test]
 async fn test_execute_with_type_error() {
     let code = r#"const x: number = "string";"#;
@@ -16,6 +18,7 @@ async fn test_execute_with_type_error() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_check_valid_typescript() {
     let code = r#"const greeting: string = "Hello, World!";
@@ -34,6 +37,7 @@ export default greeting;"#;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_check_type_mismatch() {
     let code = r#"const x: number = "string""#;
@@ -58,6 +62,7 @@ async fn test_check_type_mismatch() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_check_syntax_error() {
     let code = r"const x: string =";
@@ -69,6 +74,7 @@ async fn test_check_syntax_error() {
     }
 }
 
+#[serial]
 #[tokio::test]
 async fn test_nested_object_type_mismatch() {
     let code = r#"
@@ -102,6 +108,7 @@ const user: User = {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_function_signature_mismatch() {
     let code = r#"
@@ -125,6 +132,7 @@ const result: number = greet("Alice");  // Type error
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_undeclared_variable() {
     // Note: console.log itself is filtered (TS2580), but undeclaredVariable should fail

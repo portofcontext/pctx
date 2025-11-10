@@ -13,13 +13,15 @@ deno_resolver = "0.52.0"
 node_resolver = "0.59.0"
 sys_traits = "0.1"
 deno_transpiler = { path = "../deno_transpiler" }
+pctx_code_execution_runtime = { path = "../pctx_code_execution_runtime" }
+pctx_type_check_runtime = { path = "../pctx_type_check_runtime" }
 tempfile = "3.14"
 regex = "1.11"
 thiserror = { workspace = true }
-tokio = { version = "1.41", features = ["rt", "macros"] }
+futures = "0.3"
 
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.59", features = [
+windows-sys = { version = "0.61.2", features = [
     "Win32_System_SystemInformation",
 ] }
 
@@ -27,9 +29,8 @@ windows-sys = { version = "0.59", features = [
 rustls = { version = "0.23", default-features = false, features = [
     "aws-lc-rs",
 ] }
-
-[build-dependencies]
-# No dependencies needed - binaries are committed to git
+tokio = { version = "1.41", features = ["rt", "macros"] }
+serial_test = "3.0"
 
 [lints]
 workspace = true

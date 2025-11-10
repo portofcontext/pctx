@@ -1,9 +1,11 @@
+use super::serial;
 use crate::*;
 
+#[serial]
 #[tokio::test]
 async fn test_capture_simple_number_export() {
     let code = r"
-const x: int = 1 + 1;
+const x: number = 1 + 1;
 export default x;
 ";
 
@@ -17,6 +19,7 @@ export default x;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_string_export() {
     let code = r#"
@@ -34,6 +37,7 @@ export default greeting;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_object_export() {
     let code = r#"
@@ -50,6 +54,7 @@ export default data;
     assert_eq!(output["age"], 30);
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_array_export() {
     let code = r"
@@ -67,6 +72,7 @@ export default numbers;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_no_default_export() {
     let code = r"
@@ -86,6 +92,7 @@ console.log(x);
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_with_console_output() {
     let code = r#"
@@ -113,6 +120,7 @@ export default result;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_boolean_export() {
     let code = r"
@@ -130,6 +138,7 @@ export default isValid;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_null_export() {
     let code = r"
@@ -146,6 +155,7 @@ export default null;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_no_output_on_type_error() {
     let code = r#"
@@ -165,6 +175,7 @@ export default x;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_no_output_on_runtime_error() {
     let code = r#"
@@ -181,6 +192,7 @@ export default 42;
     assert!(result.runtime_error.is_some(), "Should have runtime error");
 }
 
+#[serial]
 #[tokio::test]
 async fn test_capture_nested_object() {
     let code = r#"

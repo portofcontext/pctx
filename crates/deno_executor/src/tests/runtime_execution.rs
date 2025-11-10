@@ -1,6 +1,8 @@
+use super::serial;
 use crate::*;
 
 #[tokio::test]
+#[serial]
 async fn test_execute_simple_code() {
     let code = r"
 const x = 1 + 1;
@@ -17,6 +19,7 @@ export default x;
 }
 
 #[tokio::test]
+#[serial]
 async fn test_execute_runtime_error() {
     let code = r#"
 throw new Error("This is a runtime error");
@@ -34,6 +37,7 @@ throw new Error("This is a runtime error");
 }
 
 #[tokio::test]
+#[serial]
 async fn test_execute_syntax_error() {
     let code = r"
 const x = ;

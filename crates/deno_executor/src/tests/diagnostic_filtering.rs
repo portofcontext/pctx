@@ -1,6 +1,8 @@
+use super::serial;
 use crate::*;
 /// Tests that we ignore typescript errors that are actually okay for execution
 
+#[serial]
 #[tokio::test]
 async fn test_console_log_is_ignored() {
     // TS2580: Cannot find name 'console' should be ignored
@@ -20,6 +22,7 @@ async fn test_console_log_is_ignored() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_promise_is_ignored() {
     // TS2585: 'Promise' only refers to a type, but is being used as a value
@@ -46,6 +49,7 @@ const myPromise = new Promise((resolve) => {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_implicit_any_is_ignored() {
     // TS7006: Parameter implicitly has an 'any' type should be ignored
@@ -64,6 +68,7 @@ function greet(name) {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_dynamic_object_access_is_ignored() {
     // TS7053: Element implicitly has an 'any' type should be ignored
@@ -81,6 +86,7 @@ export default value;"#;
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_relevant_errors_not_filtered() {
     // TS2322: Type error should NOT be filtered
@@ -105,6 +111,7 @@ const x: number = "string";
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_mixed_errors_only_relevant_shown() {
     // This should have both filtered (console) and unfiltered (type error) diagnostics

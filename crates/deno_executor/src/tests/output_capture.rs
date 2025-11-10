@@ -1,5 +1,7 @@
+use super::serial;
 use crate::*;
 
+#[serial]
 #[tokio::test]
 async fn test_execute_captures_stdout() {
     let code = r#"
@@ -22,6 +24,7 @@ export default "result";
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_captures_stderr() {
     let code = r#"
@@ -38,6 +41,7 @@ export default "result";
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_captures_both_stdout_and_stderr() {
     let code = r#"
@@ -61,6 +65,7 @@ export default "result";
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_empty_stdout_stderr_on_type_error() {
     let code = r#"const x: number = "string";"#;
@@ -77,6 +82,7 @@ async fn test_execute_empty_stdout_stderr_on_type_error() {
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_stderr_contains_runtime_error() {
     let code = r#"
@@ -100,6 +106,7 @@ throw new Error("Runtime failure");
     );
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_stdout_before_error() {
     let code = r#"
@@ -116,6 +123,7 @@ throw new Error("Then fails");
     // In the future, this could be improved by capturing output in real-time.
 }
 
+#[serial]
 #[tokio::test]
 async fn test_execute_multiline_stdout() {
     let code = r#"

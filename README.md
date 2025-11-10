@@ -1,5 +1,5 @@
 <div align="center">
-  <img src=".github/assets/logo.png" alt="PCTX Logo" style="max-width: 200px; width: 100%;">
+  <img src=".github/assets/logo.png" alt="PCTX Logo" style="height: 128px">
 </div>
 
 # PCTX
@@ -14,7 +14,7 @@
 [![Downloads](https://img.shields.io/crates/d/pctx.svg)](https://crates.io/crates/pctx)
 [![dependency status](https://deps.rs/repo/github/portofcontext/pctx/status.svg)](https://deps.rs/repo/github/portofcontext/pctx)
 
-The framework to connect AI agents to external tools and services with [code mode](#what-is-pctx-and-what-is-code-mode)
+The open source framework to connect AI agents to tools and services with [code mode](#what-is-pctx-and-what-is-code-mode)
 
 
 </div>
@@ -70,7 +70,7 @@ This example reduces the token usage from 150,000 tokens to 2,000 tokens leading
 ## Features
 
 - **Code mode interface**: Tools exposed as TypeScript functions for efficient agent interaction. See [Code Mode Guide](docs/code-mode.md).
-- **Multi-server aggregation**: Connect to multiple MCP servers through a single gateway. See [Multi-Server Guide](docs/multi-server.md).
+- **Upstream MCP server aggregation**: Connect to multiple MCP servers through a single gateway. See [Upstream MCP Servers Guide](docs/upstream-mcp-servers.md).
 - **Secure authentication**: OAuth 2.1, environment variables, system keychain, and external commands. See [Authentication Guide](docs/mcp-auth.md).
 
 

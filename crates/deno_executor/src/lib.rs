@@ -1,7 +1,7 @@
 mod deno_execute;
-mod ts_go_check;
 
 pub use deno_execute::{ExecutionError as RuntimeError, execute_code};
+pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error, type_check};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -35,8 +35,8 @@ pub enum DenoExecutorError {
     #[error("Parse error: {0}")]
     ParseError(String),
 
-    #[error("IO error: {0}")]
-    IoError(#[from] std::io::Error),
+    #[error("Type check error: {0}")]
+    TypeCheckError(#[from] pctx_type_check_runtime::TypeCheckError),
 }
 
 /// Execute TypeScript code with type checking and runtime execution
@@ -59,7 +59,7 @@ pub enum DenoExecutorError {
 /// * Returns error only if internal tooling fails (not for type errors or runtime errors)
 ///
 pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<ExecuteResult> {
-    let check_result = check(code)?;
+    let check_result = type_check(code).await?;
     if !check_result.success {
         return Ok(ExecuteResult {
             success: false,
@@ -95,30 +95,12 @@ pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<E
     })
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct Diagnostic {
-    pub message: String,
-    pub line: Option<usize>,
-    pub column: Option<usize>,
-    pub severity: String,
-    pub code: Option<u32>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct CheckResult {
-    pub success: bool,
-    pub diagnostics: Vec<Diagnostic>,
-}
-
 /// Check TypeScript code and return structured diagnostics if there are problems
 ///
-/// This function performs TypeScript type checking with typescript-go:
+/// This function performs TypeScript type checking using an isolated Deno runtime:
 /// - Syntax validation
 /// - TypeScript parsing
-/// - Type inference and checking
-/// - Detects type mismatches (e.g., `const x: number = "string"`)
-///
-/// The typescript-go binary is automatically downloaded during build and bundled with the crate.
+/// - Full semantic type checking
 ///
 /// # Arguments
 /// * `code` - The TypeScript code snippet to check
@@ -127,26 +109,22 @@ pub struct CheckResult {
 /// * `Ok(CheckResult)` - Contains type diagnostics and success status
 ///
 /// # Errors
-/// * `ParseError` - If the code cannot be parsed
-/// * `InternalError` - If typescript-go execution fails
-/// * `IoError` - If file I/O fails
+/// * Returns error only if internal type checking runtime fails
 ///
 /// # Examples
 /// ```
 /// use deno_executor::check;
 ///
-/// // This will pass - types match
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// // This will pass - valid syntax
 /// let code = r#"const greeting: string = "hello";"#;
-/// let result = check(code).expect("check should not fail");
+/// let result = check(code).await?;
 /// assert!(result.success);
+/// # Ok(())
+/// # }
 /// ```
-pub fn check(code: &str) -> Result<CheckResult> {
-    let binary_path = ts_go_check::get_tsgo_binary_path()
-        .ok_or_else(|| DenoExecutorError::InternalError(
-            "typescript-go binary not found. This should not happen - please report this build issue.".to_string()
-        ))?;
-
-    ts_go_check::check_with_tsgo(code, &binary_path)
+pub async fn check(code: &str) -> Result<CheckResult> {
+    Ok(type_check(code).await?)
 }
 
 pub fn version() -> &'static str {
