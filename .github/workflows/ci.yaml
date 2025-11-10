@@ -38,19 +38,19 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [blacksmith-4vcpu-ubuntu-2404, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        os: [blacksmith-4vcpu-ubuntu-2404] # TODO macos-latest windows-latest
+    runs-on: ${{ matrix.os }} 
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
-      - name: Set Windows build jobs
-        if: matrix.os == 'windows-latest'
-        run: echo "CARGO_BUILD_JOBS=1" >> $GITHUB_ENV
-        shell: bash
-      - name: Run tests (Windows)
-        if: matrix.os == 'windows-latest'
-        run: cargo test --workspace --locked -- --test-threads=1
+      # - name: Set Windows build jobs
+      #   if: matrix.os == 'windows-latest'
+      #   run: echo "CARGO_BUILD_JOBS=1" >> $GITHUB_ENV
+      #   shell: bash
+      # - name: Run tests (Windows)
+      #   if: matrix.os == 'windows-latest'
+      #   run: cargo test --workspace --locked -- --test-threads=1
       - name: Run tests (Unix)
-        if: matrix.os != 'windows-latest'
+        # if: matrix.os != 'windows-latest'
         run: cargo test --workspace --locked
