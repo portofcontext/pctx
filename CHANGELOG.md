@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release of pctx
 - Code mode interface for AI agent code execution
-- Upstream MCP server aggregation through a single gateway
+- Upstream MCP server aggregation through a single interface
 - Secure authentication system (environment variables, keychain, arbitrary commands)
 - 2 Isolated Deno sandboxes: one for type checking and one for secure code execution
 - MCP server to agents functionality

@@ -13,16 +13,16 @@ use pctx_config::Config;
 #[derive(Parser)]
 #[command(name = "pctx")]
 #[command(version)]
-#[command(about = "PCTX - Code Mode MCP Gateway")]
+#[command(about = "PCTX - Code Mode MCP")]
 #[command(
     long_about = "PCTX aggregates multiple MCP servers into a single endpoint, exposing them as a TypeScript API \
 for AI agents to call via code execution."
 )]
 #[command(after_help = "EXAMPLES:\n  \
-    pctx init              # Initialize configuration\n  \
+    pctx init \n  \
     pctx add my-server https://mcp.example.com\n  \
-    pctx list              # List and test servers\n  \
-    pctx start --port 8080 # Start gateway\n\
+    pctx list \n  \
+    pctx start --port 8080\n\
 ")]
 pub struct Cli {
     #[command(subcommand)]
@@ -73,8 +73,8 @@ pub enum Commands {
     #[command(long_about = "Remove an MCP server from the configuration.")]
     Remove(RemoveCmd),
 
-    /// Start the PCTX gateway server
-    #[command(long_about = "Start the PCTX gateway server (exposes /mcp endpoint).")]
+    /// Start the PCTX server
+    #[command(long_about = "Start the PCTX server (exposes /mcp endpoint).")]
     Start(StartCmd),
 
     /// Initialize configuration file

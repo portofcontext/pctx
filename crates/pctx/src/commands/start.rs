@@ -76,7 +76,6 @@ impl StartCmd {
             warn!("{fail}");
         }
 
-        // Start the gateway with multiple MCP servers
         PctxMcp::new(cfg.clone(), upstream_servers, &self.host, self.port)
             .serve()
             .await?;
