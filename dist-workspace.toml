@@ -26,11 +26,16 @@ pr-run-mode = "plan"
 # Whether CI should include auto-generated code to build local artifacts
 build-local-artifacts = true
 # Target platforms to build apps for (Rust target-triple syntax)
-targets = ["aarch64-apple-darwin", "aarch64-unknown-linux-gnu", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"]
+targets = [
+    "aarch64-apple-darwin",
+    "aarch64-unknown-linux-gnu",
+    "x86_64-apple-darwin",
+    "x86_64-unknown-linux-gnu",
+]
 # Where to host releases
 hosting = "github"
 # Whether to install an updater program
-install-updater = false
+install-updater = true
 # Whether to enable GitHub Attestations
 github-attestations = true
 # Checksums to generate for each App
@@ -40,4 +45,4 @@ npm-scope = "@portofcontext"
 # A GitHub repo to push Homebrew formulas to
 tap = "portofcontext/homebrew-tap"
 # Publish jobs to run in CI
-publish-jobs = ["homebrew"]
+publish-jobs = ["homebrew", "npm"]
