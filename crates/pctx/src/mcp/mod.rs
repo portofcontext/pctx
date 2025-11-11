@@ -3,27 +3,44 @@ pub(crate) mod tools;
 pub(crate) mod upstream;
 
 use anyhow::Result;
-use console::{Alignment, Term, measure_text_width, pad_str};
 use log::info;
+use pctx_config::Config;
 use rmcp::transport::{
     StreamableHttpServerConfig,
     streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
 };
-use textwrap::wrap;
-
-use crate::utils::{
-    LOGO,
-    styles::{fmt_bold, fmt_green},
+use tabled::{
+    builder::Builder,
+    settings::{
+        Alignment, Color, Panel, Style, Width,
+        object::{Cell, Columns, Object, Rows},
+    },
 };
-use crate::{
-    mcp::{tools::PtcxTools, upstream::UpstreamMcp},
-    utils::styles::fmt_cyan,
-};
+use terminal_size::terminal_size;
 
-pub(crate) struct PctxMcp;
+use crate::mcp::{tools::PtcxTools, upstream::UpstreamMcp};
+use crate::utils::LOGO;
+
+pub(crate) struct PctxMcp {
+    config: Config,
+    upstream: Vec<UpstreamMcp>,
+    host: String,
+    port: u16,
+}
+
 impl PctxMcp {
-    pub(crate) async fn serve(host: &str, port: u16, upstream: Vec<UpstreamMcp>) -> Result<()> {
-        let allowed_hosts = upstream
+    pub(crate) fn new(config: Config, upstream: Vec<UpstreamMcp>, host: &str, port: u16) -> Self {
+        Self {
+            config,
+            upstream,
+            host: host.into(),
+            port,
+        }
+    }
+
+    pub(crate) async fn serve(&self) -> Result<()> {
+        let allowed_hosts = self
+            .upstream
             .iter()
             .filter_map(|m| {
                 let host = m.url.host_str()?;
@@ -36,10 +53,11 @@ impl PctxMcp {
             })
             .collect::<Vec<_>>();
 
-        Self::log_banner(host, port, &upstream);
+        self.banner();
 
+        let tools = PtcxTools::new(allowed_hosts.clone()).with_upstream_mcps(self.upstream.clone());
         let service = StreamableHttpService::new(
-            move || Ok(PtcxTools::new(allowed_hosts.clone()).with_upstream_mcps(upstream.clone())),
+            move || Ok(tools.clone()),
             LocalSessionManager::default().into(),
             StreamableHttpServerConfig {
                 stateful_mode: false,
@@ -48,7 +66,8 @@ impl PctxMcp {
         );
 
         let router = axum::Router::new().nest_service("/mcp", service);
-        let tcp_listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
+        let tcp_listener =
+            tokio::net::TcpListener::bind(format!("{}:{}", &self.host, self.port)).await?;
 
         let _ = axum::serve(tcp_listener, router)
             .with_graceful_shutdown(async {
@@ -61,95 +80,90 @@ impl PctxMcp {
         Ok(())
     }
 
-    fn log_banner(host: &str, port: u16, upstream: &[UpstreamMcp]) {
-        let term = Term::stdout();
-        if term.is_term() {
-            let (_, term_width) = term.size();
-            let width = (term_width as usize).min(80);
-            // Calculate minimum width needed for logo
-            let logo_width = LOGO.lines().map(measure_text_width).max().unwrap_or(0);
-            let min_width = logo_width + 4; // +2 for borders, +2 for padding
+    fn banner(&self) {
+        let mcp_url = format!("http://{}:{}/mcp", self.host, self.port);
+        let logo_max_length = LOGO
+            .lines()
+            .map(|line| line.chars().count())
+            .max()
+            .unwrap_or(0);
+        let min_term_width = logo_max_length + 4; // account for padding
+        let term_width = terminal_size().map(|(w, _)| w.0).unwrap_or_default() as usize;
 
-            if width > min_width {
-                let border = "─".repeat(width.saturating_sub(2));
+        if term_width >= min_term_width {
+            let mut builder = Builder::default();
 
-                info!("\n╭{border}╮");
+            builder.push_record(["🦀 Server Name", &self.config.name]);
+            builder.push_record(["🌎 Server URL", &mcp_url]);
+            builder.push_record([
+                "🔨 Tools",
+                &["list_functions", "get_function_details", "execute"].join(", "),
+            ]);
+            builder.push_record(["📖 Docs", "https://github.com/portofcontext/pctx"]);
 
-                // Center the logo
-                for line in LOGO.lines() {
-                    let colored_line = fmt_cyan(line);
-                    info!(
-                        "│{}│",
-                        pad_str(
-                            &colored_line,
-                            width.saturating_sub(2),
-                            Alignment::Center,
-                            None
-                        )
-                    );
-                }
+            if !self.upstream.is_empty() {
+                builder.push_record(["", ""]);
 
-                // Content lines
-                let mut lines = vec![
-                    String::new(),
-                    format!("Listening at http://{host}:{port}/mcp..."),
+                let tool_record = |u: &UpstreamMcp| {
                     format!(
-                        "{}: {}",
-                        fmt_bold("Tools"),
-                        [
-                            fmt_green("list_functions"),
-                            fmt_green("get_function_details"),
-                            fmt_green("execute"),
-                        ]
-                        .join(", ")
-                    ),
-                    String::new(),
-                ];
-
-                if !upstream.is_empty() {
-                    lines.push(format!("Upstream servers: {}", upstream.len()));
-                    for u in upstream {
-                        lines.push(format!(
-                            "  • {url} ({num_tools} tool{plural})",
-                            url = u.url,
-                            num_tools = u.tools.len(),
-                            plural = if u.tools.len() > 1 { "s" } else { "" }
-                        ));
-                    }
-                    lines.push(String::new());
+                        "{} - {} tool{}",
+                        &u.name,
+                        u.tools.len(),
+                        if u.tools.len() > 1 { "s" } else { "" }
+                    )
+                };
+                builder.push_record([
+                    "🤖 Upstream MCPs",
+                    &self.upstream.first().map(tool_record).unwrap_or_default(),
+                ]);
+                for u in &self.upstream[1..] {
+                    builder.push_record(["", &tool_record(u)]);
                 }
-
-                for line in lines {
-                    let visual_width = measure_text_width(&line);
-                    if visual_width > width.saturating_sub(2) {
-                        // Wrap long lines
-                        let wrapped = wrap(&line, width.saturating_sub(2));
-                        for wrapped_line in wrapped {
-                            info!(
-                                "│{}│",
-                                pad_str(
-                                    &wrapped_line,
-                                    width.saturating_sub(2),
-                                    Alignment::Center,
-                                    None
-                                )
-                            );
-                        }
-                    } else {
-                        info!(
-                            "│{}│",
-                            pad_str(&line, width.saturating_sub(2), Alignment::Center, None)
-                        );
-                    }
-                }
-
-                info!("╰{border}╯\n");
-
-                return;
             }
-        }
 
-        info!("PCTX");
-        info!("Listening at http://{host}:{port}/mcp...");
+            let logo_panel = Panel::header(format!("\n{LOGO}\n\n"));
+            let logo_row = 0;
+            let version_panel = Panel::header(format!(
+                "v{}\n\n",
+                option_env!("CARGO_PKG_VERSION").unwrap_or_default()
+            ));
+            let version_row = 1;
+
+            let info_start_row = 2;
+            let info_title_col = 0;
+            let info_val_col = 1;
+
+            let style = Style::rounded().remove_horizontals().remove_vertical();
+            let table_width = term_width.min(120) as usize;
+            println!("{table_width}");
+            let banner = builder
+                .build()
+                .with(Width::truncate(table_width))
+                .with(style)
+                .with(version_panel)
+                .with(logo_panel)
+                // style and align the logo and version
+                .modify(Rows::single(logo_row), Color::FG_CYAN)
+                .modify(
+                    Rows::single(version_row),
+                    Color::FG_BRIGHT_BLUE | Color::BOLD,
+                )
+                .modify(Rows::new(logo_row..=version_row), Alignment::center())
+                // style info rows & cols
+                .modify(
+                    Rows::new(info_start_row..),
+                    Width::wrap(table_width / 2).keep_words(true),
+                ) // info cols should have equal space
+                .modify(
+                    Rows::new(info_start_row..).intersect(Columns::single(info_title_col)),
+                    Color::BOLD,
+                )
+                .modify(Cell::new(info_start_row + 2, info_val_col), Color::FG_GREEN)
+                .to_string();
+
+            info!("\n{banner}\n");
+        } else {
+            info!("PCTX listening at {mcp_url}...");
+        }
     }
 }
