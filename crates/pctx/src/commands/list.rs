@@ -16,7 +16,7 @@ use crate::utils::{
 };
 
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct ListCmd;
+pub struct ListCmd;
 
 impl ListCmd {
     pub(crate) async fn handle(&self, cfg: Config) -> Result<Config> {

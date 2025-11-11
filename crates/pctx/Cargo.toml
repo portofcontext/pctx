@@ -16,6 +16,10 @@ default-run = "pctx"
 name = "pctx"
 path = "src/cli.rs"
 
+[[bin]]
+name = "generate-cli-docs"
+path = "src/bin/generate-cli-docs.rs"
+
 [dependencies]
 deno_executor = { path = "../deno_executor" }
 codegen = { path = "../codegen" }
@@ -62,6 +66,7 @@ anstyle = "1.0.13"
 inquire = "0.9.1"
 tabled = "0.17"
 terminal_size = "0.4.3"
+clap-markdown = "0.1.4"
 
 [target.'cfg(all(not(target_env = "msvc"), any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))'.dependencies]
 tikv-jemallocator = "0.6.0"

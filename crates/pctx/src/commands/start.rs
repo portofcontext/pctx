@@ -13,14 +13,14 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct StartCmd {
+pub struct StartCmd {
     /// Port to listen on
     #[arg(short, long, default_value = "8080")]
-    port: u16,
+    pub port: u16,
 
     /// Host address to bind to (use 0.0.0.0 for external access)
     #[arg(long, default_value = "127.0.0.1")]
-    host: String,
+    pub host: String,
 }
 
 impl StartCmd {

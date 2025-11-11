@@ -6,9 +6,9 @@ use pctx_config::Config;
 use crate::utils::styles::{fmt_bold, fmt_dimmed, fmt_success};
 
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct RemoveCmd {
+pub struct RemoveCmd {
     /// Name of the server to remove
-    pub(crate) name: String,
+    pub name: String,
 }
 
 impl RemoveCmd {

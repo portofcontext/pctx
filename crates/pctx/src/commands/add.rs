@@ -14,17 +14,17 @@ use pctx_config::{
 };
 
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct AddCmd {
+pub struct AddCmd {
     /// Unique name for this server
-    pub(crate) name: String,
+    pub name: String,
 
     /// HTTP(S) URL of the MCP server endpoint
-    pub(crate) url: url::Url,
+    pub url: url::Url,
 
     /// Overrides any existing server under the same name &
     /// skips testing connection to the MCP server
     #[arg(long, short)]
-    pub(crate) force: bool,
+    pub force: bool,
 }
 
 impl AddCmd {

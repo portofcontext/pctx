@@ -67,7 +67,7 @@ export default "result";
 
 #[serial]
 #[tokio::test]
-async fn test_execute_empty_stdout_stderr_on_type_error() {
+async fn test_execute_stderr_contains_type_error() {
     let code = r#"const x: number = "string";"#;
 
     let result = execute(code, None).await.expect("execution should succeed");
@@ -77,8 +77,53 @@ async fn test_execute_empty_stdout_stderr_on_type_error() {
         "stdout should be empty when not executed due to type error"
     );
     assert!(
-        result.stderr.is_empty(),
-        "stderr should be empty when not executed due to type error"
+        !result.stderr.is_empty(),
+        "stderr should contain type error diagnostic"
+    );
+    assert!(
+        result.stderr.contains("Type") || result.stderr.contains("string"),
+        "stderr should mention the type error, got: {}",
+        result.stderr
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_execute_stderr_contains_syntax_error() {
+    let code = r#"async function run() { onst x = 5; return x; }"#;
+
+    let result = execute(code, None).await.expect("execution should succeed");
+    assert!(!result.success, "Syntax error should cause failure");
+    assert!(
+        result.stdout.is_empty(),
+        "stdout should be empty when not executed due to syntax error"
+    );
+    assert!(
+        !result.stderr.is_empty(),
+        "stderr should contain syntax error diagnostic"
+    );
+    assert!(
+        result.stderr.contains("Expected") || result.stderr.contains("onst"),
+        "stderr should mention the syntax error, got: {}",
+        result.stderr
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_execute_stderr_contains_transpilation_error() {
+    // Missing closing brace
+    let code = r#"function test() { return 42;"#;
+
+    let result = execute(code, None).await.expect("execution should succeed");
+    assert!(!result.success, "Transpilation error should cause failure");
+    assert!(
+        result.stdout.is_empty(),
+        "stdout should be empty when transpilation fails"
+    );
+    assert!(
+        !result.stderr.is_empty(),
+        "stderr should contain transpilation error"
     );
 }
 

@@ -13,10 +13,10 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Parser)]
-pub(crate) struct InitCmd {
+pub struct InitCmd {
     /// Use default values and skip interactive adding of upstream MCPs
     #[arg(long, short)]
-    pub(crate) yes: bool,
+    pub yes: bool,
 }
 
 impl InitCmd {

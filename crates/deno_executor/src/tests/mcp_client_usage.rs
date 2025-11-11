@@ -96,7 +96,7 @@ export default config;
     let output = result.output.expect("Should have output");
     let config = output.as_object().expect("Should be an object");
     assert_eq!(config.get("name").unwrap(), "my-server");
-    assert_eq!(config.get("url").unwrap(), "http://localhost:4000");
+    assert_eq!(config.get("url").unwrap(), "http://localhost:4000/");
 }
 
 #[serial]

@@ -1,7 +1,7 @@
 use log::Level;
 use std::io::Write;
 
-pub(crate) fn init_logger(quiet: bool, verbose: u8) {
+pub fn init_logger(quiet: bool, verbose: u8) {
     let level = if quiet {
         log::Level::Error
     } else if verbose == 0 {

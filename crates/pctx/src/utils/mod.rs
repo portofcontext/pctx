@@ -1,7 +1,7 @@
-pub(crate) mod logger;
+pub mod logger;
 pub(crate) mod prompts;
 pub(crate) mod spinner;
-pub(crate) mod styles;
+pub mod styles;
 
 pub(crate) static LOGO: &str = include_str!("./ascii-logo.txt");
 pub(crate) static CHECK: &str = "✔";
