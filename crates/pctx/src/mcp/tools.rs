@@ -192,7 +192,7 @@ export default await run();"
         let allowed_hosts = self.allowed_hosts.clone();
         let code_to_execute = to_execute.clone();
 
-        let result = tokio::task::spawn_blocking(move || {
+        let result = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
             // Create a new current-thread runtime for Deno ops that use deno_unsync
             let rt = tokio::runtime::Builder::new_current_thread()
                 .enable_all()
@@ -200,7 +200,9 @@ export default await run();"
                 .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
             rt.block_on(async {
-                deno_executor::execute_code(&code_to_execute, Some(allowed_hosts)).await
+                deno_executor::execute(&code_to_execute, Some(allowed_hosts))
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
             })
         })
         .await
@@ -216,7 +218,7 @@ export default await run();"
         if result.success {
             log::info!("Sandbox execution completed successfully");
         } else {
-            log::warn!("Sandbox execution failed: {:?}", result.error);
+            log::warn!("Sandbox execution failed: {:?}", result.stderr);
         }
 
         let text_result = format!(
@@ -240,7 +242,11 @@ export default await run();"
             stderr = result.stderr,
         );
 
-        Ok(CallToolResult::success(vec![Content::text(text_result)]))
+        if result.success {
+            Ok(CallToolResult::success(vec![Content::text(text_result)]))
+        } else {
+            Ok(CallToolResult::error(vec![Content::text(text_result)]))
+        }
     }
 }
 

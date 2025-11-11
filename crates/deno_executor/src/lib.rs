@@ -61,13 +61,21 @@ pub enum DenoExecutorError {
 pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<ExecuteResult> {
     let check_result = type_check(code).await?;
     if !check_result.success {
+        // Format diagnostics as stderr output
+        let stderr = check_result
+            .diagnostics
+            .iter()
+            .map(|d| d.message.as_str())
+            .collect::<Vec<_>>()
+            .join("\n");
+
         return Ok(ExecuteResult {
             success: false,
             diagnostics: check_result.diagnostics,
             runtime_error: None,
             output: None,
             stdout: String::new(),
-            stderr: String::new(),
+            stderr,
         });
     }
 
