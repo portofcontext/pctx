@@ -100,11 +100,11 @@ pub(crate) async fn fetch_with_permissions(
 ) -> Result<FetchResponse, McpError> {
     // Parse URL and extract host (with port if present)
     let parsed_url =
-        url::Url::parse(&url).map_err(|e| McpError::ToolCallError(format!("Invalid URL: {e}")))?;
+        url::Url::parse(&url).map_err(|e| McpError::ToolCall(format!("Invalid URL: {e}")))?;
 
     let host_str = parsed_url
         .host_str()
-        .ok_or_else(|| McpError::ToolCallError("URL has no host".to_string()))?;
+        .ok_or_else(|| McpError::ToolCall("URL has no host".to_string()))?;
 
     // Build host:port string for permission checking
     let host_with_port = if let Some(port) = parsed_url.port() {
@@ -115,7 +115,7 @@ pub(crate) async fn fetch_with_permissions(
 
     // Check permissions (try both with and without port)
     if !allowed_hosts.is_allowed(&host_with_port) && !allowed_hosts.is_allowed(host_str) {
-        return Err(McpError::ToolCallError(format!(
+        return Err(McpError::ToolCall(format!(
             "Network access to host '{host_with_port}' is not allowed"
         )));
     }
@@ -134,7 +134,7 @@ pub(crate) async fn fetch_with_permissions(
         "DELETE" => client.delete(&url),
         "PATCH" => client.patch(&url),
         _ => {
-            return Err(McpError::ToolCallError(format!(
+            return Err(McpError::ToolCall(format!(
                 "Unsupported HTTP method: {method}"
             )));
         }
@@ -162,7 +162,7 @@ pub(crate) async fn fetch_with_permissions(
     let response = request
         .send()
         .await
-        .map_err(|e| McpError::ToolCallError(format!("Fetch failed: {e}")))?;
+        .map_err(|e| McpError::ToolCall(format!("Fetch failed: {e}")))?;
 
     let status = response.status().as_u16();
 
@@ -181,7 +181,7 @@ pub(crate) async fn fetch_with_permissions(
     let body = response
         .text()
         .await
-        .map_err(|e| McpError::ToolCallError(format!("Failed to read response body: {e}")))?;
+        .map_err(|e| McpError::ToolCall(format!("Failed to read response body: {e}")))?;
 
     Ok(FetchResponse {
         status,

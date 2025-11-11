@@ -4,19 +4,20 @@
 
 use deno_core::OpState;
 use deno_core::op2;
+use pctx_config::server::ServerConfig;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::error::McpError;
 use crate::fetch::{AllowedHosts, FetchOptions, FetchResponse};
-use crate::mcp_client::{CallMCPToolArgs, MCPRegistry, MCPServerConfig};
+use crate::registry::{CallMCPToolArgs, MCPRegistry};
 
 /// Register an MCP server
 #[op2]
 #[serde]
 pub(crate) fn op_register_mcp(
     state: &mut OpState,
-    #[serde] config: MCPServerConfig,
+    #[serde] config: ServerConfig,
 ) -> Result<(), McpError> {
     let registry = state.borrow::<MCPRegistry>();
     registry.add(config)
@@ -33,7 +34,7 @@ pub(crate) async fn op_call_mcp_tool(
         let borrowed = state.borrow();
         borrowed.borrow::<MCPRegistry>().clone()
     };
-    crate::mcp_client::call_mcp_tool(&registry, args).await
+    crate::registry::call_mcp_tool(&registry, args).await
 }
 
 /// Check if an MCP server is registered
@@ -48,7 +49,7 @@ pub(crate) fn op_mcp_has(state: &mut OpState, #[string] name: String) -> bool {
 #[op2]
 #[serde]
 #[allow(clippy::needless_pass_by_value)]
-pub(crate) fn op_mcp_get(state: &mut OpState, #[string] name: String) -> Option<MCPServerConfig> {
+pub(crate) fn op_mcp_get(state: &mut OpState, #[string] name: String) -> Option<ServerConfig> {
     let registry = state.borrow::<MCPRegistry>();
     registry.get(&name)
 }

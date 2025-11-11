@@ -4,7 +4,7 @@ use log::{info, warn};
 use pctx_config::Config;
 
 use crate::{
-    mcp::{PctxMcp, upstream::fetch_upstream_tools},
+    mcp::{PctxMcp, upstream::UpstreamMcp},
     utils::{
         CHECK, MARK,
         spinner::Spinner,
@@ -42,7 +42,7 @@ impl StartCmd {
                 fmt_bold("Code Mode"),
                 fmt_cyan(&server.name)
             ));
-            match fetch_upstream_tools(server).await {
+            match UpstreamMcp::from_server(server).await {
                 Ok(upstream) => {
                     upstream_servers.push(upstream);
                 }

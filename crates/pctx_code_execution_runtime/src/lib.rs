@@ -89,14 +89,14 @@
 
 mod error;
 mod fetch;
-mod mcp_client;
 pub mod ops;
+mod registry;
 
 #[cfg(test)]
 mod tests;
 
 pub use fetch::AllowedHosts;
-pub use mcp_client::{MCPRegistry, MCPServerConfig};
+pub use registry::MCPRegistry;
 
 /// Pre-compiled V8 snapshot containing the PCTX runtime
 ///

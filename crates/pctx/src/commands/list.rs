@@ -3,16 +3,16 @@ use std::fmt::Display;
 use anyhow::Result;
 use clap::Parser;
 use log::info;
-use pctx_config::{Config, server::ServerConfig};
+use pctx_config::{
+    Config,
+    server::{McpConnectionError, ServerConfig},
+};
 use rmcp::model::Implementation;
 use url::Url;
 
-use crate::{
-    mcp::client::{InitMCPClientError, init_mcp_client},
-    utils::{
-        spinner::Spinner,
-        styles::{fmt_bold, fmt_cyan, fmt_dimmed, fmt_error, fmt_green, fmt_success},
-    },
+use crate::utils::{
+    spinner::Spinner,
+    styles::{fmt_bold, fmt_cyan, fmt_dimmed, fmt_error, fmt_green, fmt_success},
 };
 
 #[derive(Debug, Clone, Parser)]
@@ -57,27 +57,26 @@ struct UpstreamMcpSummary {
 }
 impl UpstreamMcpSummary {
     async fn new(server: &ServerConfig) -> Self {
-        let (error, server_info, tools) =
-            match init_mcp_client(&server.url, server.auth.as_ref()).await {
-                Ok(client) => {
-                    let mut error = None;
-                    let server_info = client.peer_info().map(|p| p.server_info.clone());
-                    let tool_names = match client.list_all_tools().await {
-                        Ok(tools) => tools.into_iter().map(|t| t.name.to_string()).collect(),
-                        Err(e) => {
-                            error = Some(format!("Failed listing tools: {e}"));
-                            vec![]
-                        }
-                    };
-                    let _ = client.cancel().await;
+        let (error, server_info, tools) = match server.connect().await {
+            Ok(client) => {
+                let mut error = None;
+                let server_info = client.peer_info().map(|p| p.server_info.clone());
+                let tool_names = match client.list_all_tools().await {
+                    Ok(tools) => tools.into_iter().map(|t| t.name.to_string()).collect(),
+                    Err(e) => {
+                        error = Some(format!("Failed listing tools: {e}"));
+                        vec![]
+                    }
+                };
+                let _ = client.cancel().await;
 
-                    (error, server_info, tool_names)
-                }
-                Err(InitMCPClientError::RequiresAuth | InitMCPClientError::RequiresOAuth) => {
-                    (Some("Requires authentication".into()), None, vec![])
-                }
-                Err(InitMCPClientError::Failed(msg)) => (Some(msg), None, vec![]),
-            };
+                (error, server_info, tool_names)
+            }
+            Err(McpConnectionError::RequiresAuth) => {
+                (Some("Requires authentication".into()), None, vec![])
+            }
+            Err(McpConnectionError::Failed(msg)) => (Some(msg), None, vec![]),
+        };
 
         Self {
             url: server.url.clone(),

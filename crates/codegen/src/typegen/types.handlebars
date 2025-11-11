@@ -12,7 +12,7 @@ export type {{this.name}} = {
   // In reality all additional properties should only have type `{{{this.additional_props.value_sig.signature}}}`
   // (there might be some duplication here)
   {{/if}}
-  [additionalProperty: string]: {{#each this.properties}}{{{this.sig.signature}}} | {{/each}}{{{this.additional_props_sig}}}
+  [additionalProperty: string]: {{#each this.properties}}{{{this.sig}}} | {{/each}}{{{this.additional_props_sig}}}
   {{/if}}
 }
 

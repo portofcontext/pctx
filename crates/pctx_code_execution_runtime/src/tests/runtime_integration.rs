@@ -2,7 +2,7 @@
 //!
 //! These tests verify that the MCP client works correctly when accessed from JavaScript
 
-use crate::mcp_client::MCPRegistry;
+use crate::registry::MCPRegistry;
 use deno_core::{JsRuntime, PollEventLoopOptions, RuntimeOptions, op2};
 use serde_json::json;
 
@@ -161,7 +161,7 @@ async fn test_runtime_get_config() {
     let result = execute_js(code).await.expect("Should execute successfully");
     let obj = result.as_object().expect("Should be an object");
     assert_eq!(obj.get("name").unwrap(), "my-server");
-    assert_eq!(obj.get("url").unwrap(), "http://localhost:5000");
+    assert_eq!(obj.get("url").unwrap(), "http://localhost:5000/");
 }
 
 #[tokio::test]

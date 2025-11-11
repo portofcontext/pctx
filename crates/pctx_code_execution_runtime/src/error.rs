@@ -1,29 +1,29 @@
 //! Error types for PCTX runtime
 
 use deno_error::{JsErrorClass, PropertyValue};
+use pctx_config::server::McpConnectionError;
 use std::borrow::Cow;
 use std::error::Error as StdError;
-use std::fmt;
 
 /// Error type for MCP operations
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum McpError {
     /// Server configuration error (e.g., duplicate name)
-    ConfigError(String),
+    #[error("MCP configuration error: {0}")]
+    Config(String),
+    /// Server connection error
+    #[error("MCP connection error: {0}")]
+    Connection(String),
     /// Tool call error (HTTP, parsing, etc.)
-    ToolCallError(String),
+    #[error("MCP tool call error: {0}")]
+    ToolCall(String),
 }
 
-impl fmt::Display for McpError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            McpError::ConfigError(msg) => write!(f, "MCP configuration error: {msg}"),
-            McpError::ToolCallError(msg) => write!(f, "MCP tool call error: {msg}"),
-        }
+impl From<McpConnectionError> for McpError {
+    fn from(value: McpConnectionError) -> Self {
+        Self::Connection(value.to_string())
     }
 }
-
-impl StdError for McpError {}
 
 impl JsErrorClass for McpError {
     fn get_class(&self) -> Cow<'static, str> {

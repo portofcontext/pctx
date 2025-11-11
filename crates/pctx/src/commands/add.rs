@@ -1,16 +1,17 @@
 use anyhow::Result;
+use async_recursion::async_recursion;
 use clap::Parser;
 use log::info;
 
-use crate::{
-    mcp::client::{InitMCPClientError, init_mcp_client},
-    utils::{
-        prompts,
-        spinner::Spinner,
-        styles::{fmt_bold, fmt_dimmed, fmt_success},
-    },
+use crate::utils::{
+    prompts,
+    spinner::Spinner,
+    styles::{fmt_bold, fmt_dimmed, fmt_success},
 };
-use pctx_config::{Config, server::ServerConfig};
+use pctx_config::{
+    Config,
+    server::{McpConnectionError, ServerConfig},
+};
 
 #[derive(Debug, Clone, Parser)]
 pub(crate) struct AddCmd {
@@ -31,38 +32,7 @@ impl AddCmd {
         let mut server_cfg = ServerConfig::new(self.name.clone(), self.url.clone());
 
         if !self.force {
-            let mut sp = Spinner::new("Testing MCP connection...");
-
-            match init_mcp_client(&self.url, None).await {
-                Ok(client) => {
-                    sp.stop_success("Successfully connected to MCP without authentication");
-                    client.cancel().await?;
-                }
-                Err(InitMCPClientError::RequiresAuth | InitMCPClientError::RequiresOAuth) => {
-                    sp.stop_and_persist("🔒", "MCP requires auth");
-                    let add_auth = inquire::Confirm::new("Do you want to add auth interactively?")
-                        .with_default(true)
-                        .with_help_message(&format!(
-                            "you can also manually update the auth configuration later in {}",
-                            fmt_dimmed(cfg.path().as_str())
-                        ))
-                        .prompt()?;
-                    if add_auth {
-                        // TODO: retry connection
-                        server_cfg.auth = Some(prompts::prompt_auth(&self.name)?);
-                    }
-                }
-                Err(InitMCPClientError::Failed(msg)) => {
-                    sp.stop_error(msg);
-                    let add_anyway =
-                        inquire::Confirm::new("Do you still want to add the MCP server?")
-                            .with_default(false)
-                            .prompt()?;
-                    if !add_anyway {
-                        anyhow::bail!("User cancelled")
-                    }
-                }
-            }
+            server_cfg = try_connection(server_cfg, true).await?;
         }
 
         cfg.add_server(server_cfg, self.force)?;
@@ -81,4 +51,56 @@ impl AddCmd {
 
         Ok(cfg)
     }
+}
+
+#[async_recursion]
+async fn try_connection(mut server: ServerConfig, first_attempt: bool) -> Result<ServerConfig> {
+    let mut sp = Spinner::new(if first_attempt {
+        "Testing MCP connection..."
+    } else {
+        "Retrying MCP connection..."
+    });
+
+    match server.connect().await {
+        Ok(client) => {
+            sp.stop_success("Successfully connected");
+            client.cancel().await?;
+        }
+        Err(McpConnectionError::RequiresAuth) => {
+            sp.stop_and_persist(
+                "🔒",
+                if first_attempt {
+                    "MCP requires authentication"
+                } else {
+                    "Invalid authentication"
+                },
+            );
+            let add_auth = inquire::Confirm::new(if first_attempt {
+                "Do you want to add authentication interactively?"
+            } else {
+                "Do you want to update authentication interactively?"
+            })
+            .with_default(true)
+            .with_help_message(
+                "you can also manually update the auth configuration later in the config",
+            )
+            .prompt()?;
+
+            if add_auth {
+                server.auth = Some(prompts::prompt_auth(&server.name)?);
+                return try_connection(server, false).await;
+            }
+        }
+        Err(McpConnectionError::Failed(msg)) => {
+            sp.stop_error(msg);
+            let add_anyway = inquire::Confirm::new("Do you still want to add the MCP server?")
+                .with_default(false)
+                .prompt()?;
+            if !add_anyway {
+                anyhow::bail!("User cancelled")
+            }
+        }
+    }
+
+    Ok(server)
 }

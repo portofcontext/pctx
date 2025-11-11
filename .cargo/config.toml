@@ -3,3 +3,6 @@
 # Use /DEBUG:NONE to completely disable PDB generation in debug builds
 # This avoids LNK1318 errors when too many PDBs are generated in parallel
 rustflags = ["-C", "link-args=/DEBUG:NONE"]
+
+[alias]
+pctx = "run -p pctx --"

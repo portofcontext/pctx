@@ -1,4 +1,4 @@
-pub(crate) mod client;
+// pub(crate) mod client;
 pub(crate) mod tools;
 pub(crate) mod upstream;
 
@@ -16,7 +16,7 @@ use crate::utils::{
     styles::{fmt_bold, fmt_green},
 };
 use crate::{
-    mcp::tools::{PtcxTools, UpstreamMcp},
+    mcp::{tools::PtcxTools, upstream::UpstreamMcp},
     utils::styles::fmt_cyan,
 };
 
