@@ -76,7 +76,6 @@ impl StartCmd {
             warn!("{fail}");
         }
 
-        // Start the gateway with multiple MCP servers
         PctxMcp::serve(&self.host, self.port, upstream_servers).await?;
 
         info!("Shutting down...");

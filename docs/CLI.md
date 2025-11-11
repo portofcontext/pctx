@@ -18,10 +18,10 @@ PCTX aggregates multiple MCP servers into a single endpoint, exposing them as a 
 **Usage:** `pctx [OPTIONS] <COMMAND>`
 
 EXAMPLES:
-  pctx init              # Initialize configuration
+  pctx init 
   pctx add my-server https://mcp.example.com
-  pctx list              # List and test servers
-  pctx start --port 8080 # Start gateway
+  pctx list 
+  pctx start --port 8080
 
 
 ###### **Subcommands:**
@@ -29,7 +29,7 @@ EXAMPLES:
 * `list` — List MCP servers and test connections
 * `add` — Add an MCP server to configuration
 * `remove` — Remove an MCP server from configuration
-* `start` — Start the PCTX gateway server
+* `start` — Start the PCTX server
 * `init` — Initialize configuration file
 
 ###### **Options:**
@@ -81,7 +81,7 @@ Remove an MCP server from the configuration.
 
 ## `pctx start`
 
-Start the PCTX gateway server (exposes /mcp endpoint).
+Start the PCTX server (exposes /mcp endpoint).
 
 **Usage:** `pctx start [OPTIONS]`
 
