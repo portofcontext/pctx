@@ -90,7 +90,7 @@ async fn test_execute_stderr_contains_type_error() {
 #[serial]
 #[tokio::test]
 async fn test_execute_stderr_contains_syntax_error() {
-    let code = r#"async function run() { onst x = 5; return x; }"#;
+    let code = "async function run() { onst x = 5; return x; }";
 
     let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Syntax error should cause failure");
@@ -113,7 +113,7 @@ async fn test_execute_stderr_contains_syntax_error() {
 #[tokio::test]
 async fn test_execute_stderr_contains_transpilation_error() {
     // Missing closing brace
-    let code = r#"function test() { return 42;"#;
+    let code = "function test() { return 42;";
 
     let result = execute(code, None).await.expect("execution should succeed");
     assert!(!result.success, "Transpilation error should cause failure");

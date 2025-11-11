@@ -10,16 +10,22 @@ use rmcp::transport::{
     streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
 };
 use tabled::{
+    Table,
     builder::Builder,
     settings::{
         Alignment, Color, Panel, Style, Width,
-        object::{Cell, Columns, Object, Rows},
+        object::{Cell, Columns, Rows},
+        peaker::Priority,
+        width::MinWidth,
     },
 };
 use terminal_size::terminal_size;
 
-use crate::mcp::{tools::PtcxTools, upstream::UpstreamMcp};
-use crate::utils::LOGO;
+use crate::utils::{LOGO, styles::fmt_dimmed};
+use crate::{
+    mcp::{tools::PtcxTools, upstream::UpstreamMcp},
+    utils::styles::fmt_cyan,
+};
 
 pub(crate) struct PctxMcp {
     config: Config,
@@ -99,7 +105,10 @@ impl PctxMcp {
                 "🔨 Tools",
                 &["list_functions", "get_function_details", "execute"].join(", "),
             ]);
-            builder.push_record(["📖 Docs", "https://github.com/portofcontext/pctx"]);
+            builder.push_record([
+                "📖 Docs",
+                &fmt_dimmed("https://github.com/portofcontext/pctx"),
+            ]);
 
             if !self.upstream.is_empty() {
                 builder.push_record(["", ""]);
@@ -107,7 +116,7 @@ impl PctxMcp {
                 let tool_record = |u: &UpstreamMcp| {
                     format!(
                         "{} - {} tool{}",
-                        &u.name,
+                        fmt_cyan(&u.name),
                         u.tools.len(),
                         if u.tools.len() > 1 { "s" } else { "" }
                     )
@@ -121,6 +130,16 @@ impl PctxMcp {
                 }
             }
 
+            let table_width = (term_width).min(80) as usize;
+            let info_table = builder
+                .build()
+                .with(Style::empty())
+                .modify(Columns::first(), Color::BOLD)
+                .modify(Cell::new(2, 1), Color::FG_GREEN)
+                .modify(Columns::first(), MinWidth::new(20))
+                .modify(Columns::new(..2), Width::wrap((term_width - 6) / 2)) // info cols should have equal space
+                .to_string();
+
             let logo_panel = Panel::header(format!("\n{LOGO}\n\n"));
             let logo_row = 0;
             let version_panel = Panel::header(format!(
@@ -129,36 +148,21 @@ impl PctxMcp {
             ));
             let version_row = 1;
 
-            let info_start_row = 2;
-            let info_title_col = 0;
-            let info_val_col = 1;
-
             let style = Style::rounded().remove_horizontals().remove_vertical();
-            let table_width = term_width.min(120) as usize;
-            println!("{table_width}");
-            let banner = builder
-                .build()
-                .with(Width::truncate(table_width))
+            let banner = Table::from_iter([[info_table]])
                 .with(style)
                 .with(version_panel)
                 .with(logo_panel)
-                // style and align the logo and version
+                .with(Alignment::center())
                 .modify(Rows::single(logo_row), Color::FG_CYAN)
                 .modify(
                     Rows::single(version_row),
                     Color::FG_BRIGHT_BLUE | Color::BOLD,
                 )
-                .modify(Rows::new(logo_row..=version_row), Alignment::center())
-                // style info rows & cols
-                .modify(
-                    Rows::new(info_start_row..),
-                    Width::wrap(table_width / 2).keep_words(true),
-                ) // info cols should have equal space
-                .modify(
-                    Rows::new(info_start_row..).intersect(Columns::single(info_title_col)),
-                    Color::BOLD,
-                )
-                .modify(Cell::new(info_start_row + 2, info_val_col), Color::FG_GREEN)
+                .with((
+                    Width::wrap(table_width).priority(Priority::max(true)),
+                    Width::increase(table_width).priority(Priority::min(true)),
+                ))
                 .to_string();
 
             info!("\n{banner}\n");

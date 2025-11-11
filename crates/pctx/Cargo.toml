@@ -64,7 +64,7 @@ camino = { version = "1.2.1", features = ["serde1"] }
 spinoff = "0.8.0"
 anstyle = "1.0.13"
 inquire = "0.9.1"
-tabled = "0.17"
+tabled = { version = "0.17", features = ["ansi"] }
 terminal_size = "0.4.3"
 clap-markdown = "0.1.4"
 
