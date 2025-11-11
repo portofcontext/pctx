@@ -77,7 +77,9 @@ impl StartCmd {
         }
 
         // Start the gateway with multiple MCP servers
-        PctxMcp::serve(&self.host, self.port, upstream_servers).await?;
+        PctxMcp::new(cfg.clone(), upstream_servers, &self.host, self.port)
+            .serve()
+            .await?;
 
         info!("Shutting down...");
 
