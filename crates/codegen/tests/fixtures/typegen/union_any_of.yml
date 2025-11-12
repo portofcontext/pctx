@@ -1,0 +1,64 @@
+schema:
+  type: object
+  required:
+    - data
+  properties:
+    data:
+      anyOf:
+        - type: string
+        - type: number
+        - $ref: "#/$defs/FooBar"
+        - $ref: "#/$defs/FizzBuzz"
+  "$defs":
+    FooBar:
+      type: object
+      required:
+        - foo
+        - bar
+      properties:
+        foo:
+          type: array
+          items:
+            type: integer
+        bar:
+          type: boolean
+    FizzBuzz:
+      type: object
+      required:
+        - fizz
+      properties:
+        fizz:
+          type: string
+        buzz:
+          type: integer
+tests:
+  valid:
+    - id: string
+      value:
+        data: string value
+    - id: number
+      value:
+        data: 123
+    - id: foobar
+      value:
+        data:
+          foo: [1, 2, 3]
+          bar: true
+    - id: fizzbuzz-all
+      value:
+        data:
+          fizz: bubbles
+          buzz: 987
+    - id: fizzbuzz-required
+      value:
+        data:
+          fizz: tea
+  invalid:
+    - id: boolean
+      value:
+        data: true
+    - id: object
+      value:
+        data:
+          boo: abc
+          hoo: 123

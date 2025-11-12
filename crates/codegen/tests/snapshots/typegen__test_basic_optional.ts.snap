@@ -1,0 +1,23 @@
+---
+source: crates/codegen/tests/typegen.rs
+expression: "&typegen_res.types"
+---
+export type BasicOptional = {
+  my_decimal?: number | undefined;
+
+  my_integer?: number | undefined;
+
+  my_string?: string | undefined;
+
+  my_boolean?: boolean | undefined;
+
+  my_int_array?: number[] | undefined;
+
+  my_decimal_array?: number[] | undefined;
+
+  my_string_array?: string[] | undefined;
+
+  my_boolean_array?: boolean[] | undefined;
+
+  my_object_any?: { [key: string]: any | undefined } | undefined;
+};

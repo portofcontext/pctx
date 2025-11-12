@@ -45,6 +45,22 @@ async fn run_typegen_test(test_name: &str, test: TypegenTest) {
             valid.id
         );
     }
+
+    for invalid in &test.tests.invalid {
+        let typed_code = codegen::format::format_ts(&format!(
+            "{types}\n\nconst value: {type_name} = {val};",
+            types = typegen_res.types,
+            val = invalid.value
+        ));
+
+        let check_res = type_check(&typed_code).await.expect("failed typecheck");
+
+        assert!(
+            !check_res.success,
+            "invalid test case id `{}` succeeded typecheck (it should fail): {check_res:?}",
+            invalid.id
+        );
+    }
 }
 
 macro_rules! typegen_test {
@@ -60,9 +76,23 @@ macro_rules! typegen_test {
 
 typegen_test!(
     test_basic_required,
-    include_str!("./fixtures/typegen/basic-required.yml")
+    include_str!("./fixtures/typegen/basic_required.yml")
 );
+
 typegen_test!(
     test_basic_optional,
-    include_str!("./fixtures/typegen/basic-optional.yml")
+    include_str!("./fixtures/typegen/basic_optional.yml")
+);
+
+typegen_test!(
+    test_union_type_array,
+    include_str!("./fixtures/typegen/union_type_array.yml")
+);
+typegen_test!(
+    test_union_one_of,
+    include_str!("./fixtures/typegen/union_one_of.yml")
+);
+typegen_test!(
+    test_union_any_of,
+    include_str!("./fixtures/typegen/union_any_of.yml")
 );

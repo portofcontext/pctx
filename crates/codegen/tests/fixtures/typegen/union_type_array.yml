@@ -1,0 +1,32 @@
+schema:
+  type: object
+  required:
+    - data
+  properties:
+    data:
+      title: TypeArrTargetUnion
+      type:
+        - string
+        - integer
+        - number
+        - boolean
+tests:
+  valid:
+    - id: string
+      value:
+        data: string value
+    - id: integer
+      value:
+        data: 12
+    - id: number
+      value:
+        data: 1.2
+    - id: boolean
+      value:
+        data: false
+  invalid:
+    - id: array
+      value:
+        data:
+          - foo
+          - bar

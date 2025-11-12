@@ -1,0 +1,7 @@
+---
+source: crates/codegen/tests/typegen.rs
+expression: "&typegen_res.types"
+---
+export type UnionTypeArray = {
+  data: string | number | number | boolean;
+};
