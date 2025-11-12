@@ -1,0 +1,23 @@
+---
+source: crates/codegen/tests/typegen.rs
+expression: "&typegen_res.types"
+---
+export type BasicRequired = {
+  my_decimal: number;
+
+  my_integer: number;
+
+  my_string: string;
+
+  my_boolean: boolean;
+
+  my_int_array: number[];
+
+  my_decimal_array: number[];
+
+  my_string_array: string[];
+
+  my_boolean_array: boolean[];
+
+  my_object_any: { [key: string]: any | undefined };
+};

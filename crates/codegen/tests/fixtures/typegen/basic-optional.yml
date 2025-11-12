@@ -1,0 +1,75 @@
+schema:
+  type: object
+  properties:
+    my_decimal:
+      type: number
+    my_integer:
+      type: integer
+    my_string:
+      type: string
+    my_boolean:
+      type: boolean
+    my_int_array:
+      type: array
+      items:
+        type: integer
+    my_decimal_array:
+      type: array
+      items:
+        type: number
+    my_string_array:
+      type: array
+      items:
+        type: string
+    my_boolean_array:
+      type: array
+      items:
+        type: boolean
+    my_object_any:
+      type: object
+tests:
+  valid:
+    - id: no-values
+      value: {}
+    - id: all-values
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: only-my-decimal
+      value:
+        my_decimal: 4.2
+    - id: only-my-integer
+      value:
+        my_integer: 42
+    - id: only-my-string
+      value:
+        my_string: foobar
+    - id: only-my-boolean
+      value:
+        my_boolean: true
+    - id: only-my-int-array
+      value:
+        my_int_array: [1, 2, 3]
+    - id: only-my-decimal-array
+      value:
+        my_decimal_array: [1.1, 2.2, 3.3]
+    - id: only-my-string-array
+      value:
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+    - id: only-my-boolean-array
+      value:
+        my_boolean_array: [true, true, false]
+    - id: only-my-object-any
+      value:
+        my_object_any:
+          could: "be"
+          anything: 123

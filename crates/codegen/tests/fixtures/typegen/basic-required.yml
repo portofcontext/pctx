@@ -1,0 +1,161 @@
+schema:
+  type: object
+  required:
+    - my_decimal
+    - my_integer
+    - my_string
+    - my_boolean
+    - my_int_array
+    - my_decimal_array
+    - my_string_array
+    - my_boolean_array
+    - my_object_any
+  properties:
+    my_decimal:
+      type: number
+    my_integer:
+      type: integer
+    my_string:
+      type: string
+    my_boolean:
+      type: boolean
+    my_int_array:
+      type: array
+      items:
+        type: integer
+    my_decimal_array:
+      type: array
+      items:
+        type: number
+    my_string_array:
+      type: array
+      items:
+        type: string
+    my_boolean_array:
+      type: array
+      items:
+        type: boolean
+    my_object_any:
+      type: object
+tests:
+  valid:
+    - id: valid
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+  invalid:
+    - id: missing-my-decimal
+      value:
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-integer
+      value:
+        my_decimal: 4.2
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-string
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-boolean
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-int-array
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-decimal-array
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-string-array
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_boolean_array: [true, true, false]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-boolean-array
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_object_any:
+          could: "be"
+          anything: 123
+    - id: missing-my-object-any
+      value:
+        my_decimal: 4.2
+        my_integer: 42
+        my_string: foobar
+        my_boolean: true
+        my_int_array: [1, 2, 3]
+        my_decimal_array: [1.1, 2.2, 3.3]
+        my_string_array: ["foo", "bar", "fizz", "buzz"]
+        my_boolean_array: [true, true, false]
