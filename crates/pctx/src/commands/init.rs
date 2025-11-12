@@ -1,11 +1,11 @@
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
-use log::info;
+use log::{info, warn};
 use pctx_config::Config;
 
 use crate::{
-    commands::add::AddCmd,
+    commands::{USER_CANCELLED, add::AddCmd},
     utils::{
         prompts,
         styles::{fmt_bold, fmt_dimmed, fmt_success},
@@ -35,26 +35,27 @@ impl InitCmd {
             if re_init {
                 Config::default().with_path(path)
             } else {
-                anyhow::bail!("User cancelled")
+                anyhow::bail!(USER_CANCELLED)
             }
         } else {
             Config::default().with_path(path)
         };
 
-        let parent_name = Utf8PathBuf::new()
-            .parent()
-            .and_then(|p| p.file_name().map(ToString::to_string));
+        let parent_name = std::env::current_dir()
+            .ok()
+            .and_then(|p| p.file_name().map(|f| f.to_string_lossy().to_string()))
+            .unwrap_or("root".into());
 
         if self.yes {
-            cfg.name = parent_name.unwrap_or("root".into());
+            cfg.name = parent_name;
         } else {
-            let mut name_input = inquire::Text::new("pctx name:")
-                .with_validator(inquire::required!("name is required"));
-            if let Some(p_name) = &parent_name {
-                name_input = name_input.with_default(p_name);
-            }
-            cfg.name = name_input.prompt()?;
-            cfg.description = inquire::Text::new("pctx description:").prompt_skippable()?;
+            cfg.name = inquire::Text::new("pctx name:")
+                .with_validator(inquire::required!("name is required"))
+                .with_default(&parent_name)
+                .prompt()?;
+            cfg.description =
+                inquire::Text::new(&format!("pctx description {}:", fmt_dimmed("(optional)")))
+                    .prompt_skippable()?;
 
             let mut add_upstream =
                 inquire::Confirm::new("Would you like to add upstream MCP servers?")
@@ -79,13 +80,18 @@ impl InitCmd {
                     bearer: None,
                     headers: None,
                 };
-                cfg = add_cmd.handle(cfg, false).await?;
-                info!(
-                    "{}",
-                    fmt_success(&format!("Added {name}", name = fmt_bold(&name)))
-                );
+                match add_cmd.handle(cfg.clone(), false).await {
+                    Ok(updated) => {
+                        cfg = updated;
+                        info!(
+                            "{}",
+                            fmt_success(&format!("Added {name}", name = fmt_bold(&name)))
+                        );
+                    }
+                    Err(e) => warn!("{e}"),
+                }
 
-                add_upstream = inquire::Confirm::new("Add another?")
+                add_upstream = inquire::Confirm::new("Add another MCP server?")
                     .with_default(false)
                     .prompt()?;
             }
