@@ -113,45 +113,6 @@ pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<E
     })
 }
 
-/// Check TypeScript code and return structured diagnostics if there are problems
-///
-/// This function performs TypeScript type checking using an isolated Deno runtime:
-/// - Syntax validation
-/// - TypeScript parsing
-/// - Full semantic type checking
-///
-/// # Arguments
-/// * `code` - The TypeScript code snippet to check
-///
-/// # Returns
-/// * `Ok(CheckResult)` - Contains type diagnostics and success status
-///
-/// # Errors
-/// * Returns error only if internal type checking runtime fails
-///
-/// # Examples
-/// ```
-/// use deno_executor::check;
-///
-/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// // This will pass - valid syntax
-/// let code = r#"const greeting: string = "hello";"#;
-/// let result = check(code).await?;
-/// assert!(result.success);
-/// # Ok(())
-/// # }
-/// ```
-pub async fn check(code: &str) -> Result<CheckResult> {
-    let check_result = type_check(code).await?;
-
-    let relevant_diagnostics = filter_relevant_diagnostics(check_result.diagnostics);
-
-    Ok(CheckResult {
-        success: relevant_diagnostics.is_empty(),
-        diagnostics: relevant_diagnostics,
-    })
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionError {
     pub message: String,
