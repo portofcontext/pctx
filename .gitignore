@@ -8,3 +8,4 @@
 *.iml
 .claude
 pctx.json
+crates/pctx_type_check_runtime/src/type_check_runtime_generated.js

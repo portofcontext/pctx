@@ -67,6 +67,8 @@
 //!
 //! The snapshot is embedded at compile time and accessible via [`TYPE_CHECK_SNAPSHOT`].
 
+pub mod ignored_codes;
+
 use deno_core::JsRuntime;
 use deno_core::RuntimeOptions;
 use futures::lock::Mutex;
@@ -127,8 +129,8 @@ pub static TYPE_CHECK_SNAPSHOT: &[u8] =
 // Define the type check extension
 deno_core::extension!(
     pctx_type_check_snapshot,
-    esm_entry_point = "ext:pctx_type_check_snapshot/type_check_runtime.js",
-    esm = [ dir "src", "type_check_runtime.js" ],
+    esm_entry_point = "ext:pctx_type_check_snapshot/type_check_runtime_generated.js",
+    esm = [ dir "src", "type_check_runtime_generated.js" ],
 );
 
 // Global mutex to serialize type checking operations and prevent V8 race conditions
@@ -250,6 +252,7 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
 /// - `2304`: Cannot find name 'require'
 /// - `7016`: Could not find declaration file
 /// - `2580`, `2585`, `2591`: Promise/console not found (runtime provides these)
+/// - `2693`: Type-only imports (Array, etc.) used as values
 /// - `7006`, `7053`, `7005`, `7034`: Implicit any types (JavaScript compatibility)
 /// - `18046`: Variable of type 'unknown' (reduce operations)
 /// - `2362`, `2363`: Arithmetic operation strictness
@@ -288,25 +291,10 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
 /// assert!(!is_relevant_error(&console_error));
 /// ```
 pub fn is_relevant_error(diagnostic: &Diagnostic) -> bool {
-    // Ignore certain TypeScript errors that aren't helpful for validation
-    let ignored_codes = [
-        2307,  // Cannot find module
-        2304,  // Cannot find name 'require'
-        7016,  // Could not find declaration file
-        2580,  // Cannot find name 'console'
-        2585,  // 'Promise' only refers to a type, but is being used as a value
-        2591,  // Cannot find name 'Promise'
-        7006,  // Parameter implicitly has an 'any' type (SDK is typed)
-        7053,  // Element implicitly has an 'any' type (dynamic object access)
-        7005,  // Variable implicitly has an 'any[]' type
-        7034,  // Variable implicitly has type 'any[]' in some locations
-        18046, // Variable is of type 'unknown' (reduce operations)
-        2362,  // Left-hand side of arithmetic operation must be number/any
-        2363,  // Right-hand side of arithmetic operation must be number/any
-    ];
-
+    // Use the shared ignored codes list from ignored_codes module
+    // This list is synchronized with the JavaScript runtime at build time
     match diagnostic.code {
-        Some(code) => !ignored_codes.contains(&code),
+        Some(code) => !ignored_codes::IGNORED_DIAGNOSTIC_CODES.contains(&code),
         None => true, // No code is present is an error
     }
 }

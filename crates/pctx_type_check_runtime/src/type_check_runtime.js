@@ -6,6 +6,10 @@
 // Import the TypeScript compiler (already loaded by the extension)
 import * as tsModule from "ext:pctx_type_check_snapshot/typescript.min.js";
 
+// CODEGEN_IGNORED_CODES_PLACEHOLDER
+// This placeholder is replaced at build time with the actual ignored diagnostic codes
+// from src/ignored_codes.rs, ensuring Rust and JavaScript stay in sync.
+
 // Access ts from the imported module or globalThis
 const ts = tsModule.ts || tsModule.default || globalThis.ts;
 
@@ -355,22 +359,11 @@ function typeCheckCode(code) {
     ];
 
     // Filter and format diagnostics
+    // NOTE: IGNORED_DIAGNOSTIC_CODES is generated at build time from src/ignored_codes.rs
+    // to ensure Rust and JavaScript stay in sync
     for (const diagnostic of allDiagnostics) {
-      // Skip certain diagnostic codes that are not relevant for runtime execution
-      if (diagnostic.code === 2580) continue; // "Cannot find name 'console'"
-      if (diagnostic.code === 2584) continue; // "Cannot find name 'console'. Do you need to change your target library?"
-      if (diagnostic.code === 2583) continue; // "Cannot find name 'Promise'"
-      if (diagnostic.code === 2585) continue; // "Cannot find name 'AsyncIterable'"
-      if (diagnostic.code === 2591) continue; // "Cannot find name 'AsyncIterator'"
-      if (diagnostic.code === 2318) continue; // "Cannot find global type 'Promise'"
-      if (diagnostic.code === 7006) continue; // "Parameter implicitly has an 'any' type"
-      if (diagnostic.code === 7053) continue; // "Element implicitly has an 'any' type" (dynamic object access)
-      if (diagnostic.code === 18046) continue; // "'e' is of type 'unknown'"
-      if (
-        diagnostic.code === 2304 &&
-        diagnostic.messageText.toString().includes("console")
-      )
-        continue;
+      // Skip diagnostic codes that are not relevant for runtime execution
+      if (IGNORED_DIAGNOSTIC_CODES.includes(diagnostic.code)) continue;
 
       let message = ts.flattenDiagnosticMessageText(
         diagnostic.messageText,

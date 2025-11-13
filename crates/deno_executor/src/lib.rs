@@ -60,10 +60,17 @@ pub enum DenoExecutorError {
 ///
 pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<ExecuteResult> {
     let check_result = type_check(code).await?;
-    if !check_result.success {
+
+    // Filter out irrelevant errors that don't affect runtime
+    let relevant_diagnostics: Vec<Diagnostic> = check_result
+        .diagnostics
+        .into_iter()
+        .filter(is_relevant_error)
+        .collect();
+
+    if !relevant_diagnostics.is_empty() {
         // Format diagnostics as stderr output
-        let stderr = check_result
-            .diagnostics
+        let stderr = relevant_diagnostics
             .iter()
             .map(|d| d.message.as_str())
             .collect::<Vec<_>>()
@@ -71,7 +78,7 @@ pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<E
 
         return Ok(ExecuteResult {
             success: false,
-            diagnostics: check_result.diagnostics,
+            diagnostics: relevant_diagnostics,
             runtime_error: None,
             output: None,
             stdout: String::new(),
@@ -91,7 +98,7 @@ pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<E
 
     Ok(ExecuteResult {
         success: exec_result.success,
-        diagnostics: check_result.diagnostics, // always is empty if here
+        diagnostics: relevant_diagnostics, // Filtered diagnostics (may be empty)
         runtime_error: exec_result.error,
         output: exec_result.output,
         stdout: exec_result.stdout,
@@ -132,7 +139,19 @@ pub async fn execute(code: &str, allowed_hosts: Option<Vec<String>>) -> Result<E
 /// # }
 /// ```
 pub async fn check(code: &str) -> Result<CheckResult> {
-    Ok(type_check(code).await?)
+    let check_result = type_check(code).await?;
+
+    // Filter out irrelevant errors that don't affect runtime
+    let relevant_diagnostics: Vec<Diagnostic> = check_result
+        .diagnostics
+        .into_iter()
+        .filter(is_relevant_error)
+        .collect();
+
+    Ok(CheckResult {
+        success: relevant_diagnostics.is_empty(),
+        diagnostics: relevant_diagnostics,
+    })
 }
 
 pub fn version() -> &'static str {
