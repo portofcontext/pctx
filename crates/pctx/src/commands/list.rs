@@ -62,10 +62,7 @@ impl UpstreamMcpSummary {
                 let mut error = None;
                 let server_info = client.peer_info().map(|p| p.server_info.clone());
                 let tool_names = match client.list_all_tools().await {
-                    Ok(tools) => {
-                        println!("all tools: {:?}", tools);
-                        tools.into_iter().map(|t| t.name.to_string()).collect()
-                    }
+                    Ok(tools) => tools.into_iter().map(|t| t.name.to_string()).collect(),
                     Err(e) => {
                         error = Some(format!("Failed listing tools: {e}"));
                         vec![]
