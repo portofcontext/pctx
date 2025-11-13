@@ -264,7 +264,9 @@ declare const Error: ErrorConstructor;
 
 interface JSON {
   parse(text: string, reviver?: (key: any, value: any) => any): any;
-  stringify(value: any, replacer?: (key: string, value: any) => any, space?: string | number): string;
+  stringify(value: any, replacer?: ((key: string, value: any) => any) | null, space?: string | number): string;
+  stringify(value: any, replacer?: (string | number)[] | null, space?: string | number): string;
+  stringify(value: any, replacer?: any, space?: string | number): string;
 }
 
 declare const JSON: JSON;
@@ -338,8 +340,12 @@ function typeCheckCode(code) {
       options: {
         target: ts.ScriptTarget.ES2020,
         module: ts.ModuleKind.ES2020,
-        strict: false,
-        strictNullChecks: false,
+        strictNullChecks: true,
+        strictFunctionTypes: false,
+        strictBindCallApply: false,
+        strictPropertyInitialization: false,
+        noImplicitThis: false,
+        alwaysStrict: false,
         noEmit: true,
         skipLibCheck: false,
         noLib: true,
