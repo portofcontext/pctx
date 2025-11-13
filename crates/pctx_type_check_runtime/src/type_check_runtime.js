@@ -113,6 +113,7 @@ interface Array<T> extends Iterable<T> {
   pop(): T | undefined;
   shift(): T | undefined;
   unshift(...items: T[]): number;
+  concat(...items: (T | T[])[]): T[];
   map<U>(callbackfn: (value: T, index: number, array: T[]) => U, thisArg?: any): U[];
   filter(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): T[];
   reduce<U>(callbackfn: (previousValue: U, currentValue: T, currentIndex: number, array: T[]) => U, initialValue: U): U;
@@ -122,7 +123,114 @@ interface Array<T> extends Iterable<T> {
   every(predicate: (value: T, index: number, array: T[]) => unknown, thisArg?: any): boolean;
   join(separator?: string): string;
   slice(start?: number, end?: number): T[];
+  indexOf(searchElement: T, fromIndex?: number): number;
+  includes(searchElement: T, fromIndex?: number): boolean;
+  reverse(): T[];
+  sort(compareFn?: (a: T, b: T) => number): this;
   [Symbol.iterator](): Iterator<T>;
+}
+
+interface String {
+  length: number;
+  charAt(pos: number): string;
+  charCodeAt(index: number): number;
+  concat(...strings: string[]): string;
+  indexOf(searchString: string, position?: number): number;
+  lastIndexOf(searchString: string, position?: number): number;
+  localeCompare(that: string): number;
+  match(regexp: string | RegExp): RegExpMatchArray | null;
+  replace(searchValue: string | RegExp, replaceValue: string): string;
+  search(regexp: string | RegExp): number;
+  slice(start?: number, end?: number): string;
+  split(separator: string | RegExp, limit?: number): string[];
+  substring(start: number, end?: number): string;
+  toLowerCase(): string;
+  toLocaleLowerCase(): string;
+  toUpperCase(): string;
+  toLocaleUpperCase(): string;
+  trim(): string;
+  substr(from: number, length?: number): string;
+  valueOf(): string;
+  includes(searchString: string, position?: number): boolean;
+  startsWith(searchString: string, position?: number): boolean;
+  endsWith(searchString: string, length?: number): boolean;
+  repeat(count: number): string;
+  padStart(maxLength: number, fillString?: string): string;
+  padEnd(maxLength: number, fillString?: string): string;
+  [index: number]: string;
+}
+
+interface StringConstructor {
+  new (value?: any): String;
+  (value?: any): string;
+  readonly prototype: String;
+}
+
+declare const String: StringConstructor;
+
+interface Number {
+  toString(radix?: number): string;
+  toFixed(fractionDigits?: number): string;
+  toExponential(fractionDigits?: number): string;
+  toPrecision(precision?: number): string;
+  valueOf(): number;
+}
+
+interface NumberConstructor {
+  new (value?: any): Number;
+  (value?: any): number;
+  readonly prototype: Number;
+  readonly MAX_VALUE: number;
+  readonly MIN_VALUE: number;
+  readonly NaN: number;
+  readonly NEGATIVE_INFINITY: number;
+  readonly POSITIVE_INFINITY: number;
+  isNaN(number: number): boolean;
+  isFinite(number: number): boolean;
+  parseInt(string: string, radix?: number): number;
+  parseFloat(string: string): number;
+}
+
+declare const Number: NumberConstructor;
+
+interface Boolean {
+  valueOf(): boolean;
+}
+
+interface BooleanConstructor {
+  new (value?: any): Boolean;
+  (value?: any): boolean;
+  readonly prototype: Boolean;
+}
+
+declare const Boolean: BooleanConstructor;
+
+interface RegExp {
+  exec(string: string): RegExpExecArray | null;
+  test(string: string): boolean;
+  readonly source: string;
+  readonly global: boolean;
+  readonly ignoreCase: boolean;
+  readonly multiline: boolean;
+  lastIndex: number;
+}
+
+interface RegExpConstructor {
+  new (pattern: string | RegExp, flags?: string): RegExp;
+  (pattern: string | RegExp, flags?: string): RegExp;
+  readonly prototype: RegExp;
+}
+
+declare const RegExp: RegExpConstructor;
+
+interface RegExpMatchArray extends Array<string> {
+  index?: number;
+  input?: string;
+}
+
+interface RegExpExecArray extends Array<string> {
+  index: number;
+  input: string;
 }
 
 type Record<K extends string | number | symbol, T> = {
@@ -214,7 +322,7 @@ function typeCheckCode(code) {
         return undefined;
       },
       getDefaultLibFileName: () => "lib.es.d.ts",
-      writeFile: () => {},
+      writeFile: () => { },
       getCurrentDirectory: () => "/",
       getDirectories: () => [],
       fileExists: (fileName) => files.has(fileName),
@@ -230,7 +338,8 @@ function typeCheckCode(code) {
       options: {
         target: ts.ScriptTarget.ES2020,
         module: ts.ModuleKind.ES2020,
-        strict: true,
+        strict: false,
+        strictNullChecks: false,
         noEmit: true,
         skipLibCheck: false,
         noLib: true,

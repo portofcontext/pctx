@@ -94,8 +94,8 @@ impl UpstreamTool {
             types = format!("{types}\n\n{}", output_types.types);
             output_types.type_signature
         } else {
-            debug!("No output type listed, falling back on `string`");
-            "string".to_string()
+            debug!("No output type listed, falling back on `any`");
+            "any".to_string()
         };
 
         Ok(Self {

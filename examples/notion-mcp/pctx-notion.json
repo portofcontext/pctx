@@ -1,0 +1,14 @@
+{
+  "name": "notion-example",
+  "description": "Example configuration for Notion MCP Server with pctx",
+  "servers": [
+    {
+      "name": "notion",
+      "url": "http://localhost:3000/mcp",
+      "auth": {
+        "type": "bearer",
+        "token": "${env:NOTION_MCP_AUTH_TOKEN}"
+      }
+    }
+  ]
+}

@@ -39,7 +39,14 @@ impl PtcxTools {
 
     #[tool(
         title = "List Functions",
-        description = "List functions organized in namespaces based on available services"
+        description = "ALWAYS USE THIS TOOL FIRST to list all available functions organized by namespace.
+
+        WORKFLOW:
+        1. Start here - Call this tool to see what functions are available
+        2. Then call get_function_details() for specific functions you need to understand
+        3. Finally call execute() to run your TypeScript code
+
+        This returns function signatures without full details."
     )]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
         let namespaces: Vec<String> = self
@@ -69,7 +76,19 @@ namespace {namespace} {{
 
     #[tool(
         title = "Get Function Details",
-        description = "Get details about specific functions as listed in `list_functions`, organized in namespaces"
+        description = "Get detailed information about specific functions you want to use.
+
+        WHEN TO USE: After calling list_functions(), use this to learn about parameter types, return values, and usage for specific functions.
+
+        REQUIRED FORMAT: Functions must be specified as 'namespace.functionName' (e.g., 'Namespace.apiPostSearch')
+
+        This tool is lightweight and only returns details for the functions you request, avoiding unnecessary token usage.
+        Only request details for functions you actually plan to use in your code.
+
+        NOTE ON RETURN TYPES:
+        - If a function returns Promise<any>, the MCP server didn't provide an output schema
+        - The actual value is a parsed object (not a string) - access properties directly
+        - Don't use JSON.parse() on the results - they're already JavaScript objects"
     )]
     async fn get_function_details(
         &self,
@@ -125,26 +144,36 @@ namespace {namespace} {{
 
     #[tool(
         title = "Execute Code",
-        description = "Runs TypeScript code that can use the namespaced functions listed in `list_functions`
-        You are a skilled programmer writing code to interact with the available namespaced functions.
+        description = "Execute TypeScript code that calls namespaced functions. USE THIS LAST after list_functions() and get_function_details().
 
-        Always define an async function called `run` that accepts no arguments:
+        TOKEN USAGE WARNING: This tool could return LARGE responses if your code returns big objects.
+        To minimize tokens:
+        - Filter/map/reduce data IN YOUR CODE before returning
+        - Only return specific fields you need (e.g., return {id: result.id, count: items.length})
+        - Use console.log() for intermediate results instead of returning everything
+        - Avoid returning full API responses - extract just what you need
 
+        REQUIRED CODE STRUCTURE:
         async function run() {
-            // YOUR CODE GOES HERE
-
-            // log results and return output
+            // Your code here
+            // Call namespace.functionName() - MUST include namespace prefix
+            // Process data here to minimize return size
+            return onlyWhatYouNeed; // Keep this small!
         }
 
-        The only available methods are returned by the `list_functions` tool, and the inputs and outputs of the methods can be obtained by the `get_function_details` tool, no other inputs or outputs exist.
-        When calling the functions you MUST include the namespace. e.g. if e.g. If there is a function `getData` within the `DataApi` namespace, to call the function you must write `DataApi.getData`.
-        You will be returned anything that your function returns, plus the results of any console.log statements.
-        If any code triggers an error, the tool will return an error response, so you do not need to add error handling unless you want to output something more helpful than the raw error.
-        It is not necessary to add comments to code, unless by adding those comments you believe that you can generate better code.
-        This code will run in a container, and you will not be able to use the filesystem, `fetch` or otherwise interact with the network calls other than through the namespaced functions you are given.
-        Any variables you define won't live between successive uses of this tool, so make sure to return or log any data you might need later.
-        Try to avoid logging or returning large objects, try to only return and log the specific fields you may need.
-        If you are making calls to multiple methods, add logs between the method calls so in case of a failure, you are aware of how far the execution got.
+        IMPORTANT RULES:
+        - Functions MUST be called as 'Namespace.functionName' (e.g., 'Notion.apiPostSearch')
+        - Only functions from list_functions() are available - no fetch(), fs, or other Node/Deno APIs
+        - Variables don't persist between execute() calls - return or log anything you need later
+        - Add console.log() statements between API calls to track progress if errors occur
+        - Code runs in an isolated Deno sandbox with restricted network access
+
+        RETURN TYPE NOTE:
+        - Functions without output schemas show Promise<any> as return type
+        - The actual runtime value is already a parsed JavaScript object, NOT a JSON string
+        - Do NOT call JSON.parse() on results - they're already objects
+        - Access properties directly (e.g., result.data) or inspect with console.log() first
+        - If you see 'Promise<any>', the structure is unknown - log it to see what's returned
         "
     )]
     async fn execute(
