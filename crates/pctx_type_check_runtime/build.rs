@@ -34,10 +34,7 @@ fn generate_runtime_js_string() -> String {
     );
 
     // Replace the placeholder
-    TYPE_CHECK_RUNTIME_JS.replace(
-        "// CODEGEN_IGNORED_CODES_PLACEHOLDER",
-        &codes_js
-    )
+    TYPE_CHECK_RUNTIME_JS.replace("// CODEGEN_IGNORED_CODES_PLACEHOLDER", &codes_js)
 }
 
 // Define the extension for snapshot creation

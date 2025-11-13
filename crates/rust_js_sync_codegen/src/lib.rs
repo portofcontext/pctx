@@ -133,12 +133,7 @@ impl Default for JsCodegen {
 
 /// Helper function to convert a slice of numbers to a JsValue array
 pub fn numbers_to_js_array<T: Into<i64> + Copy>(numbers: &[T]) -> JsValue {
-    JsValue::Array(
-        numbers
-            .iter()
-            .map(|&n| JsValue::Number(n.into()))
-            .collect(),
-    )
+    JsValue::Array(numbers.iter().map(|&n| JsValue::Number(n.into())).collect())
 }
 
 /// Helper function to convert a slice of strings to a JsValue array
@@ -196,10 +191,10 @@ mod tests {
     #[test]
     fn test_codegen_export() {
         let mut codegen = JsCodegen::new();
-        codegen.add_export("MY_EXPORT", JsValue::Array(vec![
-            JsValue::Number(1),
-            JsValue::Number(2),
-        ]));
+        codegen.add_export(
+            "MY_EXPORT",
+            JsValue::Array(vec![JsValue::Number(1), JsValue::Number(2)]),
+        );
 
         let output = codegen.generate();
         assert!(output.contains("export const MY_EXPORT = [1, 2];"));
