@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [UNRELEASED] - YYYY-MM-DD
 
 ### Added
+
+
+### Fixed
+
+
+## [v0.1.4] - 2025-11-14
+
+### Added
 - nasa mcp server example with scripts for running/deploying pctx
 
 ### Fixed
@@ -58,7 +66,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.1.4...HEAD
+[v0.1.4]: https://github.com/portofcontext/pctx/compare/v0.1.4
 [v0.1.3]: https://github.com/portofcontext/pctx/compare/v0.1.3
 [v0.1.2]: https://github.com/portofcontext/pctx/compare/v0.1.2
 [v0.1.1]: https://github.com/portofcontext/pctx/compare/v0.1.1
