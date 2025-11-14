@@ -1,0 +1,10 @@
+{
+  "name": "nasa-example",
+  "description": "Example configuration for NASA MCP Server with pctx",
+  "servers": [
+    {
+      "name": "nasa",
+      "url": "http://localhost:3000/mcp"
+    }
+  ]
+}

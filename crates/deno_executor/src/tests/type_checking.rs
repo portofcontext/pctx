@@ -1,5 +1,5 @@
 use super::serial;
-use crate::*;
+use crate::execute;
 
 #[serial]
 #[tokio::test]
@@ -163,6 +163,94 @@ async fn test_undeclared_variable() {
             .iter()
             .any(|d| d.message.contains("Cannot find name")),
         "Error should mention undeclared variable, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_comprehensive_es2020_types() {
+    // Comprehensive test for all essential ES2020 types
+    let code = r#"
+// Primitives
+const str: string = "hello";
+const num: number = 42;
+const bool: boolean = true;
+
+// Arrays
+const arr: number[] = [1, 2, 3];
+arr.push(4);
+arr.map(x => x * 2);
+
+// Objects
+const obj: Record<string, any> = { key: "value" };
+Object.keys(obj);
+Object.entries(obj);
+
+// Promise
+const promise = new Promise<number>((resolve) => {
+  resolve(42);
+});
+promise.then(x => console.log(x));
+
+// Collections - Set
+const mySet = new Set<number>();
+mySet.add(1);
+mySet.has(1);
+mySet.delete(1);
+
+// Collections - Map
+const myMap = new Map<string, number>();
+myMap.set("key", 42);
+myMap.get("key");
+myMap.has("key");
+
+// Collections - WeakMap
+const weakMap = new WeakMap<object, string>();
+const weakObj = {};
+weakMap.set(weakObj, "value");
+
+// Collections - WeakSet
+const weakSet = new WeakSet<object>();
+weakSet.add(weakObj);
+
+// String methods
+str.includes("el");
+str.startsWith("he");
+str.repeat(2);
+
+// Number methods
+Number.isNaN(NaN);
+Number.isFinite(42);
+
+// Error handling
+try {
+  throw new Error("test");
+} catch (e) {
+  console.error(e);
+}
+
+// JSON
+const jsonStr = JSON.stringify({ key: "value" });
+JSON.parse(jsonStr);
+
+// RegExp
+const regex = new RegExp("test");
+regex.test("test");
+
+export default "all types work";
+"#;
+
+    let result = execute(code, None).await.expect("execution should succeed");
+
+    assert!(
+        result.success,
+        "Comprehensive ES2020 type test should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
+    assert!(
+        result.diagnostics.is_empty(),
+        "Should have no type errors with all ES2020 types. Got diagnostics: {:?}",
         result.diagnostics
     );
 }

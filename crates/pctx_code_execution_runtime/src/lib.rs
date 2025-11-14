@@ -89,6 +89,7 @@
 
 mod error;
 mod fetch;
+mod js_error_impl;
 pub mod ops;
 mod registry;
 

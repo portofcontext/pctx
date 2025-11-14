@@ -1,6 +1,11 @@
 use super::serial;
-use crate::*;
+use crate::execute;
+
 /// Tests that we ignore typescript errors that are actually okay for execution
+///
+/// These tests verify that the diagnostic codes in `pctx_type_check_runtime::ignored_codes::IGNORED_DIAGNOSTIC_CODES`
+/// are properly filtered. The ignored codes are synchronized between Rust and JavaScript at build time
+/// using the `rust_js_sync_codegen` crate.
 
 #[serial]
 #[tokio::test]
@@ -141,6 +146,55 @@ const x: number = "string";
             .iter()
             .any(|d| d.code == Some(2322) || d.message.contains("not assignable")),
         "Should include type mismatch error, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_implicit_any_array_is_ignored() {
+    // TS7005, TS7034: Variable implicitly has an 'any[]' type should be filtered
+    let code = r"
+let allAsteroids = [];
+for (let i = 0; i < 10; i++) {
+    allAsteroids.push({ x: i, y: i * 2 });
+}
+export default allAsteroids;
+";
+
+    let result = execute(code, None).await.expect("execution should succeed");
+
+    assert!(
+        result.success,
+        "Implicit any[] types should be allowed (TS7005/TS7034 should be filtered), got: {:?}",
+        result.diagnostics
+    );
+    assert!(
+        result.diagnostics.is_empty(),
+        "Should have no diagnostics after filtering, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_array_type_as_value_is_ignored() {
+    // TS2693: 'Array' only refers to a type, but is being used as a value
+    let code = r"
+const items: Array<number> = [1, 2, 3];
+export default items;
+";
+
+    let result = execute(code, None).await.expect("execution should succeed");
+
+    assert!(
+        result.success,
+        "Array used as value should be allowed (TS2693 should be filtered), got: {:?}",
+        result.diagnostics
+    );
+    assert!(
+        result.diagnostics.is_empty(),
+        "Should have no diagnostics after filtering, got: {:?}",
         result.diagnostics
     );
 }

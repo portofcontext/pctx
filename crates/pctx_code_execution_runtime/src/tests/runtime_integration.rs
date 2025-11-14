@@ -22,9 +22,10 @@ fn create_test_runtime() -> JsRuntime {
     deno_core::extension!(test_helpers, ops = [op_test_set_result],);
 
     JsRuntime::new(RuntimeOptions {
+        startup_snapshot: Some(crate::RUNTIME_SNAPSHOT),
         extensions: vec![
-            test_helpers::init(),
             crate::pctx_runtime_snapshot::init(registry, allowed_hosts),
+            test_helpers::init(),
         ],
         ..Default::default()
     })

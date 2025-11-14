@@ -1,0 +1,21 @@
+{
+  "name": "nasa-mcp-example",
+  "version": "1.0.0",
+  "description": "Example NASA MCP Server with pctx",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start:nasa": "node nasa-mcp-server.js",
+    "start:pctx": "pctx start --port ${PCTX_PORT:-8080}",
+    "start": "node start-local.js",
+    "test:nasa": "curl -X POST http://127.0.0.1:3000/mcp -H 'Content-Type: application/json' -H 'Authorization: Bearer test' -d '{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{},\"id\":1}'",
+    "test:pctx": "curl -X POST http://127.0.0.1:8080/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{},\"id\":1}'"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "node-fetch": "^2.7.0",
+    "zod": "^3.24.1"
+  }
+}

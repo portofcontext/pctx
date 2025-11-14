@@ -1,5 +1,5 @@
 use super::serial;
-use crate::*;
+use crate::execute;
 
 #[serial]
 #[tokio::test]

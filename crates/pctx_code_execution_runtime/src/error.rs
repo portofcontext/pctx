@@ -1,9 +1,6 @@
 //! Error types for PCTX runtime
 
-use deno_error::{JsErrorClass, PropertyValue};
 use pctx_config::server::McpConnectionError;
-use std::borrow::Cow;
-use std::error::Error as StdError;
 
 /// Error type for MCP operations
 #[derive(Debug, thiserror::Error)]
@@ -25,23 +22,5 @@ impl From<McpConnectionError> for McpError {
     }
 }
 
-impl JsErrorClass for McpError {
-    fn get_class(&self) -> Cow<'static, str> {
-        Cow::Borrowed("Error")
-    }
-
-    fn get_message(&self) -> Cow<'static, str> {
-        Cow::Owned(self.to_string())
-    }
-
-    fn get_additional_properties(
-        &self,
-    ) -> Box<dyn Iterator<Item = (Cow<'static, str>, PropertyValue)>> {
-        // No additional properties needed
-        Box::new(std::iter::empty())
-    }
-
-    fn get_ref(&self) -> &(dyn StdError + Send + Sync + 'static) {
-        self
-    }
-}
+// Use the shared macro for JsErrorClass implementation
+crate::impl_js_error_class!(McpError);

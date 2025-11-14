@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [UNRELEASED] - YYYY-MM-DD
 
+### Added
+- nasa mcp server example with scripts for running/deploying pctx
+
+### Fixed
+- ts code ignore syncing
+- remove slow intel mac runner
+
+
 ## [v0.1.3] - 2025-11-13
 
 ### Added

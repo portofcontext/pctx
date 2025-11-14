@@ -19,82 +19,46 @@ if (availableOps.length === 0) {
 // CONSOLE OUTPUT CAPTURING
 // ============================================================================
 
+// Helper function to format console arguments
+function formatConsoleArgs(...args) {
+    return args.map(arg => {
+        if (typeof arg === 'string') return arg;
+        if (arg === null) return 'null';
+        if (arg === undefined) return 'undefined';
+        try {
+            return JSON.stringify(arg);
+        } catch {
+            return String(arg);
+        }
+    }).join(' ');
+}
+
 // Set up console output capturing
 globalThis.__stdout = [];
 globalThis.__stderr = [];
 
 // Override console.log to capture stdout
 console.log = (...args) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        try {
-            return JSON.stringify(arg);
-        } catch {
-            return String(arg);
-        }
-    }).join(' ');
-    globalThis.__stdout.push(message);
+    globalThis.__stdout.push(formatConsoleArgs(...args));
 };
 
 // Override console.error to capture stderr
 console.error = (...args) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        try {
-            return JSON.stringify(arg);
-        } catch {
-            return String(arg);
-        }
-    }).join(' ');
-    globalThis.__stderr.push(message);
+    globalThis.__stderr.push(formatConsoleArgs(...args));
 };
 
 // console.warn goes to stderr
 console.warn = (...args) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        try {
-            return JSON.stringify(arg);
-        } catch {
-            return String(arg);
-        }
-    }).join(' ');
-    globalThis.__stderr.push(message);
+    globalThis.__stderr.push(formatConsoleArgs(...args));
 };
 
 // console.info and console.debug go to stdout
 console.info = (...args) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        try {
-            return JSON.stringify(arg);
-        } catch {
-            return String(arg);
-        }
-    }).join(' ');
-    globalThis.__stdout.push(message);
+    globalThis.__stdout.push(formatConsoleArgs(...args));
 };
 
 console.debug = (...args) => {
-    const message = args.map(arg => {
-        if (typeof arg === 'string') return arg;
-        if (arg === null) return 'null';
-        if (arg === undefined) return 'undefined';
-        try {
-            return JSON.stringify(arg);
-        } catch {
-            return String(arg);
-        }
-    }).join(' ');
-    globalThis.__stdout.push(message);
+    globalThis.__stdout.push(formatConsoleArgs(...args));
 };
 
 // ============================================================================
