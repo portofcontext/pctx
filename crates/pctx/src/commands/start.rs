@@ -1,16 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use pctx_config::Config;
-use tracing::{info, warn};
+use tracing::{debug, info, warn};
 
-use crate::{
-    mcp::{PctxMcp, upstream::UpstreamMcp},
-    utils::{
-        CHECK, MARK,
-        spinner::Spinner,
-        styles::{fmt_bold, fmt_cyan, fmt_green, fmt_red, fmt_yellow},
-    },
-};
+use crate::mcp::{PctxMcp, upstream::UpstreamMcp};
 
 #[derive(Debug, Clone, Parser)]
 pub struct StartCmd {
@@ -36,49 +29,27 @@ impl StartCmd {
         }
 
         // Connect to each MCP server and fetch their tool definitions
-        let mut sp = Spinner::new("");
-
+        info!(
+            "Creating code mode interface for {} upstream MCP servers",
+            cfg.servers.len()
+        );
         let mut upstream_servers = Vec::new();
-        let mut fails = Vec::new();
         for server in &cfg.servers {
-            sp.update_text(format!(
-                "Creating {} interface for {}",
-                fmt_bold("Code Mode"),
-                fmt_cyan(&server.name)
-            ));
+            debug!("Creating code mode interface for {}", &server.name);
             match UpstreamMcp::from_server(server).await {
                 Ok(upstream) => {
                     upstream_servers.push(upstream);
                 }
                 Err(e) => {
-                    fails.push(format!(
-                        "Failed creating CodeMode for {}: {e}",
+                    warn!(
+                        err =? e,
+                        server.name =? &server.name,
+                        server.url =? server.url.to_string(),
+                        "Failed creating creating code mode for `{}` MCP server",
                         &server.name
-                    ));
+                    );
                 }
             }
-        }
-
-        let symbol = if upstream_servers.len() == cfg.servers.len() {
-            fmt_green(CHECK)
-        } else if upstream_servers.is_empty() {
-            fmt_red(MARK)
-        } else {
-            fmt_yellow("~")
-        };
-
-        let plural = if upstream_servers.len() > 1 { "s" } else { "" };
-        sp.stop_and_persist(
-            &symbol,
-            format!(
-                "{} interface generated for {} upstream MCP server{}",
-                fmt_bold("Code Mode"),
-                fmt_cyan(&upstream_servers.len().to_string()),
-                plural
-            ),
-        );
-        for fail in fails {
-            warn!("{fail}");
         }
 
         PctxMcp::new(
