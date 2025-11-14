@@ -72,11 +72,6 @@ impl UpstreamMcpSummary {
 
                 (error, init_result, tool_names)
             }
-            Err(McpConnectionError::RequiresOAuth) => (
-                Some("Requires OAuth 2.1 authentication".into()),
-                None,
-                vec![],
-            ),
             Err(McpConnectionError::RequiresAuth) => {
                 (Some("Requires authentication".into()), None, vec![])
             }

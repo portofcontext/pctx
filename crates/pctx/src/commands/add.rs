@@ -101,10 +101,6 @@ impl AddCmd {
                     client.cancel().await?;
                     true
                 }
-                Err(McpConnectionError::RequiresOAuth) => {
-                    sp.stop_and_persist("🔒", "MCP requires OAuth 2.1 authentication");
-                    false
-                }
                 Err(McpConnectionError::RequiresAuth) => {
                     sp.stop_and_persist(
                         "🔒",

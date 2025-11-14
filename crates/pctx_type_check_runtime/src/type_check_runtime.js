@@ -293,6 +293,79 @@ interface ObjectConstructor {
 }
 
 declare const Object: ObjectConstructor;
+
+// ES2015 Collections
+interface Map<K, V> {
+  clear(): void;
+  delete(key: K): boolean;
+  forEach(callbackfn: (value: V, key: K, map: Map<K, V>) => void, thisArg?: any): void;
+  get(key: K): V | undefined;
+  has(key: K): boolean;
+  set(key: K, value: V): this;
+  readonly size: number;
+}
+
+interface MapConstructor {
+  new (): Map<any, any>;
+  new <K, V>(entries?: readonly (readonly [K, V])[] | null): Map<K, V>;
+  readonly prototype: Map<any, any>;
+}
+declare var Map: MapConstructor;
+
+interface ReadonlyMap<K, V> {
+  forEach(callbackfn: (value: V, key: K, map: ReadonlyMap<K, V>) => void, thisArg?: any): void;
+  get(key: K): V | undefined;
+  has(key: K): boolean;
+  readonly size: number;
+}
+
+type WeakKey = object | symbol;
+
+interface WeakMap<K extends WeakKey, V> {
+  delete(key: K): boolean;
+  get(key: K): V | undefined;
+  has(key: K): boolean;
+  set(key: K, value: V): this;
+}
+
+interface WeakMapConstructor {
+  new <K extends WeakKey = WeakKey, V = any>(entries?: readonly (readonly [K, V])[] | null): WeakMap<K, V>;
+  readonly prototype: WeakMap<WeakKey, any>;
+}
+declare var WeakMap: WeakMapConstructor;
+
+interface Set<T> {
+  add(value: T): this;
+  clear(): void;
+  delete(value: T): boolean;
+  forEach(callbackfn: (value: T, value2: T, set: Set<T>) => void, thisArg?: any): void;
+  has(value: T): boolean;
+  readonly size: number;
+}
+
+interface SetConstructor {
+  new <T = any>(values?: readonly T[] | null): Set<T>;
+  readonly prototype: Set<any>;
+}
+declare var Set: SetConstructor;
+
+interface ReadonlySet<T> {
+  forEach(callbackfn: (value: T, value2: T, set: ReadonlySet<T>) => void, thisArg?: any): void;
+  has(value: T): boolean;
+  readonly size: number;
+}
+
+interface WeakSet<T extends WeakKey> {
+  add(value: T): this;
+  delete(value: T): boolean;
+  has(value: T): boolean;
+}
+
+interface WeakSetConstructor {
+  new <T extends WeakKey = WeakKey>(values?: readonly T[] | null): WeakSet<T>;
+  readonly prototype: WeakSet<WeakKey>;
+}
+declare var WeakSet: WeakSetConstructor;
 `;
 
 /**
@@ -309,8 +382,8 @@ function typeCheckCode(code) {
     const fileName = "check.ts";
     const files = new Map();
     files.set(fileName, code);
-    files.set("lib.deno.d.ts", LIB_DENO_NS);
     files.set("lib.es.d.ts", LIB_ES_BASIC);
+    files.set("lib.deno.d.ts", LIB_DENO_NS);
 
     // Create a custom compiler host
     const compilerHost = {
