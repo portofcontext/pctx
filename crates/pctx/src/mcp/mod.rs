@@ -1,9 +1,10 @@
 // pub(crate) mod client;
 pub(crate) mod tools;
-pub(crate) mod upstream;
+// pub(crate) mod upstream; // Moved to pctx_lib
 
 use anyhow::Result;
 use pctx_config::Config;
+use pctx_lib::UpstreamMcp;
 use rmcp::transport::{
     StreamableHttpServerConfig,
     streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
@@ -27,10 +28,7 @@ use tower_http::{
 use tracing::info;
 
 use crate::utils::{LOGO, styles::fmt_dimmed};
-use crate::{
-    mcp::{tools::PtcxTools, upstream::UpstreamMcp},
-    utils::styles::fmt_cyan,
-};
+use crate::{mcp::tools::PtcxTools, utils::styles::fmt_cyan};
 
 pub(crate) struct PctxMcp {
     config: Config,

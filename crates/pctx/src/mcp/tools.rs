@@ -1,8 +1,7 @@
 use anyhow::Result;
-use codegen::generate_docstring;
-use indexmap::{IndexMap, IndexSet};
 use opentelemetry::KeyValue;
 use pctx_config::Config;
+use pctx_lib::{PctxClient, SdkConfig, UpstreamMcp};
 use rmcp::{
     ErrorData as McpError, RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
@@ -17,32 +16,47 @@ use rmcp::{
 use serde_json::json;
 use tracing::{debug, error, info, instrument, warn};
 
-use crate::mcp::upstream::UpstreamMcp;
 use crate::utils::metrics::mcp_tool_metrics;
 
 type McpResult<T> = Result<T, McpError>;
 
+/// MCP server wrapper around PctxClient
+///
+/// This struct handles the MCP server protocol and delegates
+/// actual implementation to pctx_lib::PctxClient
 #[derive(Clone)]
 pub(crate) struct PtcxTools {
-    config: Config,
-    allowed_hosts: Vec<String>,
-    upstream: Vec<UpstreamMcp>,
+    client: PctxClient,
     tool_router: ToolRouter<PtcxTools>,
+    cli_config: Config, // Keep CLI config for server info
 }
+
 #[tool_router]
 impl PtcxTools {
-    pub(crate) fn new(config: Config, allowed_hosts: Vec<String>) -> Self {
+    pub(crate) fn new(config: Config, _allowed_hosts: Vec<String>) -> Self {
+        // Convert CLI config to SDK config
+        // Note: SDK config derives allowed_hosts from server URLs automatically
+        let sdk_config: SdkConfig = config.clone().into();
+
+        let client = PctxClient::new(sdk_config);
         Self {
-            config,
-            allowed_hosts,
-            upstream: vec![],
+            client,
             tool_router: Self::tool_router(),
+            cli_config: config,
         }
     }
 
     pub(crate) fn with_upstream_mcps(mut self, upstream: Vec<UpstreamMcp>) -> Self {
-        self.upstream = upstream;
+        self.client = self.client.with_upstream(upstream);
         self
+    }
+
+    fn config(&self) -> &Config {
+        &self.cli_config
+    }
+
+    fn upstream(&self) -> &[pctx_lib::UpstreamMcp] {
+        self.client.upstream()
     }
 
     #[tool(
@@ -54,32 +68,14 @@ impl PtcxTools {
         2. Then call get_function_details() for specific functions you need to understand
         3. Finally call execute() to run your TypeScript code
 
-        This returns function signatures without full details."
+        List functions returns function signatures without full details."
     )]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
-        let namespaces: Vec<String> = self
-            .upstream
-            .iter()
-            .map(|m| {
-                let fns: Vec<String> = m.tools.iter().map(|(_, t)| t.fn_signature(false)).collect();
+        let result = self.client.list_functions().map_err(|e| {
+            McpError::internal_error(format!("Failed to list functions: {e}"), None)
+        })?;
 
-                format!(
-                    "{docstring}
-namespace {namespace} {{
-  {fns}
-}}",
-                    docstring = generate_docstring(&m.description),
-                    namespace = &m.namespace,
-                    fns = fns.join("\n\n")
-                )
-            })
-            .collect();
-
-        let namespaced_functions = codegen::format::format_d_ts(&namespaces.join("\n\n"));
-
-        Ok(CallToolResult::success(vec![Content::text(
-            namespaced_functions,
-        )]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     #[tool(
@@ -90,96 +86,49 @@ namespace {namespace} {{
 
         REQUIRED FORMAT: Functions must be specified as 'namespace.functionName' (e.g., 'Namespace.apiPostSearch')
 
-        This tool is lightweight and only returns details for the functions you request, avoiding unnecessary token usage.
+        This tool only returns details for the functions you request.
         Only request details for functions you actually plan to use in your code.
 
         NOTE ON RETURN TYPES:
         - If a function returns Promise<any>, the MCP server didn't provide an output schema
-        - The actual value is a parsed object (not a string) - access properties directly
         - Don't use JSON.parse() on the results - they're already JavaScript objects"
     )]
     async fn get_function_details(
         &self,
         Parameters(GetFunctionDetailsInput { functions }): Parameters<GetFunctionDetailsInput>,
     ) -> McpResult<CallToolResult> {
-        // organize tool input by namespace and handle any deduping
-        let mut by_namespace: IndexMap<String, IndexSet<String>> = IndexMap::new();
-        for func in functions {
-            let parts: Vec<&str> = func.split('.').collect();
-            if parts.len() != 2 {
-                // incorrect format
-                continue;
-            }
-            by_namespace
-                .entry(parts[0].to_string())
-                .or_default()
-                .insert(parts[1].to_string());
-        }
+        let result = self.client.get_function_details(functions).map_err(|e| {
+            McpError::internal_error(format!("Failed to get function details: {e}"), None)
+        })?;
 
-        let mut namespace_details = vec![];
-
-        for (namespace, functions) in by_namespace {
-            if let Some(mcp) = self.upstream.iter().find(|m| m.namespace == namespace) {
-                let mut fn_details = vec![];
-                for fn_name in functions {
-                    if let Some(tool) = mcp.tools.get(&fn_name) {
-                        fn_details.push(tool.fn_signature(true));
-                    }
-                }
-
-                if !fn_details.is_empty() {
-                    namespace_details.push(format!(
-                        "{docstring}
-namespace {namespace} {{
-  {fns}
-}}",
-                        docstring = generate_docstring(&mcp.description),
-                        namespace = &mcp.namespace,
-                        fns = fn_details.join("\n\n")
-                    ));
-                }
-            }
-        }
-
-        let content = if namespace_details.is_empty() {
-            "No namespaces/functions match the request".to_string()
-        } else {
-            codegen::format::format_d_ts(&namespace_details.join("\n\n"))
-        };
-
-        Ok(CallToolResult::success(vec![Content::text(content)]))
+        Ok(CallToolResult::success(vec![Content::text(result)]))
     }
 
     #[tool(
         title = "Execute Code",
         description = "Execute TypeScript code that calls namespaced functions. USE THIS LAST after list_functions() and get_function_details().
 
-        TOKEN USAGE WARNING: This tool could return LARGE responses if your code returns big objects.
         To minimize tokens:
-        - Filter/map/reduce data IN YOUR CODE before returning
+        - Filter/map/reduce data IN CODE before returning
         - Only return specific fields you need (e.g., return {id: result.id, count: items.length})
-        - Use console.log() for intermediate results instead of returning everything
-        - Avoid returning full API responses - extract just what you need
 
         REQUIRED CODE STRUCTURE:
         async function run() {
             // Your code here
             // Call namespace.functionName() - MUST include namespace prefix
             // Process data here to minimize return size
-            return onlyWhatYouNeed; // Keep this small!
+            return yourResult;
         }
 
         IMPORTANT RULES:
         - Functions MUST be called as 'Namespace.functionName' (e.g., 'Notion.apiPostSearch')
-        - Only functions from list_functions() are available - no fetch(), fs, or other Node/Deno APIs
+        - Only functions from list_functions() are available - no fetch(), fs, or other APIs
         - Variables don't persist between execute() calls - return or log anything you need later
         - Add console.log() statements between API calls to track progress if errors occur
-        - Code runs in an isolated Deno sandbox with restricted network access
 
         RETURN TYPE NOTE:
         - Functions without output schemas show Promise<any> as return type
         - The actual runtime value is already a parsed JavaScript object, NOT a JSON string
-        - Do NOT call JSON.parse() on results - they're already objects
         - Access properties directly (e.g., result.data) or inspect with console.log() first
         - If you see 'Promise<any>', the structure is unknown - log it to see what's returned
         "
@@ -188,79 +137,14 @@ namespace {namespace} {{
         &self,
         Parameters(ExecuteInput { code }): Parameters<ExecuteInput>,
     ) -> McpResult<CallToolResult> {
-        tracing::debug!(
+        debug!(
             code_from_llm = %code,
             code_length = code.len(),
             "Received code to execute"
         );
 
-        let registrations = self
-            .upstream
-            .iter()
-            .map(|m| format!("registerMCP({});", &m.registration))
-            .collect::<Vec<String>>()
-            .join("\n\n");
-        let namespaces = self
-            .upstream
-            .iter()
-            .map(|m| {
-                let fns: Vec<String> = m.tools.iter().map(|(_, t)| t.fn_impl(&m.name)).collect();
-
-                format!(
-                    "{docstring}
-namespace {namespace} {{
-  {fns}
-}}",
-                    docstring = generate_docstring(&m.description),
-                    namespace = &m.namespace,
-                    fns = fns.join("\n\n")
-                )
-            })
-            .collect::<Vec<String>>()
-            .join("\n\n");
-
-        let to_execute = format!(
-            "
-{registrations}
-
-{namespaces}
-
-{code}
-
-export default await run();"
-        );
-
-        debug!("Executing code in sandbox");
-
-        let allowed_hosts = self.allowed_hosts.clone();
-        let code_to_execute = to_execute.clone();
-
-        // Capture current tracing context to propagate to spawned thread
-        let current_span = tracing::Span::current();
-
-        let result = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
-            // Enter the captured span context in the new thread
-            let _guard = current_span.enter();
-
-            // Create a new current-thread runtime for Deno ops that use deno_unsync
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
-
-            rt.block_on(async {
-                deno_executor::execute(&code_to_execute, Some(allowed_hosts))
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-            })
-        })
-        .await
-        .map_err(|e| {
-            error!("Task join failed: {e}");
-            McpError::internal_error(format!("Task join failed: {e}"), None)
-        })?
-        .map_err(|e| {
-            error!("Sandbox execution error: {e}");
+        let result = self.client.execute(&code).await.map_err(|e| {
+            error!("Execution failed: {e}");
             McpError::internal_error(format!("Execution failed: {e}"), None)
         })?;
 
@@ -325,9 +209,12 @@ pub(crate) struct ExecuteInput {
 
 impl ServerHandler for PtcxTools {
     fn get_info(&self) -> ServerInfo {
+        let config = self.config();
+        let upstream = self.upstream();
+
         let default_description = format!(
             "This server provides tools to explore SDK functions and execute SDK scripts for the following services: {}",
-            self.upstream
+            upstream
                 .iter()
                 .map(|m| m.name.as_str())
                 .collect::<Vec<&str>>()
@@ -338,17 +225,12 @@ impl ServerHandler for PtcxTools {
             protocol_version: ProtocolVersion::V_2024_11_05,
             capabilities: ServerCapabilities::builder().enable_tools().build(),
             server_info: Implementation {
-                name: self.config.name.clone(),
-                title: Some(self.config.name.clone()),
-                version: self.config.version.clone(),
+                name: config.name.clone(),
+                title: Some(config.name.clone()),
+                version: config.version.clone(),
                 ..Default::default()
             },
-            instructions: Some(
-                self.config
-                    .description
-                    .clone()
-                    .unwrap_or(default_description),
-            ),
+            instructions: Some(config.description.clone().unwrap_or(default_description)),
         }
     }
 

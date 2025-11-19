@@ -1,0 +1,33 @@
+[package]
+name = "pctx_lib"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+repository = "https://github.com/portofcontext/pctx"
+description = "Core library for Port of Context - MCP client SDK"
+keywords = ["mcp", "ai", "agents", "sdk"]
+
+[dependencies]
+# Local crates
+deno_executor = { path = "../deno_executor" }
+pctx_config = { path = "../pctx_config" }
+codegen = { path = "../codegen" }
+
+# MCP client (not server)
+rmcp = { version = "0.8.0", features = ["client"] }
+
+# Core dependencies
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+indexmap = { version = "2", features = ["serde"] }
+url = { version = "2", features = ["serde"] }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio-test = "0.4"
+
+[lints]
+workspace = true

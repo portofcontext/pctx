@@ -1,9 +1,10 @@
 use anyhow::Result;
 use clap::Parser;
 use pctx_config::Config;
+use pctx_lib::UpstreamMcp;
 use tracing::{debug, info, warn};
 
-use crate::mcp::{PctxMcp, upstream::UpstreamMcp};
+use crate::mcp::PctxMcp;
 
 #[derive(Debug, Clone, Parser)]
 pub struct StartCmd {
