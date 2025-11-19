@@ -19,13 +19,12 @@ anthropic = Anthropic(api_key="...")
 # Initialize Pctx with your MCP servers (from config file)
 pctx = Pctx.from_config("pctx.json")
 
-# Or pass config directly
+# Or pass config directly (allowed hosts are auto-derived from server URLs)
 pctx = Pctx(
     servers=[
         {"name": "banking", "url": "http://localhost:3000"},
         {"name": "crm", "url": "http://localhost:3001"},
-    ],
-    allowed_hosts=["localhost:3000", "localhost:3001"]
+    ]
 )
 
 # Use with Anthropic's extended thinking / code mode
@@ -137,23 +136,14 @@ class Functions:
 class Pctx:
     """Main PCTX client for MCP tool execution"""
 
-    def __init__(
-        self,
-        servers: list[dict],
-        allowed_hosts: list[str] | None = None,
-        name: str = "pctx",
-        version: str = "0.1.0",
-        description: str | None = None
-    ):
+    def __init__(self, servers: list[dict]):
         """
         Initialize with config object.
 
         Args:
             servers: List of server configs with 'name' and 'url' keys
-            allowed_hosts: Optional list of hosts for network access control
-            name: Optional name for this PCTX instance
-            version: Optional version string
-            description: Optional description
+                    Allowed hosts for network access are automatically derived
+                    from the server URLs.
         """
         pass
 

@@ -19,11 +19,9 @@
 //! # async fn example() -> anyhow::Result<()> {
 //! // Create configuration
 //! let config = SdkConfig {
-//!     name: "my-pctx".to_string(),
-//!     version: "0.1.0".to_string(),
-//!     description: None,
-//!     servers: vec![],
-//!     allowed_hosts: Some(vec!["example.com".to_string()]),
+//!     servers: vec![
+//!         // ServerConfig { name: "my-server", url: ... }
+//!     ],
 //! };
 //!
 //! // Create client

@@ -22,30 +22,22 @@ The `pctx_lib` crate now uses a simplified `SdkConfig` for language bindings, se
 
 ```rust
 pub struct SdkConfig {
-    /// Name of the PCTX instance (defaults to "pctx")
-    pub name: String,
-
-    /// Version (defaults to "0.1.0")
-    pub version: String,
-
-    /// Description of what this instance does
-    pub description: Option<String>,
-
     /// Upstream MCP server configurations
     pub servers: Vec<ServerConfig>,
-
-    /// Optional list of allowed hosts for network access control
-    pub allowed_hosts: Option<Vec<String>>,
 }
 ```
 
+**Network Access**: Allowed hosts are automatically derived from server URLs via the `allowed_hosts()` method. There's no need to specify them separately.
+
 ## What's Excluded from SdkConfig
 
-The following are **not** exposed in `SdkConfig` because they're CLI-specific:
+The following are **not** exposed in `SdkConfig` because they're CLI or server-specific:
 
+- ❌ **Name/Version/Description** - Not relevant for SDK usage (these are server metadata)
 - ❌ **Logger configuration** - SDK users control logging through their own frameworks
 - ❌ **Telemetry configuration** - SDK users handle metrics in their own systems
 - ❌ **File path tracking** - Not relevant when used as a library
+- ❌ **Allowed hosts** - Automatically derived from server URLs
 - ❌ **CLI-specific defaults** - Each SDK has its own idiomatic defaults
 
 ## Benefits
@@ -74,9 +66,9 @@ let cli_config: CliConfig = sdk_config.into();
 pctx = Pctx(
     servers=[
         {"name": "banking", "url": "http://localhost:3000"},
-    ],
-    allowed_hosts=["localhost:3000"]
+    ]
 )
+# Allowed hosts automatically set to: ["localhost:3000"]
 ```
 
 ### TypeScript SDK Config
@@ -84,24 +76,23 @@ pctx = Pctx(
 const pctx = new Pctx({
   servers: [
     { name: 'banking', url: 'http://localhost:3000' }
-  ],
-  allowedHosts: ['localhost:3000']
+  ]
 });
+// Allowed hosts automatically set to: ["localhost:3000"]
 ```
 
 ### JSON Config File
 ```json
 {
-  "name": "my-agent",
   "servers": [
     {
       "name": "banking",
       "url": "http://localhost:3000"
     }
-  ],
-  "allowed_hosts": ["localhost:3000"]
+  ]
 }
 ```
+Note: Allowed hosts are derived from server URLs automatically.
 
 ## Implementation Notes
 

@@ -18,12 +18,12 @@
 import { Pctx } from '@pctx/sdk';
 
 // Initialize with config (auto-connects to all servers)
+// Allowed hosts are automatically derived from server URLs
 const client = new Pctx({
   servers: [
     { name: 'banking', url: 'http://localhost:3000' },
     { name: 'crm', url: 'http://localhost:3001' },
-  ],
-  allowedHosts: ['localhost:3000', 'localhost:3001']
+  ]
 });
 
 // Or load from config file
@@ -71,14 +71,7 @@ for (const server of client.servers) {
 export interface PctxConfig {
   /** List of MCP servers to connect to */
   servers: ServerConfig[];
-  /** Optional list of allowed hosts for network access control */
-  allowedHosts?: string[];
-  /** Optional name for this PCTX instance (defaults to "pctx") */
-  name?: string;
-  /** Optional version string (defaults to "0.1.0") */
-  version?: string;
-  /** Optional description of what this instance does */
-  description?: string;
+  /** Note: Allowed hosts are automatically derived from server URLs */
 }
 
 export interface ServerConfig {
