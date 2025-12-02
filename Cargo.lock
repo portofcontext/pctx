@@ -6940,7 +6940,6 @@ dependencies = [
  "deno_core",
  "futures",
  "once_cell",
- "rust_js_sync_codegen",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
@@ -7946,10 +7945,6 @@ dependencies = [
  "sha2",
  "walkdir",
 ]
-
-[[package]]
-name = "rust_js_sync_codegen"
-version = "0.1.0"
 
 [[package]]
 name = "rustc-demangle"

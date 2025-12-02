@@ -24,7 +24,6 @@ deno_core = { version = "0.363.0", features = ["include_icu_data"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
-rust_js_sync_codegen = { path = "../rust_js_sync_codegen" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
