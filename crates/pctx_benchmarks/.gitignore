@@ -1,0 +1,5 @@
+# Downloaded benchmark data
+data/
+
+# Criterion benchmark results
+target/

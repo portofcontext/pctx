@@ -106,7 +106,5 @@ impl StartCmd {
 
             println!("\n{banner}\n");
         }
-
-        info!("PCTX Agent Server listening at {rest_url}...");
     }
 }

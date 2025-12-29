@@ -87,7 +87,7 @@ pub async fn start_server<B: PctxSessionBackend>(
     let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
-    info!("🚀 PCTX Agent Server listening on http://{addr}");
+    info!("   PCTX Agent Server listening on http://{addr}");
     info!("   OpenAPI documentation: http://{addr}/swagger-ui/");
     info!("");
     info!("Use REST API to register tools and MCP servers dynamically.");

@@ -111,7 +111,10 @@ impl CodeMode {
         callback_registry: Option<CallbackRegistry>,
     ) -> Result<ExecuteOutput> {
         let registry = callback_registry.unwrap_or_default();
+
         // Format for logging only
+        // NOTE: The Biome formatter may mangle template literals in the formatted output,
+        // but this is only used for debug logging. The original `code` is what gets executed.
         let formatted_code = codegen::format::format_ts(&code);
 
         debug!(
