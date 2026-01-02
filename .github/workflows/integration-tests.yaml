@@ -1,0 +1,106 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.toml"
+      - "crates/**"
+      - "pctx-py/**"
+      - ".github/workflows/integration-tests.yaml"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Install build dependencies
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libclang-dev libc6-dev
+
+      # Set up Rust
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: false
+
+      # Build and install pctx server
+      - name: Build pctx server
+        run: cargo build --release --bin pctx
+
+      # Set up Python
+      - uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      # Install uv
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      # Install pctx-py dependencies
+      - name: Install pctx-py dependencies
+        working-directory: pctx-py
+        run: uv sync --all-extras --dev
+
+      # Start pctx server in background
+      - name: Start pctx server
+        run: |
+          # Start server in background with no banner
+          ./target/release/pctx start --no-banner > pctx-server.log 2>&1 &
+          echo $! > pctx-server.pid
+          # Wait for server to be ready
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/health > /dev/null 2>&1; then
+              echo "Server is ready"
+              break
+            fi
+            echo "Waiting for server to start... ($i/30)"
+            sleep 1
+          done
+          # Verify server is running
+          if ! curl -f http://localhost:8080/health; then
+            echo "Server failed to start. Server log:"
+            cat pctx-server.log
+            exit 1
+          fi
+
+      # Run integration tests
+      - name: Run integration tests
+        working-directory: pctx-py
+        run: uv run pytest --integration -v
+
+      # Stop pctx server and show logs on failure
+      - name: Stop pctx server
+        if: always()
+        run: |
+          # Kill pctx server
+          if [ -f pctx-server.pid ]; then
+            kill $(cat pctx-server.pid) 2>/dev/null || true
+          fi
+          # Kill any remaining processes on port 8080
+          lsof -ti:8080 | xargs kill -9 2>/dev/null || true
+          # Kill any remaining HTTP MCP test servers
+          lsof -ti:8765 | xargs kill -9 2>/dev/null || true
+
+      # Show server logs on failure
+      - name: Show server logs
+        if: failure()
+        run: |
+          if [ -f pctx-server.log ]; then
+            echo "=== PCTX Server Logs ==="
+            cat pctx-server.log
+          fi

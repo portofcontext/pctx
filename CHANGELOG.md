@@ -9,15 +9,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
--
-
 ### Changed
-
--
 
 ### Fixed
 
--
+## [v0.4.0] - 2025-12-31
+
+### Added
+
+- Stdio MCP server support for upstreams via `pctx.json` (`command`, `args`, `env`).
+- `pctx mcp add` now supports stdio MCP servers via `--command`, `--arg`, and `--env` flags.
+- `pctx mcp start --stdio` to serve the MCP interface over stdio.
+- Logger configuration now supports optional `file` field to write logs to a file.
+
+### Changed
+
+- `pctx mcp add` now accepts either a URL (for HTTP servers) or `--command` (for stdio servers), making it a unified interface for adding all types of MCP servers.
+- Logger output behavior is now mode-aware to ensure stdio compatibility:
+  - `--stdio` mode without `logger.file`: logging is automatically disabled to keep stdout/stderr clean for JSON-RPC communication
+  - `--stdio` mode with `logger.file`: logs write to the specified file
+  - HTTP mode: logs write to stdout (default behavior)
+
+### Fixed
+
+- Improved error handling for stdio config and MCP initialization failures.
 
 ## [v0.3.0] - 2025-12-16
 

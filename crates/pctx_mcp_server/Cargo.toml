@@ -17,6 +17,7 @@ codegen = { path = "../codegen" }
 rmcp = { workspace = true, features = [
     "server",
     "transport-streamable-http-server",
+    "transport-io",
     "macros",
     "schemars",
 ] }

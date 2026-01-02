@@ -281,14 +281,19 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
     let mut failed = Vec::new();
 
     for server in &request.servers {
+        let server_name = match server {
+            McpServerConfig::Http { name, .. } => name,
+            McpServerConfig::Stdio { name, .. } => name,
+        };
+
         match register_mcp_server(&mut code_mode, server).await {
             Ok(()) => {
                 registered += 1;
-                debug!("Successfully registered MCP server: {}", server.name);
+                debug!("Successfully registered MCP server: {}", server_name);
             }
             Err(e) => {
-                error!("Failed to register MCP server {}: {}", server.name, e);
-                failed.push(server.name.clone());
+                error!("Failed to register MCP server {}: {}", server_name, e);
+                failed.push(server_name.clone());
             }
         }
     }
@@ -307,17 +312,44 @@ async fn register_mcp_server(
     code_mode: &mut CodeMode,
     server: &McpServerConfig,
 ) -> Result<(), String> {
-    // Parse and validate URL
-    let url = url::Url::parse(&server.url).map_err(|e| format!("Invalid URL: {e}"))?;
+    let server_config = match server {
+        McpServerConfig::Http { name, url, auth } => {
+            // Parse and validate URL
+            let parsed_url = url::Url::parse(url).map_err(|e| format!("Invalid URL: {e}"))?;
 
-    // Create ServerConfig
-    let mut server_config = pctx_config::server::ServerConfig::new(server.name.clone(), url);
+            // Create HTTP ServerConfig
+            let mut server_config =
+                pctx_config::server::ServerConfig::new(name.clone(), parsed_url);
 
-    // Add auth if provided
-    if let Some(auth) = &server.auth {
-        server_config.auth = serde_json::from_value(auth.clone())
-            .map_err(|e| format!("Invalid auth config: {e}"))?;
-    }
+            // Add auth if provided
+            if let Some(auth_value) = auth {
+                let auth = serde_json::from_value(auth_value.clone())
+                    .map_err(|e| format!("Invalid auth config: {e}"))?;
+                server_config.set_auth(Some(auth));
+            }
+
+            server_config
+        }
+        McpServerConfig::Stdio {
+            name,
+            command,
+            args,
+            env,
+        } => {
+            // Create stdio ServerConfig
+            pctx_config::server::ServerConfig::new_stdio(
+                name.clone(),
+                command.clone(),
+                args.clone(),
+                env.clone(),
+            )
+        }
+    };
+
+    let server_name = match server {
+        McpServerConfig::Http { name, .. } => name,
+        McpServerConfig::Stdio { name, .. } => name,
+    };
 
     code_mode
         .add_server(&server_config)
@@ -326,11 +358,11 @@ async fn register_mcp_server(
 
     info!(
         "Successfully registered MCP server '{}' with {} tools",
-        server.name,
+        server_name,
         code_mode
             .tool_sets
             .iter()
-            .find(|ts| ts.name == server.name)
+            .find(|ts| ts.name == *server_name)
             .map_or(0, |ts| ts.tools.len())
     );
 

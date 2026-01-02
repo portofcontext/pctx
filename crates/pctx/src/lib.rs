@@ -3,6 +3,8 @@ pub mod utils;
 
 use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
+use serde_json::json;
+use std::io::{self, Write};
 
 use crate::utils::{logger::init_cli_logger, telemetry::init_telemetry};
 use pctx_config::Config;
@@ -61,7 +63,8 @@ impl Cli {
             Commands::Mcp(mcp_cmd) => self.handle_mcp(mcp_cmd).await,
             Commands::Start(start_cmd) => {
                 let cfg = Config::load(&self.config).unwrap_or_default();
-                init_telemetry(&cfg, None).await?;
+                // Session server uses stdout for logs (not stdio protocol)
+                init_telemetry(&cfg, None, false).await?;
 
                 start_cmd.handle().await
             }
@@ -71,10 +74,18 @@ impl Cli {
     async fn handle_mcp(&self, cmd: &McpCommands) -> anyhow::Result<()> {
         let cfg = Config::load(&self.config);
 
+        if let (McpCommands::Start(start_cmd), Err(err)) = (cmd, &cfg)
+            && start_cmd.stdio
+        {
+            return Self::handle_stdio_config_error(err);
+        }
+
         if self.cli_logger() {
             init_cli_logger(self.verbose, self.quiet);
         } else if let Ok(c) = &cfg {
-            init_telemetry(c, self.json_l()).await?;
+            // Use stderr for stdio mode to keep stdout clean for JSON-RPC
+            let use_stderr = matches!(cmd, McpCommands::Start(start_cmd) if start_cmd.stdio);
+            init_telemetry(c, self.json_l(), use_stderr).await?;
         }
 
         let _updated_cfg = match cmd {
@@ -87,6 +98,43 @@ impl Cli {
         };
 
         Ok(())
+    }
+
+    fn handle_stdio_config_error(err: &anyhow::Error) -> anyhow::Result<()> {
+        let response = build_stdio_error_response(err.to_string().as_str());
+        let mut stdout = io::stdout().lock();
+        writeln!(stdout, "{response}")?;
+        stdout.flush()?;
+
+        // Intentionally return the error so stderr includes a human-readable message.
+        Err(anyhow::anyhow!(err.to_string()))
+    }
+}
+
+fn build_stdio_error_response(message: &str) -> String {
+    let response = json!({
+        "jsonrpc": "2.0",
+        "id": serde_json::Value::Null,
+        "error": {
+            "code": STDIO_CONFIG_ERROR_CODE,
+            "message": message,
+        }
+    });
+
+    response.to_string()
+}
+
+const STDIO_CONFIG_ERROR_CODE: i32 = -32000;
+
+#[cfg(test)]
+mod tests {
+    use super::build_stdio_error_response;
+
+    #[test]
+    fn stdio_error_response_defaults_id_to_null() {
+        let response = build_stdio_error_response("missing config");
+
+        assert!(response.contains(r#""id":null"#));
     }
 }
 
@@ -114,8 +162,10 @@ pub enum McpCommands {
     #[command(long_about = "Lists configured MCP servers and tests the connection to each.")]
     List(commands::mcp::ListCmd),
 
-    /// Add an MCP server to configuration
-    #[command(long_about = "Add a new MCP server to the configuration.")]
+    /// Add an MCP server to configuration (HTTP or stdio)
+    #[command(
+        long_about = "Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-based servers via the --command flag."
+    )]
     Add(commands::mcp::AddCmd),
 
     /// Remove an MCP server from configuration

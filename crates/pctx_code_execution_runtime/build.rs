@@ -62,8 +62,9 @@ extension!(
 );
 
 fn main() {
-    // Tell cargo to rerun this build script if runtime.js changes
+    // Tell cargo to rerun this build script if runtime.js or build.rs changes
     println!("cargo:rerun-if-changed=src/runtime.js");
+    println!("cargo:rerun-if-changed=build.rs");
 
     // Get the output directory
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());

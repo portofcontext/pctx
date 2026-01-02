@@ -55,10 +55,18 @@ pub struct DevCmd {
     /// Path to JSONL log file
     #[arg(long, default_value = "pctx-dev.jsonl")]
     pub log_file: Utf8PathBuf,
+
+    /// Serve MCP over stdio instead of HTTP
+    #[arg(long)]
+    pub stdio: bool,
 }
 
 impl DevCmd {
     pub(crate) async fn handle(&self, cfg: Config) -> Result<Config> {
+        if self.stdio {
+            anyhow::bail!("Dev mode does not support stdio. Use `pctx mcp start --stdio` instead.");
+        }
+
         // Set up terminal
         enable_raw_mode()?;
         let mut stdout = std::io::stdout();
@@ -433,6 +441,24 @@ fn run_ui(
 
 // Spawns the PctxMcp server task
 // Returns (server_handle, shutdown_sender)
+async fn load_code_mode_for_dev(cfg: &Config) -> Result<pctx_code_mode::CodeMode> {
+    if cfg.servers.is_empty() {
+        tracing::warn!(
+            "No MCP servers configured, add servers with 'pctx add <name> <url>' and PCTX Dev Mode will refresh"
+        );
+        Ok(pctx_code_mode::CodeMode::default())
+    } else {
+        let loaded = StartCmd::load_code_mode(cfg).await?;
+        if loaded.tool_sets.is_empty() {
+            tracing::warn!(
+                "Failed loading all configured MCP servers, add servers with 'pctx add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
+                cfg.path()
+            );
+        }
+        Ok(loaded)
+    }
+}
+
 fn spawn_server_task(
     cfg: Config,
     tx: mpsc::UnboundedSender<AppMessage>,
@@ -447,30 +473,15 @@ fn spawn_server_task(
     let handle = tokio::spawn(async move {
         tx.send(AppMessage::ServerStarting).ok();
 
-        let tools = if cfg.servers.is_empty() {
-            tracing::warn!(
-                "No MCP servers configured, add servers with 'pctx add <name> <url>' and PCTX Dev Mode will refresh"
-            );
-            pctx_code_mode::CodeMode::default()
-        } else {
-            let loaded = match StartCmd::load_code_mode(&cfg).await {
-                Ok(t) => t,
-                Err(e) => {
-                    tx.send(AppMessage::ServerFailed(format!(
-                        "Failed loading upstream MCPs: {e:?}"
-                    )))
-                    .ok();
-                    pctx_code_mode::CodeMode::default()
-                }
-            };
-
-            if loaded.tool_sets.is_empty() {
-                tracing::warn!(
-                    "Failed loading all configured MCP servers, add servers with 'pctx add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
-                    cfg.path()
-                );
+        let tools = match load_code_mode_for_dev(&cfg).await {
+            Ok(loaded) => loaded,
+            Err(err) => {
+                tx.send(AppMessage::ServerFailed(format!(
+                    "Failed loading upstream MCPs: {err:?}"
+                )))
+                .ok();
+                pctx_code_mode::CodeMode::default()
             }
-            loaded
         };
 
         // Run server with shutdown signal
@@ -558,11 +569,10 @@ mod tests {
 
         CodeMode {
             tool_sets: vec![ToolSet::new("banking", "Banking MCP Server", tools)],
-            servers: vec![ServerConfig {
-                name: "banking".into(),
-                url: "http://localhost:8080/mcp".parse().unwrap(),
-                auth: None,
-            }],
+            servers: vec![ServerConfig::new(
+                "banking".into(),
+                "http://localhost:8080/mcp".parse().unwrap(),
+            )],
             callbacks: vec![],
         }
     }

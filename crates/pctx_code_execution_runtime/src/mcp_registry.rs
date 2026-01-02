@@ -3,6 +3,7 @@ use pctx_config::server::ServerConfig;
 use rmcp::model::{CallToolRequestParam, JsonObject, RawContent};
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
+use tracing::warn;
 
 /// Singleton registry for MCP server configurations
 #[derive(Clone)]
@@ -99,14 +100,28 @@ pub(crate) async fn call_mcp_tool(
         ))
     })?;
 
-    let client = mcp_cfg.connect().await?;
+    let client = match mcp_cfg.connect().await {
+        Ok(client) => client,
+        Err(err) => {
+            warn!(
+                server = %server_name,
+                error = %err,
+                "Could not connect to MCP: initialization failure"
+            );
+            return Err(McpError::Connection(err.to_string()));
+        }
+    };
     let tool_result = client
         .call_tool(CallToolRequestParam {
             name: tool_name.to_string().into(),
             arguments: args,
         })
         .await
-        .unwrap();
+        .map_err(|e| {
+            McpError::ToolCall(format!(
+                "Tool call \"{server_name}.{tool_name}\" failed: {e}"
+            ))
+        })?;
     let _ = client.cancel().await;
 
     // Check if the tool call resulted in an error

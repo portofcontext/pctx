@@ -13,16 +13,14 @@ export default true;
 
     // Attempt to register the same server twice
     let mcp_configs = vec![
-        ServerConfig {
-            name: "duplicate-server".to_string(),
-            url: Url::parse("http://localhost:3000").unwrap(),
-            auth: None,
-        },
-        ServerConfig {
-            name: "duplicate-server".to_string(),
-            url: Url::parse("http://localhost:3001").unwrap(),
-            auth: None,
-        },
+        ServerConfig::new(
+            "duplicate-server".to_string(),
+            Url::parse("http://localhost:3000").unwrap(),
+        ),
+        ServerConfig::new(
+            "duplicate-server".to_string(),
+            Url::parse("http://localhost:3001").unwrap(),
+        ),
     ];
 
     let result = execute(code, ExecuteOptions::new().with_servers(mcp_configs))

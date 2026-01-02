@@ -1,3 +1,4 @@
+use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -10,6 +11,11 @@ pub struct LoggerConfig {
     pub format: LoggerFormat,
     #[serde(default = "crate::defaults::default_true")]
     pub colors: bool,
+    /// Optional file path for log output. If not specified:
+    /// - stdio mode: logging is disabled (keeps stdout/stderr clean for JSON-RPC)
+    /// - other modes: logs to stdout
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub file: Option<Utf8PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -30,6 +36,7 @@ impl Default for LoggerConfig {
             level: LogLevel::Info,
             format: LoggerFormat::Compact,
             colors: true,
+            file: None,
         }
     }
 }

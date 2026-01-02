@@ -75,16 +75,80 @@ impl InitCmd {
                 let name = inquire::Text::new("MCP name:")
                     .with_validator(inquire::required!())
                     .prompt()?;
-                let url = inquire::Text::new("MCP URL:")
-                    .with_validator(prompts::validators::url)
+
+                let transport_type = inquire::Select::new("Transport type:", vec!["HTTP", "stdio"])
+                    .with_help_message(
+                        "HTTP for network-based servers, stdio for local command-based servers",
+                    )
                     .prompt()?;
-                let add_cmd = AddCmd {
-                    name: name.clone(),
-                    url: url.parse()?,
-                    force: false,
-                    bearer: None,
-                    header: None,
+
+                let add_cmd = if transport_type == "HTTP" {
+                    let url = inquire::Text::new("MCP URL:")
+                        .with_validator(prompts::validators::url)
+                        .prompt()?;
+                    AddCmd {
+                        name: name.clone(),
+                        url: Some(url.parse()?),
+                        command: None,
+                        args: vec![],
+                        env: vec![],
+                        force: false,
+                        bearer: None,
+                        header: None,
+                    }
+                } else {
+                    // stdio
+                    let command = inquire::Text::new("Command:")
+                        .with_validator(inquire::required!())
+                        .with_help_message("e.g., npx, node, python, etc.")
+                        .prompt()?;
+
+                    let args_input =
+                        inquire::Text::new(&format!("Arguments {}:", fmt_dimmed("(optional)")))
+                            .with_help_message("Space-separated arguments for the command")
+                            .prompt_skippable()?;
+
+                    let args = args_input
+                        .map(|s| shlex::split(&s).unwrap_or_default())
+                        .unwrap_or_default();
+
+                    let add_env = inquire::Confirm::new("Add environment variables?")
+                        .with_default(false)
+                        .prompt()?;
+
+                    let mut env = vec![];
+                    if add_env {
+                        loop {
+                            let key = inquire::Text::new("Environment variable name:")
+                                .with_validator(inquire::required!())
+                                .prompt()?;
+                            let value = inquire::Text::new(&format!("Value for {key}:"))
+                                .with_validator(inquire::required!())
+                                .prompt()?;
+                            env.push((key, value));
+
+                            let add_more =
+                                inquire::Confirm::new("Add another environment variable?")
+                                    .with_default(false)
+                                    .prompt()?;
+                            if !add_more {
+                                break;
+                            }
+                        }
+                    }
+
+                    AddCmd {
+                        name: name.clone(),
+                        url: None,
+                        command: Some(command),
+                        args,
+                        env,
+                        force: false,
+                        bearer: None,
+                        header: None,
+                    }
                 };
+
                 match add_cmd.handle(cfg.clone(), false).await {
                     Ok(updated) => {
                         cfg = updated;

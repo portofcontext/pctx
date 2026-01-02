@@ -20,6 +20,7 @@ anyhow = "1.0"
 deno_error = "0.7"
 url = "2.5"
 rmcp = { workspace = true }
+tracing = { workspace = true }
 
 [build-dependencies]
 pctx_config = { path = "../pctx_config" }

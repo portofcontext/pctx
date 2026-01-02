@@ -37,13 +37,48 @@ This creates a basic `pctx.json` and prompts you to add upstream MCP servers.
 
 ### Server Configuration
 
-Each server in the `servers` array has the following fields:
+Each server in the `servers` array is either an HTTP server or a stdio server.
+
+**HTTP server fields:**
 
 | Field  | Type         | Required | Description                                    |
 | ------ | ------------ | -------- | ---------------------------------------------- |
 | `name` | `string`     | Yes      | Unique identifier used as TypeScript namespace |
 | `url`  | `string`     | Yes      | HTTP(S) URL of the MCP server endpoint         |
 | `auth` | `AuthConfig` | No       | Authentication configuration (see below)       |
+
+**Stdio server fields:**
+
+| Field     | Type                | Required | Description                                                                                             |
+| --------- | ------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| `name`    | `string`            | Yes      | Unique identifier used as TypeScript namespace                                                          |
+| `command` | `string`            | Yes      | Command to execute the MCP server. Can be a single command or a full command line with arguments        |
+| `args`    | `array[string]`     | No       | Arguments passed to the command. If omitted and `command` contains spaces, it will be shell-parsed      |
+| `env`     | `map[string]string` | No       | Environment variables for the process                                                                   |
+
+**Examples (stdio):**
+
+With explicit args array:
+```json
+{
+  "name": "local_tools",
+  "command": "node",
+  "args": ["./dist/server.js"],
+  "env": {
+    "NODE_ENV": "development"
+  }
+}
+```
+
+With command-line string (auto-parsed):
+```json
+{
+  "name": "memory",
+  "command": "npx -y @modelcontextprotocol/server-memory"
+}
+```
+
+The second format is convenient for simple commands - the full command line is automatically parsed into command and arguments.
 
 #### Server Names as Namespaces
 
@@ -108,8 +143,9 @@ Use this for API key authentication or any custom header requirements.
 
 ## Logger Configuration
 
-The optional `logger` field controls logging behavior for the pctx server MPC server. This configuration only applies
-to `pctx start`, other commands like `pctx add` use the CLI verbosity controls (`-v/-vv/-q`).
+The optional `logger` field controls logging behavior for the pctx server MPC server. This configuration applies
+to `pctx start` and MCP server modes; other commands like `pctx add` use the CLI verbosity controls (`-v/-vv/-q`).
+Logs always write to stderr to keep stdout clean for JSON-RPC traffic; stdout is reserved for JSON-RPC responses.
 
 | Field     | Type           | Required | Default     | Description                                        |
 | --------- | -------------- | -------- | ----------- | -------------------------------------------------- |
@@ -581,6 +617,18 @@ You can use plain text values, but this is not recommended for production:
     {
       "name": "public",
       "url": "https://public-mcp.example.com"
+    },
+    {
+      "name": "memory",
+      "command": "npx -y @modelcontextprotocol/server-memory"
+    },
+    {
+      "name": "local_tools",
+      "command": "node",
+      "args": ["./dist/server.js"],
+      "env": {
+        "NODE_ENV": "production"
+      }
     }
   ]
 }
@@ -608,6 +656,12 @@ The server returned 401/403. Add authentication:
 pctx add my-server https://mcp.example.com \
   --bearer '${env:TOKEN}'
 ```
+
+### Missing config in stdio mode
+
+When starting with `pctx mcp start --stdio`, a missing or unreadable config file
+returns a JSON-RPC error on stdout and then exits. Ensure `pctx.json` exists or
+pass the correct path with `-c`.
 
 ### "Environment variable not found" Error
 
@@ -647,3 +701,33 @@ aws secretsmanager get-secret-value --secret-id my-token
 # Check authentication for the tool
 aws sts get-caller-identity
 ```
+
+### Stdio Server Command Parsing
+
+When configuring stdio servers, you have two options:
+
+**Option 1: Shell-style command string (auto-parsed)**
+```json
+{
+  "name": "memory",
+  "command": "npx -y @modelcontextprotocol/server-memory"
+}
+```
+
+The command is automatically parsed into executable and arguments using shell-style parsing.
+
+**Option 2: Explicit command and args**
+```json
+{
+  "name": "memory",
+  "command": "npx",
+  "args": ["-y", "@modelcontextprotocol/server-memory"]
+}
+```
+
+Use explicit args when:
+- Your command has complex quoting requirements
+- You want to be explicit about argument boundaries
+- You're programmatically generating the configuration
+
+**Note:** If both `command` contains spaces AND `args` is provided, the `args` array takes precedence and no parsing occurs.

@@ -49,6 +49,14 @@ class Pctx:
     ):
         """
         Initialize the PCTX client.
+
+        Args:
+            tools: List of local Python tools to register
+            servers: List of MCP servers to register. Each server can be either:
+                - HTTP server: {"name": "...", "url": "...", "auth": {...}}
+                - stdio server: {"name": "...", "command": "...", "args": [...], "env": {...}}
+            url: PCTX server URL (default: http://localhost:8080)
+            execute_timeout: Timeout for code execution in seconds (default: 30.0)
         """
 
         # Parse and normalize the URL

@@ -64,61 +64,8 @@ update_cargo_version() {
     print_success "Updated version in Cargo.toml to $new_version"
 }
 
-# Function to collect changelog entries
-collect_entries() {
-    local section=$1
-    local entries=()
-
-    print_info "Enter ${section} items (one per line, empty line to finish):" >&2
-
-    while true; do
-        read -r -p "  - " entry
-        if [[ -z "$entry" ]]; then
-            break
-        fi
-        entries+=("$entry")
-    done
-
-    # Return entries as a newline-separated string
-    if [[ ${#entries[@]} -gt 0 ]]; then
-        printf "%s\n" "${entries[@]}"
-    fi
-}
-
-# Function to update changelog
-update_changelog() {
-    local new_version=$1
-    local added_entries=$2
-    local fixed_entries=$3
-    local date=$(date +%Y-%m-%d)
-
-    # Create new changelog entry
-    local new_entry="## [v${new_version}] - ${date}"$'\n'
-
-    # Add "Added" section if there are entries
-    if [[ -n "$added_entries" ]]; then
-        new_entry+=$'\n'"### Added"$'\n'$'\n'
-        while IFS= read -r line; do
-            if [[ -n "$line" ]]; then
-                new_entry+="- ${line}"$'\n'
-            fi
-        done <<< "$added_entries"
-    fi
-
-    # Add "Fixed" section if there are entries
-    if [[ -n "$fixed_entries" ]]; then
-        new_entry+=$'\n'"### Fixed"$'\n'$'\n'
-        while IFS= read -r line; do
-            if [[ -n "$line" ]]; then
-                new_entry+="- ${line}"$'\n'
-            fi
-        done <<< "$fixed_entries"
-    fi
-
-    # Add extra newline at the end
-    new_entry+=$'\n'
-
-    # Find the line number of "## [UNRELEASED]" and insert after its associated sections
+# Function to extract UNRELEASED section content from CHANGELOG
+extract_unreleased_content() {
     local unreleased_line=$(grep -n "^## \[UNRELEASED\]" "$CHANGELOG" | cut -d: -f1)
 
     if [[ -z "$unreleased_line" ]]; then
@@ -126,22 +73,70 @@ update_changelog() {
         exit 1
     fi
 
-    # Find the next version section or end of file
+    # Find the next version section
     local next_version_line=$(tail -n +$((unreleased_line + 1)) "$CHANGELOG" | grep -n "^## \[v" | head -n1 | cut -d: -f1)
 
     if [[ -n "$next_version_line" ]]; then
-        # Insert before the next version
-        local insert_line=$((unreleased_line + next_version_line))
+        local end_line=$((unreleased_line + next_version_line - 1))
+        # Extract content between UNRELEASED and next version
+        sed -n "$((unreleased_line + 1)),$((end_line))p" "$CHANGELOG"
     else
-        # Append to end
-        local insert_line=$(wc -l < "$CHANGELOG")
+        # Extract from UNRELEASED to end of file
+        tail -n +$((unreleased_line + 1)) "$CHANGELOG"
+    fi
+}
+
+# Function to update changelog
+update_changelog() {
+    local new_version=$1
+    local unreleased_content=$2
+    local date=$(date +%Y-%m-%d)
+
+    # Find the line number of "## [UNRELEASED]"
+    local unreleased_line=$(grep -n "^## \[UNRELEASED\]" "$CHANGELOG" | cut -d: -f1)
+
+    if [[ -z "$unreleased_line" ]]; then
+        print_error "Could not find UNRELEASED section in CHANGELOG.md"
+        exit 1
     fi
 
-    # Create a temp file with the new changelog
+    # Find the next version section
+    local next_version_line=$(tail -n +$((unreleased_line + 1)) "$CHANGELOG" | grep -n "^## \[v" | head -n1 | cut -d: -f1)
+
+    if [[ -n "$next_version_line" ]]; then
+        local end_line=$((unreleased_line + next_version_line - 1))
+    else
+        # If no next version, go to end of file
+        local end_line=$(wc -l < "$CHANGELOG")
+    fi
+
+    # Create new changelog with:
+    # 1. Content before UNRELEASED
+    # 2. Fresh UNRELEASED header
+    # 3. New version section with the old unreleased content
+    # 4. Rest of the changelog
     {
-        head -n $((insert_line - 1)) "$CHANGELOG"
-        echo "$new_entry"
-        tail -n +${insert_line} "$CHANGELOG"
+        # Keep everything before UNRELEASED line
+        head -n $((unreleased_line - 1)) "$CHANGELOG"
+
+        # Add fresh UNRELEASED section
+        echo "## [UNRELEASED] - YYYY-MM-DD"
+        echo ""
+        echo "### Added"
+        echo ""
+        echo "### Changed"
+        echo ""
+        echo "### Fixed"
+        echo ""
+
+        # Add new version section with the extracted content
+        echo "## [v${new_version}] - ${date}"
+        echo "$unreleased_content"
+
+        # Add rest of changelog (from next version onwards)
+        if [[ -n "$next_version_line" ]]; then
+            tail -n +$((unreleased_line + next_version_line)) "$CHANGELOG"
+        fi
     } > "${CHANGELOG}.tmp"
 
     mv "${CHANGELOG}.tmp" "$CHANGELOG"
@@ -183,53 +178,21 @@ main() {
     print_info "New version will be: ${NEW_VERSION}"
     echo ""
 
-    # Collect changelog entries
+    # Extract UNRELEASED section from CHANGELOG
     echo ""
-    print_info "=== Changelog Entries ==="
+    print_info "=== Extracting UNRELEASED changes from CHANGELOG.md ==="
     echo ""
-    echo "Now you'll add changelog entries for this release."
-    echo "Each section is optional - just press Enter on an empty line to skip."
-    echo ""
-
-    print_info "=== Added Entries ==="
-    echo "Document new features, functionality, or capabilities added in this release."
-    echo "Examples: 'Support for dark mode'"
-    echo ""
-    ADDED_ENTRIES=$(collect_entries "Added")
-
-    echo ""
-    print_info "=== Fixed Entries ==="
-    echo "Document bugs, issues, or problems that were resolved in this release."
-    echo "Examples: 'Memory leak in worker threads"
-    echo ""
-    FIXED_ENTRIES=$(collect_entries "Fixed")
-    echo ""
+    UNRELEASED_CONTENT=$(extract_unreleased_content)
 
     # Preview the changes
     print_info "=== Preview ==="
     echo ""
     echo "Version: ${CURRENT_VERSION} → ${NEW_VERSION}"
     echo ""
-
-    if [[ -n "$ADDED_ENTRIES" ]]; then
-        echo "Added:"
-        while IFS= read -r line; do
-            if [[ -n "$line" ]]; then
-                echo "  - ${line}"
-            fi
-        done <<< "$ADDED_ENTRIES"
-        echo ""
-    fi
-
-    if [[ -n "$FIXED_ENTRIES" ]]; then
-        echo "Fixed:"
-        while IFS= read -r line; do
-            if [[ -n "$line" ]]; then
-                echo "  - ${line}"
-            fi
-        done <<< "$FIXED_ENTRIES"
-        echo ""
-    fi
+    echo "Changelog content from UNRELEASED section:"
+    echo ""
+    echo "$UNRELEASED_CONTENT"
+    echo ""
 
     # Confirm
     read -r -p "Proceed with release? [y/N]: " confirm
@@ -247,7 +210,7 @@ main() {
     update_cargo_version "$NEW_VERSION"
 
     # Update CHANGELOG.md
-    update_changelog "$NEW_VERSION" "$ADDED_ENTRIES" "$FIXED_ENTRIES"
+    update_changelog "$NEW_VERSION" "$UNRELEASED_CONTENT"
 
     echo ""
     print_success "Release v${NEW_VERSION} prepared successfully!"
@@ -256,6 +219,8 @@ main() {
     echo "  1. Review the changes in Cargo.toml and CHANGELOG.md"
     echo "  2. Run 'cargo test' to ensure everything works"
     echo "  3. Commit and push the changes"
+    echo "  3. Dispatch release from GitHub Actions"
+    echo "  4. If the Python SDK needs releasing, bump pyproject.toml, run make test-python (uv.lock) use the GH action manual dispatch"
 
 }
 

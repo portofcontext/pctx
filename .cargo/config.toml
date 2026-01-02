@@ -1,3 +1,4 @@
+
 # Windows-specific linker configuration to avoid PDB errors
 [target.x86_64-pc-windows-msvc]
 # Use lld-link instead of link.exe to avoid PDB size limits (LNK1318)
@@ -7,13 +8,20 @@ linker = "rust-lld"
 # Use /DEBUG:NONE to completely disable PDB generation
 # /NODEFAULTLIB:libcmt to suppress LNK4098 warning
 rustflags = [
-    "-C", "incremental=off",
-    "-C", "debuginfo=0",
-    "-C", "codegen-units=256",
-    "-C", "link-arg=/DEBUG:NONE",
-    "-C", "link-arg=/NODEFAULTLIB:libcmt",
-    "-C", "link-arg=/INCREMENTAL:NO",
-    "-C", "link-arg=/OPT:NOREF",
+    "-C",
+    "incremental=off",
+    "-C",
+    "debuginfo=0",
+    "-C",
+    "codegen-units=256",
+    "-C",
+    "link-arg=/DEBUG:NONE",
+    "-C",
+    "link-arg=/NODEFAULTLIB:libcmt",
+    "-C",
+    "link-arg=/INCREMENTAL:NO",
+    "-C",
+    "link-arg=/OPT:NOREF",
 ]
 
 [alias]

@@ -82,20 +82,21 @@ Coming soon
 
 ## Unified MCP
 
-Use the unified MCP to run Code Mode with MCP servers and want to persist the authentication connections and you do not need to register local tools.
+Use the unified MCP to run Code Mode with MCP servers and want to persist the authentication connections and you do not need to use agent tools (non-mcp tools).
 
 ```bash
 # Initialize config for upstream mcp connections
 pctx mcp init
 
-# Connect to any MCP server
-pctx mcp add my-local-server http://localhost:3000/mcp
+# Add HTTP or stdio MCP servers
 pctx mcp add stripe https://mcp.stripe.com
+pctx mcp add memory --command "npx -y @modelcontextprotocol/server-memory"
 
-# Start the unified MCP server in dev mode
+# Start as HTTP server (dev mode with UI)
 pctx mcp dev
 
-# copy server url and connect to agents with --transport http
+# Or start as stdio MCP server
+pctx mcp start --stdio
 ```
 
 For complete CLI documentation, see [CLI.md](docs/CLI.md).
@@ -160,6 +161,11 @@ pctx-update
 npm upgrade -g @portofcontext/pctx
 
 ```
+
+## Develop
+
+- For core dev: install rust and jump into `crates/`
+- Client SDK dev: find the README in the SDK
 
 ## Learn More
 

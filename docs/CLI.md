@@ -76,7 +76,7 @@ MCP server commands (with pctx.json configuration)
 
 * `init` — Initialize pctx.json configuration file
 * `list` — List MCP servers and test connections
-* `add` — Add an MCP server to configuration
+* `add` — Add an MCP server to configuration (HTTP or stdio)
 * `remove` — Remove an MCP server from configuration
 * `start` — Start the PCTX MCP server
 * `dev` — Start the PCTX MCP server with terminal UI
@@ -105,21 +105,24 @@ Lists configured MCP servers and tests the connection to each.
 
 ## `pctx mcp add`
 
-Add a new MCP server to the configuration.
+Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-based servers via the --command flag.
 
-**Usage:** `pctx mcp add [OPTIONS] <NAME> <URL>`
+**Usage:** `pctx mcp add [OPTIONS] <NAME> [URL]`
 
 ###### **Arguments:**
 
 * `<NAME>` — Unique name for this server
-* `<URL>` — HTTP(S) URL of the MCP server endpoint
+* `<URL>` — HTTP(S) URL of the MCP server endpoint (conflicts with --command for stdio)
 
 ###### **Options:**
 
-* `-b`, `--bearer <BEARER>` — use bearer authentication to connect to MCP server using PCTX's secret string syntax.
+* `--command <COMMAND>` — Command to execute for stdio MCP server (conflicts with url)
+* `--arg <ARGS>` — Arguments to pass to the stdio command (repeat for multiple)
+* `--env <ENV>` — Environment variables in KEY=VALUE format (repeat for multiple)
+* `-b`, `--bearer <BEARER>` — use bearer authentication to connect to HTTP MCP server using PCTX's secret string syntax.
 
    e.g. `--bearer '${env:BEARER_TOKEN}'`
-* `-H`, `--header <HEADER>` — use custom headers to connect to MCP server using PCTX's secret string syntax. Many headers can be defined.
+* `-H`, `--header <HEADER>` — use custom headers to connect to HTTP MCP server using PCTX's secret string syntax. Many headers can be defined.
 
    e.g. `--headers 'x-api-key: ${keychain:API_KEY}'`
 * `-f`, `--force` — Overrides any existing server under the same name & skips testing connection to the MCP server
@@ -153,6 +156,7 @@ Start the PCTX MCP server (exposes /mcp endpoint).
 
   Default value: `127.0.0.1`
 * `--no-banner` — Don't show the server banner
+* `--stdio` — Serve MCP over stdio instead of HTTP
 
 
 
@@ -173,6 +177,7 @@ Start the PCTX MCP server in development mode with an interactive terminal UI wi
 * `--log-file <LOG_FILE>` — Path to JSONL log file
 
   Default value: `pctx-dev.jsonl`
+* `--stdio` — Serve MCP over stdio instead of HTTP
 
 
 

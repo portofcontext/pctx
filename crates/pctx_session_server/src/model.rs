@@ -93,12 +93,24 @@ pub struct RegisterMcpServersRequest {
 
 // TODO: de-dup with pctx_config
 #[derive(Debug, Deserialize, Clone, ToSchema)]
-pub struct McpServerConfig {
-    pub name: String,
-    pub url: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[schema(value_type = Option<Object>)]
-    pub auth: Option<Value>,
+#[serde(untagged)]
+pub enum McpServerConfig {
+    Http {
+        name: String,
+        url: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[schema(value_type = Option<Object>)]
+        auth: Option<Value>,
+    },
+    Stdio {
+        name: String,
+        command: String,
+        #[serde(default)]
+        args: Vec<String>,
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        #[schema(value_type = Object)]
+        env: std::collections::BTreeMap<String, String>,
+    },
 }
 
 /// Response after registering MCP servers

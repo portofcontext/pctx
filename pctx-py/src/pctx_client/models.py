@@ -33,12 +33,24 @@ class HeadersAuth(TypedDict):
     headers: dict[str, str]
 
 
-class ServerConfig(TypedDict):
-    """Configuration for an MCP server connection"""
+class HttpServerConfig(TypedDict):
+    """Configuration for an HTTP MCP server connection"""
 
     name: str
     url: str
     auth: NotRequired[BearerAuth | HeadersAuth]
+
+
+class StdioServerConfig(TypedDict):
+    """Configuration for a stdio MCP server connection"""
+
+    name: str
+    command: str
+    args: NotRequired[list[str]]
+    env: NotRequired[dict[str, str]]
+
+
+ServerConfig = HttpServerConfig | StdioServerConfig
 
 
 # -------------- Code Mode Outputs --------------

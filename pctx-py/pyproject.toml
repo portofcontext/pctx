@@ -1,6 +1,6 @@
 [project]
 name = "pctx-client"
-version = "0.1.0"
+version = "0.1.1"
 description = "Python client for using Code Mode via PCTX"
 readme = "README.md"
 authors = [
@@ -44,6 +44,7 @@ dev = [
     "sphinx-rtd-theme",
     "myst_parser",
     "tomli",
+    "mcp>=1.25.0",
 ]
 
 [tool.ruff.lint.pydocstyle]
@@ -56,4 +57,7 @@ filterwarnings = [
     "ignore::pydantic.warnings.PydanticDeprecatedSince20",
     "ignore::DeprecationWarning:opentelemetry.*",
     "ignore:You should use.*instead.*Deprecated since version:DeprecationWarning",
+]
+markers = [
+    "integration: marks tests as integration tests (requires --integration flag and running pctx server)",
 ]

@@ -24,7 +24,7 @@ async fn main() {
     let cli = Cli::parse();
 
     if let Err(e) = cli.handle().await {
-        println!("{e}");
+        eprintln!("{e}");
         std::process::exit(1);
     }
 }

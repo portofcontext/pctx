@@ -198,7 +198,8 @@ impl CodeMode {
         // initialize and list tools
         debug!(
             "Fetching tools from MCP '{}'({})...",
-            &server.name, &server.url
+            &server.name,
+            server.display_target()
         );
         let mcp_client = server.connect().await?;
         debug!(
@@ -243,7 +244,7 @@ impl CodeMode {
         let description = mcp_client
             .peer_info()
             .and_then(|p| p.server_info.title.clone())
-            .unwrap_or(format!("MCP server at {}", server.url));
+            .unwrap_or(format!("MCP server at {}", server.display_target()));
 
         // add toolset & it's server configuration
         self.tool_sets.push(codegen::ToolSet::new(
@@ -321,11 +322,16 @@ impl CodeMode {
         self.servers
             .iter()
             .filter_map(|s| {
-                let host = s.url.host()?;
-                let allowed = if let Some(port) = s.url.port() {
+                let http_cfg = s.http()?;
+                let host = http_cfg.url.host()?;
+                let allowed = if let Some(port) = http_cfg.url.port() {
                     format!("{host}:{port}")
                 } else {
-                    let default_port = if s.url.scheme() == "https" { 443 } else { 80 };
+                    let default_port = if http_cfg.url.scheme() == "https" {
+                        443
+                    } else {
+                        80
+                    };
                     format!("{host}:{default_port}")
                 };
                 Some(allowed)
