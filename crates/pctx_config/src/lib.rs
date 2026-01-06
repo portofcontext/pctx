@@ -5,12 +5,15 @@ use serde_json::json;
 use std::fs;
 use tracing::debug;
 
-use crate::{logger::LoggerConfig, server::ServerConfig, telemetry::TelemetryConfig};
+use crate::{logger::LoggerConfig, server::ServerConfig};
+#[cfg(feature = "telemetry")]
+use crate::telemetry::TelemetryConfig;
 
 pub mod auth;
 pub(crate) mod defaults;
 pub mod logger;
 pub mod server;
+#[cfg(feature = "telemetry")]
 pub mod telemetry;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -38,6 +41,7 @@ pub struct Config {
     pub logger: LoggerConfig,
 
     /// MCP server telemetry configuration
+    #[cfg(feature = "telemetry")]
     #[serde(default)]
     pub telemetry: TelemetryConfig,
 }

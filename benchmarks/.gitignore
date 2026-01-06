@@ -1,0 +1,22 @@
+# Environment variables with API keys
+.env
+
+# Benchmark results
+results/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Temporary files
+*.tmp
+*.log
+/tmp/

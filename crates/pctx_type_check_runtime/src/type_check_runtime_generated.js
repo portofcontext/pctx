@@ -9,7 +9,7 @@ import * as tsModule from "ext:pctx_type_check_snapshot/typescript.min.js";
 // AUTO-GENERATED CODE - DO NOT EDIT
 // This code was generated from ignored_codes.rs at build time
 
-const IGNORED_DIAGNOSTIC_CODES = [2307, 2304, 7016, 2318, 2580, 2583, 2584, 2585, 2591, 2339, 2693, 7006, 7053, 7005, 7034, 18046, 2362, 2363];
+const IGNORED_DIAGNOSTIC_CODES = [2307, 2304, 7016, 2318, 2580, 2583, 2584, 2585, 2591, 2339, 2693, 7006, 7053, 7005, 7034, 18046, 2362, 2363, 2488];
 // This placeholder is replaced at build time with the actual ignored diagnostic codes
 // from src/ignored_codes.rs, ensuring Rust and JavaScript stay in sync.
 

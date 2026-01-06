@@ -1,0 +1,3 @@
+[submodule "benchmarks/mcp-bench"]
+	path = benchmarks/mcp-bench
+	url = https://github.com/portofcontext/mcp-bench

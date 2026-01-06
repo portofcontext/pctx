@@ -27,6 +27,7 @@ pub(crate) async fn init_telemetry(
         .build();
 
     // build tracing provider with all configured exporters
+    #[cfg(feature = "telemetry")]
     if cfg.telemetry.traces.enabled {
         let builder = cfg
             .telemetry
@@ -41,6 +42,7 @@ pub(crate) async fn init_telemetry(
     }
 
     // build meter provider with all configured exporters
+    #[cfg(feature = "telemetry")]
     if cfg.telemetry.metrics.enabled {
         let meter_provider = cfg
             .telemetry

@@ -3,3 +3,4 @@ data/
 
 # Criterion benchmark results
 target/
+.env

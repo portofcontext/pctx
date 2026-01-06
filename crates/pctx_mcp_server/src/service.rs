@@ -53,7 +53,7 @@ impl PctxMcpService {
         3. Finally call execute() to run your TypeScript code
 
         This returns function signatures without full details.",
-        output_schema = rmcp::handler::server::tool::cached_schema_for_type::<ListFunctionsOutput>()
+        output_schema = rmcp::handler::server::tool::schema_for_type::<ListFunctionsOutput>()
     )]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
         let listed = self.code_mode.list_functions();
@@ -78,7 +78,7 @@ impl PctxMcpService {
         - If a function returns Promise<any>, the MCP server didn't provide an output schema
         - The actual value is a parsed object (not a string) - access properties directly
         - Don't use JSON.parse() on the results - they're already JavaScript objects",
-        output_schema = rmcp::handler::server::tool::cached_schema_for_type::<GetFunctionDetailsOutput>()
+        output_schema = rmcp::handler::server::tool::schema_for_type::<GetFunctionDetailsOutput>()
     )]
     async fn get_function_details(
         &self,
@@ -124,7 +124,7 @@ impl PctxMcpService {
         - Access properties directly (e.g., result.data) or inspect with console.log() first
         - If you see 'Promise<any>', the structure is unknown - log it to see what's returned
         ",
-        output_schema = rmcp::handler::server::tool::cached_schema_for_type::<ExecuteOutput>()
+        output_schema = rmcp::handler::server::tool::schema_for_type::<ExecuteOutput>()
     )]
     async fn execute(
         &self,

@@ -30,4 +30,5 @@ pub(crate) const IGNORED_DIAGNOSTIC_CODES: &[u32] = &[
     18046, // Variable is of type 'unknown' - reduce operations work at runtime
     2362,  // Left-hand side of arithmetic operation - runtime handles coercion
     2363,  // Right-hand side of arithmetic operation - runtime handles coercion
+    2488,  // Type must have a '[Symbol.iterator]()' method - runtime handles iteration
 ];

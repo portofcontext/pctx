@@ -1,0 +1,40 @@
+{
+  "servers": {
+    "Wikipedia": {
+      "name": "Wikipedia",
+      "command": "npx",
+      "args": ["-y", "@shelm/wikipedia-mcp-server"],
+      "env": {}
+    },
+    "OpenAPI Explorer": {
+      "name": "OpenAPI Explorer",
+      "command": "npx",
+      "args": ["-y", "openapi-mcp-server"],
+      "env": {}
+    },
+    "Google Maps": {
+      "name": "Google Maps",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-google-maps"],
+      "env": {
+        "GOOGLE_MAPS_API_KEY": "${GOOGLE_MAPS_API_KEY}"
+      }
+    },
+    "National Parks": {
+      "name": "National Parks",
+      "command": "npx",
+      "args": ["-y", "mcp-server-nationalparks"],
+      "env": {
+        "NPS_API_KEY": "${NPS_API_KEY}"
+      }
+    },
+    "Hugging Face": {
+      "name": "Hugging Face",
+      "command": "uvx",
+      "args": ["huggingface-mcp-server"],
+      "env": {
+        "HUGGING_FACE_API_KEY": "${HUGGING_FACE_API_KEY}"
+      }
+    }
+  }
+}

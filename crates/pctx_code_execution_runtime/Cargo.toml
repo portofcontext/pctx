@@ -14,7 +14,7 @@ pctx_config = { path = "../pctx_config" }
 deno_core = { version = "0.372.0", features = ["include_icu_data"] }
 serde = { workspace = true }
 serde_json = { workspace = true }
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { workspace = true }
 thiserror = { workspace = true }
 anyhow = "1.0"
 deno_error = "0.7"
