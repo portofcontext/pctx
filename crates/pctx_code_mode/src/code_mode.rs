@@ -9,6 +9,7 @@ use serde_json::json;
 use tracing::{debug, instrument, warn};
 use uuid::Uuid;
 
+pub use crate::search::SearchResult;
 use crate::{
     Error, Result,
     model::{
@@ -17,7 +18,6 @@ use crate::{
     },
     search::ToolSearchIndex,
 };
-pub use crate::search::SearchResult;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct CodeMode {
