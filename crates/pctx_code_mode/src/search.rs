@@ -104,27 +104,6 @@ pub struct SearchResult {
     pub score: f32,
 }
 
-// -------------- Search Functions Input/Output --------------
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
-pub struct SearchFunctionsInput {
-    /// Search query to find relevant functions
-    pub query: String,
-    /// Maximum number of results to return (default: 10)
-    #[serde(default = "default_k")]
-    pub k: usize,
-}
-
-fn default_k() -> usize {
-    10
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
-pub struct SearchFunctionsOutput {
-    /// Functions matching the search query, ordered by relevance
-    pub functions: Vec<SearchResult>,
-}
-
 /// Convert PascalCase/camelCase to spaced lowercase
 /// Example: "MyNamespace" -> "my namespace"
 fn to_spaced_lowercase(s: &str) -> String {
@@ -217,14 +196,16 @@ mod tests {
 
     #[test]
     fn test_search_by_description() {
-        let tools = vec![create_test_tool(
-            "process_data",
-            Some("Transform and validate incoming user records"),
-        ),
-        create_test_tool(
-            "send_notification",
-            Some("Alert the administrator about system events"),
-        )];
+        let tools = vec![
+            create_test_tool(
+                "process_data",
+                Some("Transform and validate incoming user records"),
+            ),
+            create_test_tool(
+                "send_notification",
+                Some("Alert the administrator about system events"),
+            ),
+        ];
         let process_data_id = tools[0].id;
         let send_notification_id = tools[1].id;
         let index = create_test_index(tools);
@@ -499,7 +480,10 @@ mod tests {
         let results = index.search("add", 10);
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].tool_id, add_id);
-        assert!(results[0].score > 0.0, "Results should have positive scores");
+        assert!(
+            results[0].score > 0.0,
+            "Results should have positive scores"
+        );
     }
 
     #[test]

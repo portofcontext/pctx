@@ -574,6 +574,7 @@ mod tests {
                 "http://localhost:8080/mcp".parse().unwrap(),
             )],
             callbacks: vec![],
+            ..Default::default()
         }
     }
 

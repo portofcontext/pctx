@@ -7,9 +7,8 @@ use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{debug, instrument, warn};
-use uuid::Uuid;
 
-pub use crate::search::SearchResult;
+use crate::model::{SearchFunctionsInput, SearchFunctionsOutput};
 use crate::{
     Error, Result,
     model::{
@@ -30,7 +29,7 @@ pub struct CodeMode {
 
     // Runtime-only: BM25 search index (lazy-initialized, not serialized)
     #[serde(skip)]
-    search_index: OnceLock<ToolSearchIndex>,
+    pub search_index: OnceLock<ToolSearchIndex>,
 }
 
 impl Clone for CodeMode {
@@ -48,50 +47,45 @@ impl Clone for CodeMode {
 impl CodeMode {
     /// Search for functions matching the query using BM25 ranking
     ///
-    /// Returns Tool IDs with relevance scores > 0, ordered by relevance.
-    /// Use `get_tool_by_id` to look up the full tool details.
-    pub fn search_functions(&self, query: &str, k: usize) -> Vec<SearchResult> {
+    /// Returns matching functions ordered by relevance, with their code interfaces.
+    pub fn search_functions(&self, input: SearchFunctionsInput) -> SearchFunctionsOutput {
         let index = self
             .search_index
             .get_or_init(|| ToolSearchIndex::from_tool_sets(&self.tool_sets));
 
-        index.search(query, k)
-    }
+        let results = index.search(&input.query, input.k);
 
-    /// Get a tool by its unique ID
-    pub fn get_tool_by_id(&self, id: Uuid) -> Option<(&Tool, &str)> {
-        for tool_set in &self.tool_sets {
-            if let Some(tool) = tool_set.tools.iter().find(|t| t.id == id) {
-                return Some((tool, &tool_set.namespace));
-            }
-        }
-        None
+        // Collect matching tool IDs in order (preserving BM25 ranking)
+        let matching_ids: HashSet<_> = results.iter().map(|r| r.tool_id).collect();
+
+        // Build filtered tool sets containing only matching tools
+        let filtered_tool_sets: Vec<ToolSet> = self
+            .tool_sets
+            .iter()
+            .filter_map(|ts| {
+                let filtered_tools: Vec<_> = ts
+                    .tools
+                    .iter()
+                    .filter(|t| matching_ids.contains(&t.id))
+                    .cloned()
+                    .collect();
+
+                if filtered_tools.is_empty() {
+                    None
+                } else {
+                    let mut filtered_tool_set = ts.clone();
+                    filtered_tool_set.tools = filtered_tools;
+                    Some(filtered_tool_set)
+                }
+            })
+            .collect();
+
+        SearchFunctionsOutput::from_tool_sets(&filtered_tool_sets)
     }
 
     /// Returns internal tool sets as minimal code interfaces
     pub fn list_functions(&self) -> ListFunctionsOutput {
-        let mut namespaces = vec![];
-        let mut functions = vec![];
-
-        for tool_set in &self.tool_sets {
-            if tool_set.tools.is_empty() {
-                // skip sets with no tools
-                continue;
-            }
-
-            namespaces.push(tool_set.namespace_interface(false));
-
-            functions.extend(tool_set.tools.iter().map(|t| ListedFunction {
-                namespace: tool_set.namespace.clone(),
-                name: t.fn_name.clone(),
-                description: t.description.clone(),
-            }));
-        }
-
-        ListFunctionsOutput {
-            code: pctx_codegen::format::format_d_ts(&namespaces.join("\n\n")),
-            functions,
-        }
+        ListFunctionsOutput::from_tool_sets(&self.tool_sets)
     }
 
     /// Gets the full typed interface for the requested functions

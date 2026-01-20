@@ -5,7 +5,7 @@ pub mod search;
 
 pub use code_mode::CodeMode;
 use pctx_codegen::CodegenError;
-pub use search::{SearchFunctionsInput, SearchFunctionsOutput, SearchResult, ToolSearchIndex};
+pub use search::{SearchResult, ToolSearchIndex};
 
 pub type Result<T> = std::result::Result<T, Error>;
 #[derive(Debug, thiserror::Error)]

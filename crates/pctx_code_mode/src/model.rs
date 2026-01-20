@@ -1,9 +1,29 @@
 use std::fmt::Display;
 
+use pctx_codegen::ToolSet;
 use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use utoipa::ToSchema;
+
+// -------------- Search Functions --------------
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
+pub struct SearchFunctionsInput {
+    /// Search query to find relevant functions
+    pub query: String,
+    /// Maximum number of results to return (default: 10)
+    #[serde(default = "default_k")]
+    pub k: usize,
+}
+
+fn default_k() -> usize {
+    10
+}
+
+// For now list and search functions have the same output type
+// but search functions returns a filtered list based on the search params
+pub type SearchFunctionsOutput = ListFunctionsOutput;
 
 // -------------- List Functions --------------
 #[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
@@ -13,6 +33,34 @@ pub struct ListFunctionsOutput {
 
     pub code: String,
 }
+
+impl ListFunctionsOutput {
+    pub fn from_tool_sets(tool_sets: &[ToolSet]) -> Self {
+        let mut namespaces = vec![];
+        let mut functions = vec![];
+
+        for tool_set in tool_sets {
+            if tool_set.tools.is_empty() {
+                // skip sets with no tools
+                continue;
+            }
+
+            namespaces.push(tool_set.namespace_interface(false));
+
+            functions.extend(tool_set.tools.iter().map(|t| ListedFunction {
+                namespace: tool_set.namespace.clone(),
+                name: t.fn_name.clone(),
+                description: t.description.clone(),
+            }));
+        }
+
+        Self {
+            code: pctx_codegen::format::format_d_ts(&namespaces.join("\n\n")),
+            functions,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ListedFunction {
     /// Namespace the function belongs in
