@@ -13,7 +13,7 @@ pub struct ListFunctionsOutput {
 
     pub code: String,
 }
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ListedFunction {
     /// Namespace the function belongs in
     pub namespace: String,

@@ -23,6 +23,7 @@ serde_json = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 unicode-ident = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
 
 
 [dev-dependencies]

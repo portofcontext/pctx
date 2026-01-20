@@ -2,6 +2,7 @@ use schemars::schema::RootSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::debug;
+use uuid::Uuid;
 
 use crate::{CodegenResult, case::Case, generate_docstring, typegen::generate_types_new};
 
@@ -52,6 +53,9 @@ namespace {namespace} {{
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Tool {
+    /// Unique identifier for this tool, auto-generated on creation
+    #[serde(default = "Uuid::new_v4")]
+    pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
     pub input_schema: RootSchema,
@@ -109,6 +113,7 @@ impl Tool {
         };
 
         Ok(Self {
+            id: Uuid::new_v4(),
             name: name.into(),
             description,
             input_schema: input,

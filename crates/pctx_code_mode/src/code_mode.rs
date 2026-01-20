@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::sync::OnceLock;
 
 use pctx_code_execution_runtime::CallbackRegistry;
 use pctx_codegen::{Tool, ToolSet};
@@ -6,6 +7,7 @@ use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{debug, instrument, warn};
+use uuid::Uuid;
 
 use crate::{
     Error, Result,
@@ -13,9 +15,11 @@ use crate::{
         CallbackConfig, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
         GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
     },
+    search::ToolSearchIndex,
 };
+pub use crate::search::SearchResult;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct CodeMode {
     // Codegen interfaces
     pub tool_sets: Vec<pctx_codegen::ToolSet>,
@@ -23,9 +27,47 @@ pub struct CodeMode {
     // configurations
     pub servers: Vec<ServerConfig>,
     pub callbacks: Vec<CallbackConfig>,
+
+    // Runtime-only: BM25 search index (lazy-initialized, not serialized)
+    #[serde(skip)]
+    search_index: OnceLock<ToolSearchIndex>,
+}
+
+impl Clone for CodeMode {
+    fn clone(&self) -> Self {
+        Self {
+            tool_sets: self.tool_sets.clone(),
+            servers: self.servers.clone(),
+            callbacks: self.callbacks.clone(),
+            // Fresh index for cloned instance (will be rebuilt on first search)
+            search_index: OnceLock::new(),
+        }
+    }
 }
 
 impl CodeMode {
+    /// Search for functions matching the query using BM25 ranking
+    ///
+    /// Returns Tool IDs with relevance scores > 0, ordered by relevance.
+    /// Use `get_tool_by_id` to look up the full tool details.
+    pub fn search_functions(&self, query: &str, k: usize) -> Vec<SearchResult> {
+        let index = self
+            .search_index
+            .get_or_init(|| ToolSearchIndex::from_tool_sets(&self.tool_sets));
+
+        index.search(query, k)
+    }
+
+    /// Get a tool by its unique ID
+    pub fn get_tool_by_id(&self, id: Uuid) -> Option<(&Tool, &str)> {
+        for tool_set in &self.tool_sets {
+            if let Some(tool) = tool_set.tools.iter().find(|t| t.id == id) {
+                return Some((tool, &tool_set.namespace));
+            }
+        }
+        None
+    }
+
     /// Returns internal tool sets as minimal code interfaces
     pub fn list_functions(&self) -> ListFunctionsOutput {
         let mut namespaces = vec![];
