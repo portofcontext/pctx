@@ -18,6 +18,12 @@ def subtract(a: float, b: float) -> float:
     return a - b
 
 
+@tool("no_output", infer_return_type=True)
+def no_output(a: float, b: float):
+    """subtracts b from a"""
+    return a * b
+
+
 class MultiplyOutput(BaseModel):
     message: str
     result: float
@@ -31,9 +37,7 @@ def multiply(a: float, b: float) -> MultiplyOutput:
 
 async def main():
     async with Pctx(
-        url="http://localhost:8080/some-org/some-server",
-        api_key="asdlkfjasldf",
-        tools=[add, subtract, multiply],
+        tools=[add, subtract, multiply, no_output],
         # servers=[
         #     {
         #         "name": "stripe",
@@ -49,27 +53,26 @@ async def main():
         print((await p.list_functions()).code)
 
         print("\n\n+++++++++++ DETAILS +++++++++++\n")
-        print((await p.get_function_details(["MyMath.add"])).code)
+        print((await p.get_function_details(["MyMath.add", "Tools.noOutput"])).code)
 
         code = """
-    async function run() {
-        let addval = await MyMath.add({a: 40, b: 2});
-        let subval = await MyMath.subtract({a: addval, b: 2});
-        let multval = await MyMath.multiply({a: subval, b: 2});
+async function run() {
+    let addval = await MyMath.add({a: 40, b: 2});
+    let subval = await MyMath.subtract({a: addval, b: 2});
+    let multval = await MyMath.multiply({a: subval, b: 2});
 
-
-        return multval;
-    }
+    return multval;
+}
     """
         output = await p.execute(code)
         pprint.pprint(output)
 
         invalid_code = """
-    async function run() {
-        let addval = await MyMath.add({a: "40", b: 2}); // invalid because `a` must be a number
+async function run() {
+    let addval = await MyMath.add({a: "40", b: 2}); // invalid because `a` must be a number
 
-        return addval;
-    }
+    return addval;
+}
     """
         invalid_output = await p.execute(invalid_code)
         pprint.pprint(invalid_output)

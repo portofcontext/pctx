@@ -68,9 +68,18 @@ class BaseTool(BaseModel):
         name: str | None = None,
         namespace: str = "tools",
         description: str | None = None,
+        infer_return_type: bool = False,
     ) -> "Tool | AsyncTool":
         """
         Creates a tool from a given function.
+
+        Args:
+            func: The function to wrap
+            name: Optional custom name (defaults to function name)
+            namespace: Namespace the tool belongs to
+            description: Optional description (defaults to docstring)
+            infer_return_type: If True, attempt to infer return type using Jedi
+                              when no annotation is present
         """
 
         if description is None:
@@ -82,7 +91,7 @@ class BaseTool(BaseModel):
         name_ = name or func.__name__
 
         in_schema = create_input_schema(f"{name_}_Input", func)
-        out_schema = create_output_schema(func)
+        out_schema = create_output_schema(func, infer_with_jedi=infer_return_type)
 
         input_schema = None if is_empty_schema(in_schema) else in_schema
         output_schema = out_schema
@@ -258,13 +267,16 @@ def create_input_schema(
 
 def create_output_schema(
     func: Callable,
+    infer_with_jedi: bool = False,
 ) -> Any:
     """
     Extracts the return type annotation from a function.
 
     Args:
-        model_name: Name for the generated Pydantic model (unused, kept for compatibility)
         func: The function to extract return type from
+        infer_with_jedi: If True and no annotation exists, attempt to infer
+                        the return type using Jedi static analysis (requires
+                        jedi optional dependency)
 
     Returns:
         The return type annotation as a type
@@ -280,6 +292,27 @@ def create_output_schema(
         return_annotation = (
             sig.return_annotation if sig.return_annotation is not sig.empty else Any
         )
+
+    # If we got a real type, use it
+    if return_annotation is not Any:
+        return return_annotation
+
+    # If Jedi inference is enabled and no annotation found, try Jedi
+    if infer_with_jedi:
+        from pctx_client._jedi_infer import HAS_JEDI, infer_return_type
+
+        if not HAS_JEDI:
+            import warnings
+
+            warnings.warn(
+                "Jedi inference requested but jedi is not installed. "
+                "Install with: pip install pctx-client[jedi]",
+                UserWarning,
+                stacklevel=3,
+            )
+            return Any
+
+        return infer_return_type(func)
 
     return return_annotation
 

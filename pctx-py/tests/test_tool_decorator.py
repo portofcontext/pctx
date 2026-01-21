@@ -180,7 +180,7 @@ def test_registration_error_invalid_first_argument() -> None:
     """Test that invalid first argument raises ValueError"""
 
     with pytest.raises(
-        ValueError, match="must be a string or a callable with a __name__"
+        ValueError, match="must be a string, callable with a __name__ attribute, or None"
     ):
         tool(123)  # type: ignore
 
@@ -194,7 +194,7 @@ def test_registration_error_callable_without_name() -> None:
 
     obj = CallableWithoutName()
     with pytest.raises(
-        ValueError, match="must be a string or a callable with a __name__"
+        ValueError, match="must be a string, callable with a __name__ attribute, or None"
     ):
         tool(obj)  # type: ignore
 
