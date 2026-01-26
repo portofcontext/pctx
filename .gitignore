@@ -24,7 +24,7 @@ venv/
 .pytest_cache/
 *.lock
 uv.lock
-pctx-py/scratch/*
+scratch/*
 
 # Sphinx documentation
 pctx-py/docs/_build/

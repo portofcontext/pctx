@@ -24,6 +24,7 @@ deno_error = { workspace = true }
 url = { workspace = true }
 rmcp = { workspace = true }
 tracing = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
 
 [build-dependencies]
 pctx_config = { version = "^0.1.1", path = "../pctx_config" }
