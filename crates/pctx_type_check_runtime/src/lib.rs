@@ -67,6 +67,8 @@
 //!
 //! The snapshot is embedded at compile time and accessible via [`TYPE_CHECK_SNAPSHOT`].
 
+#![allow(long_running_const_eval)]
+
 pub mod ignored_codes;
 
 use deno_core::JsRuntime;

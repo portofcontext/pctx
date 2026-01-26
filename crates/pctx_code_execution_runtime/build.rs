@@ -4,7 +4,7 @@
 //! with all its JavaScript code pre-compiled. This snapshot can be loaded by
 //! `pctx_executor` for faster startup times.
 
-// Allow long const eval for large JavaScript bundles (just_bash_bundle.js is ~1.8MB)
+// Allow long const eval for large JavaScript bundles
 #![allow(long_running_const_eval)]
 
 use std::env;
@@ -71,15 +71,15 @@ extension!(
         dir "src",
         "timers.js",
         "runtime.js",
-        "just_bash_bundle.js",
-        "node_zlib_stub.js",
+        "just-bash/bundle.js",
+        "just-bash/node_zlib_stub.js",
     ],
 );
 
 fn main() {
-    // Tell cargo to rerun this build script if runtime.js, just_bash_bundle.js, or build.rs changes
+    // Tell cargo to rerun this build script if runtime.js, just-bash/bundle.js, or build.rs changes
     println!("cargo:rerun-if-changed=src/runtime.js");
-    println!("cargo:rerun-if-changed=src/just_bash_bundle.js");
+    println!("cargo:rerun-if-changed=src/just-bash/bundle.js");
     println!("cargo:rerun-if-changed=build.rs");
 
     // Get the output directory

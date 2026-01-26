@@ -22,3 +22,4 @@ mod output_capture;
 mod permissions;
 mod runtime_execution;
 mod type_checking;
+mod just_bash;

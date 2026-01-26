@@ -1,4 +1,4 @@
-// Allow long const eval for large JavaScript bundles (just_bash_bundle.js is ~1.8MB)
+// Allow long const eval for large JavaScript bundles
 #![allow(long_running_const_eval)]
 
 //! # PCTX Runtime
@@ -99,8 +99,8 @@ deno_core::extension!(
         dir "src",
         "timers.js",
         "runtime.js",
-        "just_bash_bundle.js",
-        "node_zlib_stub.js",
+        "just-bash/bundle.js",
+        "just-bash/node_zlib_stub.js",
     ],
     options = {
         registry: MCPRegistry,

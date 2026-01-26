@@ -4,7 +4,7 @@
 import "ext:pctx_runtime_snapshot/timers.js";
 
 // Now import just-bash (can use setTimeout)
-import { Bash } from "ext:pctx_runtime_snapshot/just_bash_bundle.js";
+import { Bash } from "ext:pctx_runtime_snapshot/just-bash/bundle.js";
 
 const core = Deno.core;
 const ops = core.ops;
@@ -118,4 +118,4 @@ async function fetch(url, options) {
 globalThis.callMCPTool = callMCPTool;
 globalThis.invokeCallback = invokeCallback;
 globalThis.fetch = fetch;
-globalThis.Bash = Bash;
+globalThis.justBash = Bash; // lowercase to avoid any clashes with namespaces
