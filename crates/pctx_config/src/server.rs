@@ -2,7 +2,7 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 use rmcp::{
     RoleClient, ServiceExt,
     model::{
-        ClientCapabilities, ClientInfo, Implementation, InitializeRequestParam, ProtocolVersion,
+        ClientCapabilities, ClientInfo, Implementation, InitializeRequestParams, ProtocolVersion,
     },
     service::{ClientInitializeError, RunningService},
     transport::{
@@ -120,7 +120,7 @@ impl ServerConfig {
     /// initialization request
     pub async fn connect(
         &self,
-    ) -> Result<RunningService<RoleClient, InitializeRequestParam>, McpConnectionError> {
+    ) -> Result<RunningService<RoleClient, InitializeRequestParams>, McpConnectionError> {
         let init_request = ClientInfo {
             protocol_version: ProtocolVersion::default(),
             capabilities: ClientCapabilities::default(),
@@ -131,6 +131,7 @@ impl ServerConfig {
                     .to_string(),
                 ..Default::default()
             },
+            meta: None,
         };
 
         match &self.transport {

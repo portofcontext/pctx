@@ -1,11 +1,14 @@
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 
 use pctx_code_execution_runtime::CallbackRegistry;
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 use crate::{
     Error, Result,
@@ -18,14 +21,295 @@ use crate::{
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct CodeMode {
     // Codegen interfaces
-    pub tool_sets: Vec<pctx_codegen::ToolSet>,
+    tool_sets: Vec<pctx_codegen::ToolSet>,
 
     // configurations
-    pub servers: Vec<ServerConfig>,
-    pub callbacks: Vec<CallbackConfig>,
+    servers: Vec<ServerConfig>,
+    callbacks: Vec<CallbackConfig>,
 }
 
 impl CodeMode {
+    // --------------- Builder functions ---------------
+
+    pub async fn with_server(mut self, server: &ServerConfig) -> Result<Self> {
+        self.add_server(server).await?;
+        Ok(self)
+    }
+
+    pub async fn with_servers<'a>(
+        mut self,
+        servers: impl IntoIterator<Item = &'a ServerConfig>,
+        timeout_secs: u64,
+    ) -> Result<Self> {
+        self.add_servers(servers, timeout_secs).await?;
+        Ok(self)
+    }
+
+    pub fn with_callback(mut self, callback: &CallbackConfig) -> Result<Self> {
+        self.add_callback(callback)?;
+        Ok(self)
+    }
+
+    pub fn with_callbacks<'a>(
+        mut self,
+        callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
+    ) -> Result<Self> {
+        self.add_callbacks(callbacks)?;
+        Ok(self)
+    }
+
+    // --------------- Registrations functions ---------------
+
+    pub async fn add_server(&mut self, server: &ServerConfig) -> Result<()> {
+        self.add_servers([server], 30).await?;
+        Ok(())
+    }
+
+    pub async fn add_servers<'a>(
+        &mut self,
+        servers: impl IntoIterator<Item = &'a ServerConfig>,
+        timeout_secs: u64,
+    ) -> Result<()> {
+        let timeout = Duration::from_secs(timeout_secs);
+        let mut tasks = vec![];
+        let mut servers_to_add = vec![];
+        for server in servers {
+            servers_to_add.push(server.clone());
+            let server = server.clone();
+            let task = tokio::spawn(async move {
+                let result = tokio::time::timeout(timeout, Self::server_to_toolset(&server)).await;
+
+                match result {
+                    Ok(Ok(tool_set)) => Ok(tool_set),
+                    Ok(Err(e)) => Err(e),
+                    Err(_) => Err(Error::Message(format!(
+                        "Registration timed out after {}s for MCP server {} ({})",
+                        timeout.as_secs(),
+                        &server.name,
+                        server.display_target()
+                    ))),
+                }
+            });
+
+            tasks.push(task);
+        }
+
+        // join and unpack results
+        let results = futures::future::join_all(tasks).await;
+        let mut tool_sets = vec![];
+        for result in results {
+            tool_sets.push(result.map_err(|e| {
+                Error::Message(format!("Failed joining parallel MCP registration: {e:?}"))
+            })??);
+        }
+
+        // check for ToolSet conflicts & add to self
+        for tool_set in tool_sets {
+            self.add_tool_set(tool_set)?;
+        }
+
+        // add server configs
+        self.servers.extend(servers_to_add);
+
+        Ok(())
+    }
+
+    async fn server_to_toolset(server: &ServerConfig) -> Result<ToolSet> {
+        // Connect to the MCP server (this is the slow operation)
+        debug!(
+            "Connecting to MCP server '{}'({})...",
+            &server.name,
+            server.display_target()
+        );
+        let mcp_client = server.connect().await?;
+
+        debug!(
+            "Successfully connected to '{}', listing tools...",
+            server.name
+        );
+
+        // List all tools (another potentially slow operation)
+        let listed_tools = mcp_client.list_all_tools().await?;
+        debug!("Found {} tools from '{}'", listed_tools.len(), server.name);
+
+        // Convert MCP tools to pctx tools
+        let mut tools = vec![];
+        for mcp_tool in listed_tools {
+            let input_schema =
+                serde_json::from_value::<pctx_codegen::RootSchema>(json!(mcp_tool.input_schema))
+                    .map_err(|e| {
+                        Error::Message(format!(
+                            "Failed parsing inputSchema as json schema for tool `{}`: {e}",
+                            &mcp_tool.name
+                        ))
+                    })?;
+            let output_schema = if let Some(o) = &mcp_tool.output_schema {
+                Some(
+                    serde_json::from_value::<pctx_codegen::RootSchema>(json!(o)).map_err(|e| {
+                        Error::Message(format!(
+                            "Failed parsing outputSchema as json schema for tool `{}`: {e}",
+                            &mcp_tool.name
+                        ))
+                    })?,
+                )
+            } else {
+                None
+            };
+
+            tools.push(
+                Tool::new_mcp(
+                    &mcp_tool.name,
+                    mcp_tool.description.map(String::from),
+                    input_schema,
+                    output_schema,
+                )
+                .map_err(|e| {
+                    Error::Message(format!("Failed to create tool `{}`: {e}", &mcp_tool.name))
+                })?,
+            );
+        }
+
+        let description = mcp_client
+            .peer_info()
+            .and_then(|p| p.server_info.title.clone())
+            .unwrap_or(format!("MCP server at {}", server.display_target()));
+
+        let tool_set = ToolSet::new(&server.name, &description, tools);
+
+        info!(
+            "Successfully initialized MCP server '{}' with {} tools",
+            server.name,
+            tool_set.tools.len()
+        );
+
+        Ok(tool_set)
+    }
+
+    pub fn add_callbacks<'a>(
+        &mut self,
+        callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
+    ) -> Result<()> {
+        for callback in callbacks {
+            self.add_callback(callback)?;
+        }
+        Ok(())
+    }
+
+    // Generates a Tool and add it to the correct Toolset from the given callback config
+    pub fn add_callback(&mut self, callback: &CallbackConfig) -> Result<()> {
+        debug!(callback =? callback.id(), "Adding callback tool {}", callback.id());
+
+        // find the correct toolset & check for clashes
+        let idx = self
+            .tool_sets
+            .iter()
+            .position(|s| s.name == callback.namespace)
+            .unwrap_or_else(|| {
+                let idx = self.tool_sets.len();
+                self.tool_sets
+                    .push(ToolSet::new(&callback.namespace, "", vec![]));
+                idx
+            });
+        let tool_set = &mut self.tool_sets[idx];
+
+        if tool_set.tools.iter().any(|t| t.name == callback.name) {
+            return Err(Error::Message(format!(
+                "ToolSet `{}` already has a tool with name `{}`. Tool names must be unique within tool sets",
+                &tool_set.name, &callback.name
+            )));
+        }
+
+        // convert callback config into tool
+        let input_schema = if let Some(i) = &callback.input_schema {
+            serde_json::from_value::<pctx_codegen::RootSchema>(json!(i)).map_err(|e| {
+                Error::Message(format!(
+                    "Failed parsing inputSchema as json schema for tool `{}`: {e}",
+                    &callback.name
+                ))
+            })?
+        } else {
+            // TODO: better empty input schema support
+            serde_json::from_value::<pctx_codegen::RootSchema>(json!({})).unwrap()
+        };
+        let output_schema = if let Some(o) = &callback.output_schema {
+            Some(
+                serde_json::from_value::<pctx_codegen::RootSchema>(json!(o)).map_err(|e| {
+                    Error::Message(format!(
+                        "Failed parsing outputSchema as json schema for tool `{}`: {e}",
+                        &callback.name
+                    ))
+                })?,
+            )
+        } else {
+            None
+        };
+        let tool = Tool::new_callback(
+            &callback.name,
+            callback.description.clone(),
+            input_schema,
+            output_schema,
+        )?;
+
+        // add tool & it's configuration
+        tool_set.tools.push(tool);
+        self.callbacks.push(callback.clone());
+
+        Ok(())
+    }
+
+    pub fn add_tool_set(&mut self, tool_set: ToolSet) -> Result<()> {
+        if self.tool_sets.iter().any(|t| t.name == tool_set.name) {
+            return Err(Error::Message(format!(
+                "CodeMode already has ToolSet with name: {}",
+                tool_set.name
+            )));
+        }
+
+        self.tool_sets.push(tool_set);
+
+        Ok(())
+    }
+
+    // --------------- Accessor functions ---------------
+
+    /// Returns an immutable reference to the registered ToolSets
+    pub fn tool_sets(&self) -> &[pctx_codegen::ToolSet] {
+        &self.tool_sets
+    }
+
+    /// Returns an immutable reference to the registered server configurations
+    pub fn servers(&self) -> &[ServerConfig] {
+        &self.servers
+    }
+
+    /// Returns an immutable reference to the registered callback configurations
+    pub fn callbacks(&self) -> &[CallbackConfig] {
+        &self.callbacks
+    }
+
+    pub fn allowed_hosts(&self) -> HashSet<String> {
+        self.servers
+            .iter()
+            .filter_map(|s| {
+                let http_cfg = s.http()?;
+                let host = http_cfg.url.host()?;
+                let allowed = if let Some(port) = http_cfg.url.port() {
+                    format!("{host}:{port}")
+                } else {
+                    let default_port = if http_cfg.url.scheme() == "https" {
+                        443
+                    } else {
+                        80
+                    };
+                    format!("{host}:{default_port}")
+                };
+                Some(allowed)
+            })
+            .collect()
+    }
+
+    // --------------- Code-Mode Tools ---------------
+
     /// Returns internal tool sets as minimal code interfaces
     pub fn list_functions(&self) -> ListFunctionsOutput {
         let mut namespaces = vec![];
@@ -182,87 +466,5 @@ impl CodeMode {
             stderr: execution_res.stderr,
             output: execution_res.output,
         })
-    }
-
-    // Generates a Tool and add it to the correct Toolset from the given callback config
-    pub fn add_callback(&mut self, cfg: &CallbackConfig) -> Result<()> {
-        // find the correct toolset & check for clashes
-        let tool_set =
-            if let Some(exists) = self.tool_sets.iter_mut().find(|s| s.name == cfg.namespace) {
-                exists
-            } else {
-                self.tool_sets
-                    .push(ToolSet::new(&cfg.namespace, "", vec![]));
-                self.tool_sets
-                    .iter_mut()
-                    .find(|s| s.name == cfg.namespace)
-                    .unwrap()
-            };
-
-        if tool_set.tools.iter().any(|t| t.name == cfg.name) {
-            return Err(Error::Message(format!(
-                "ToolSet `{}` already has a tool with name `{}`. Tool names must be unique within tool sets",
-                &tool_set.name, &cfg.name
-            )));
-        }
-
-        // convert callback config into tool
-        let input_schema = if let Some(i) = &cfg.input_schema {
-            Some(
-                serde_json::from_value::<pctx_codegen::RootSchema>(json!(i)).map_err(|e| {
-                    Error::Message(format!(
-                        "Failed parsing inputSchema as json schema for tool `{}`: {e}",
-                        &cfg.name
-                    ))
-                })?,
-            )
-        } else {
-            None
-        };
-        let output_schema = if let Some(o) = &cfg.output_schema {
-            Some(
-                serde_json::from_value::<pctx_codegen::RootSchema>(json!(o)).map_err(|e| {
-                    Error::Message(format!(
-                        "Failed parsing outputSchema as json schema for tool `{}`: {e}",
-                        &cfg.name
-                    ))
-                })?,
-            )
-        } else {
-            None
-        };
-        let tool = Tool::new_callback(
-            &cfg.name,
-            cfg.description.clone(),
-            input_schema.unwrap(), // TODO: optional input schemas
-            output_schema,
-        )?;
-
-        // add tool & it's configuration
-        tool_set.tools.push(tool);
-        self.callbacks.push(cfg.clone());
-
-        Ok(())
-    }
-
-    pub fn allowed_hosts(&self) -> HashSet<String> {
-        self.servers
-            .iter()
-            .filter_map(|s| {
-                let http_cfg = s.http()?;
-                let host = http_cfg.url.host()?;
-                let allowed = if let Some(port) = http_cfg.url.port() {
-                    format!("{host}:{port}")
-                } else {
-                    let default_port = if http_cfg.url.scheme() == "https" {
-                        443
-                    } else {
-                        80
-                    };
-                    format!("{host}:{default_port}")
-                };
-                Some(allowed)
-            })
-            .collect()
     }
 }

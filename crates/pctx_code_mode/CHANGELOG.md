@@ -5,13 +5,84 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.2 (2026-01-28)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Improve pctx code mode re-exports & update readme ([`6d15c75`](https://github.com/portofcontext/pctx/commit/6d15c75052db5d317a875b368ed5677d90755c76))
+</details>
+
+## 0.2.1 (2026-01-27)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 5 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_code_mode v0.2.1 ([`5b8cd05`](https://github.com/portofcontext/pctx/commit/5b8cd05369652d6d8308303679d54d9c7a91fc6e))
+    - Bump code mode crate ([`480a076`](https://github.com/portofcontext/pctx/commit/480a0760282e443e8d2a1f907b337bbf82cb51a0))
+    - Release pctx_config v0.1.2, pctx_code_execution_runtime v0.1.2, pctx_code_mode v0.2.0 ([`bb7d3d9`](https://github.com/portofcontext/pctx/commit/bb7d3d93af81360310c3891bb649c54077af445d))
+    - Merge branch 'main' of github.com:portofcontext/pctx ([`4e4c328`](https://github.com/portofcontext/pctx/commit/4e4c32849dd080c77046fb255fe686944e5c37d8))
+    - Improve example code_mode code ([`353da7a`](https://github.com/portofcontext/pctx/commit/353da7a7868a250ed5c8ea5a945af3305dde79d3))
+</details>
+
+## 0.2.0 (2026-01-27)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 7 commits contributed to the release.
+ - 6 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_code_mode v0.2.0 ([`e596bed`](https://github.com/portofcontext/pctx/commit/e596bed5e3e7c1548d6e717b716ce535d2c2b45e))
+    - Release pctx_code_mode v0.2.0 ([`043829f`](https://github.com/portofcontext/pctx/commit/043829fecd52bc1216638f964f3a6014aff1a0d9))
+    - Merge branch 'main' into improve-code-mode-interface ([`b9175f8`](https://github.com/portofcontext/pctx/commit/b9175f8577fe1e6dd90e4b3688065055d90500db))
+    - Temp bug fix: empty inputSchema on callbacks ([`ae90ef1`](https://github.com/portofcontext/pctx/commit/ae90ef14774954ca1959a721268af8ca7ff55469))
+    - Migrate crates dependant on pctx_code_mode ([`a0157c1`](https://github.com/portofcontext/pctx/commit/a0157c1587f9126f26bd895ba78bd2c3452b3d4e))
+    - Better CodeMode struct ([`d270397`](https://github.com/portofcontext/pctx/commit/d2703972374d32356d96d3e35a32b18484658886))
+    - Use position() instead of unwrap() when adding callbacks ([`02e456a`](https://github.com/portofcontext/pctx/commit/02e456a302e4d16711f8afbabf488f981cb2167e))
+</details>
+
 ## 0.1.1 (2026-01-20)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release over the course of 7 calendar days.
+ - 9 commits contributed to the release over the course of 7 calendar days.
  - 8 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_executor v0.1.1, pctx_code_mode v0.1.1 ([`075fd8b`](https://github.com/portofcontext/pctx/commit/075fd8b93993e4727d05568f10977586ae958354))
     - Bump primary ([`392eb7c`](https://github.com/portofcontext/pctx/commit/392eb7c30e14ca0c15f03a1a960d7dc080e14d8f))
     - Adjusting changelogs prior to release of pctx_config v0.1.1, pctx_code_execution_runtime v0.1.1, pctx_codegen v0.1.1, pctx_deno_transpiler v0.1.1, pctx_type_check_runtime v0.1.1, pctx_executor v0.1.0, pctx_code_mode v0.1.0 ([`1226141`](https://github.com/portofcontext/pctx/commit/1226141953fe727fc35c42ef50d1c95bd27037e0))
     - Merge pull request #52 from portofcontext/bump-deps-for-goose ([`8a25938`](https://github.com/portofcontext/pctx/commit/8a259388b64d111a671cf930cdd6294449b70d8b))

@@ -39,17 +39,6 @@ async fn op_invoke_callback(
     serde_json::Value::Null
 }
 
-/// Fetch (stub)
-#[deno_core::op2(async)]
-#[serde]
-#[allow(clippy::unused_async)]
-async fn op_fetch(
-    #[string] _url: String,
-    #[serde] _options: Option<serde_json::Value>,
-) -> serde_json::Value {
-    serde_json::Value::Null
-}
-
 /// Sleep (stub for timers)
 #[deno_core::op2(async)]
 #[allow(clippy::unused_async)]
@@ -63,7 +52,6 @@ extension!(
         // Op declarations - these will be registered but not executed during snapshot
         op_call_mcp_tool,
         op_invoke_callback,
-        op_fetch,
         op_sleep,
     ],
     esm_entry_point = "ext:pctx_runtime_snapshot/runtime.js",

@@ -1,6 +1,6 @@
 [package]
 name = "pctx_executor"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
@@ -17,9 +17,9 @@ deno_resolver = { workspace = true }
 node_resolver = { workspace = true }
 sys_traits = { workspace = true }
 pctx_deno_transpiler = { version = "^0.1.1", path = "../pctx_deno_transpiler" }
-pctx_code_execution_runtime = { version = "^0.1.1", path = "../pctx_code_execution_runtime" }
+pctx_code_execution_runtime = { version = "^0.1.3", path = "../pctx_code_execution_runtime" }
 pctx_type_check_runtime = { version = "^0.1.1", path = "../pctx_type_check_runtime" }
-pctx_config = { version = "^0.1.1", path = "../pctx_config" }
+pctx_config = { version = "^0.1.3", path = "../pctx_config" }
 tempfile = "3"
 regex = "1"
 thiserror = { workspace = true }

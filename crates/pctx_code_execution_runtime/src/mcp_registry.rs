@@ -1,6 +1,6 @@
 use crate::error::McpError;
 use pctx_config::server::ServerConfig;
-use rmcp::model::{CallToolRequestParam, JsonObject, RawContent};
+use rmcp::model::{CallToolRequestParams, JsonObject, RawContent};
 use serde_json::json;
 use std::collections::HashMap;
 use std::sync::{Arc, RwLock};
@@ -120,10 +120,11 @@ pub(crate) async fn call_mcp_tool(
         }
     };
     let tool_result = client
-        .call_tool(CallToolRequestParam {
+        .call_tool(CallToolRequestParams {
             name: tool_name.to_string().into(),
             arguments: args,
             task: None,
+            meta: None,
         })
         .await
         .map_err(|e| {

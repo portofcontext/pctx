@@ -9,8 +9,8 @@ use rmcp::{
     RoleServer, ServerHandler,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
-        CallToolRequestParam, CallToolResult, Content, Implementation, ListToolsResult,
-        PaginatedRequestParam, ProtocolVersion, ServerCapabilities, ServerInfo,
+        CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
+        PaginatedRequestParams, ProtocolVersion, ServerCapabilities, ServerInfo,
     },
     service::RequestContext,
     tool, tool_router,
@@ -175,7 +175,7 @@ impl ServerHandler for PctxMcpService {
         let default_description = format!(
             "This server provides tools to explore SDK functions and execute SDK scripts for the following services: {}",
             self.code_mode
-                .tool_sets
+                .tool_sets()
                 .iter()
                 .map(|s| s.name.clone())
                 .collect::<Vec<String>>()
@@ -198,7 +198,7 @@ impl ServerHandler for PctxMcpService {
     #[instrument(skip_all, fields(mcp.method = "tools/list", mcp.id = %ctx.id))]
     async fn list_tools(
         &self,
-        _req: Option<PaginatedRequestParam>,
+        _req: Option<PaginatedRequestParams>,
         ctx: RequestContext<RoleServer>,
     ) -> McpResult<ListToolsResult> {
         let start = std::time::Instant::now();
@@ -220,7 +220,7 @@ impl ServerHandler for PctxMcpService {
     #[instrument(skip_all, fields(mcp.method = "tools/call", mcp.id = %ctx.id, mcp.tool.name = %req.name))]
     async fn call_tool(
         &self,
-        req: CallToolRequestParam,
+        req: CallToolRequestParams,
         ctx: RequestContext<RoleServer>,
     ) -> McpResult<CallToolResult> {
         let start = std::time::Instant::now();

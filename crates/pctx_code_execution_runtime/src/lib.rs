@@ -60,14 +60,12 @@
 mod callback_ops;
 mod callback_registry;
 mod error;
-mod fetch;
 mod js_error_impl;
 pub mod mcp_ops;
 mod mcp_registry;
 mod timer_ops;
 
 pub use callback_registry::{CallbackFn, CallbackRegistry};
-pub use fetch::AllowedHosts;
 pub use mcp_registry::MCPRegistry;
 
 /// Pre-compiled V8 snapshot containing the PCTX runtime
@@ -90,7 +88,6 @@ deno_core::extension!(
     pctx_runtime_snapshot,
     ops = [
         mcp_ops::op_call_mcp_tool,
-        mcp_ops::op_fetch,
         callback_ops::op_invoke_callback,
         timer_ops::op_sleep,
     ],
@@ -105,11 +102,9 @@ deno_core::extension!(
     options = {
         registry: MCPRegistry,
         callback_registry: CallbackRegistry,
-        allowed_hosts: AllowedHosts,
     },
     state = |state, options| {
         state.put(options.registry);
         state.put(options.callback_registry);
-        state.put(options.allowed_hosts);
     },
 );

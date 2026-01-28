@@ -1,3 +1,4 @@
+use pctx_codegen::ToolSet;
 use ratatui::{
     Frame,
     layout::{Alignment, Constraint, Direction, Layout, Rect},
@@ -171,11 +172,11 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
         return;
     }
 
-    let total_tools: usize = app.tools.tool_sets.iter().map(|s| s.tools.len()).sum();
+    let total_tools: usize = app.tools.tool_sets().iter().map(|s| s.tools.len()).sum();
     let title = format!("MCP Tools [{total_tools} total]");
 
     // Sort servers alphabetically by name
-    let mut sorted = app.tools.tool_sets.clone();
+    let mut sorted: Vec<ToolSet> = app.tools.tool_sets().iter().cloned().collect();
     sorted.sort_by_key(|s| s.name.clone());
 
     if sorted.is_empty() {

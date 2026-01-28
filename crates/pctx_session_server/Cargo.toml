@@ -59,7 +59,6 @@ async-trait = "0.1"
 tokio-test = "0.4"
 http-body-util = "0.1"
 tower = { workspace = true }
-reqwest = { version = "0.12", features = ["json"] }
 serial_test = "3"
 axum-test = { version = "18", features = ["ws"] }
 similar-asserts = { version = "1", features = ["serde"] }

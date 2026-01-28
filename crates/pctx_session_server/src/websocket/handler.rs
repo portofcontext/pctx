@@ -206,7 +206,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
     let execution_id = Uuid::new_v4();
 
     let callback_registry = CallbackRegistry::default();
-    for callback_cfg in &code_mode.callbacks {
+    for callback_cfg in code_mode.callbacks() {
         let ws_session_lock_clone = ws_session_lock.clone();
         let cfg = callback_cfg.clone();
 

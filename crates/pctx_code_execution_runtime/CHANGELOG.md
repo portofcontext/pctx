@@ -5,13 +5,55 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.3 (2026-01-28)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Remove generic fectch from runtime ([`fdfc800`](https://github.com/portofcontext/pctx/commit/fdfc80069eb561177410fc55909ce422f2450280))
+</details>
+
+## 0.1.2 (2026-01-27)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 6 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_config v0.1.2, pctx_code_execution_runtime v0.1.2, pctx_code_mode v0.2.0 ([`bb7d3d9`](https://github.com/portofcontext/pctx/commit/bb7d3d93af81360310c3891bb649c54077af445d))
+    - Bump rmcp ([`af1c5e3`](https://github.com/portofcontext/pctx/commit/af1c5e30122cab57c19a8a0984f4cd4f51ae8539))
+</details>
+
 ## 0.1.1 (2026-01-20)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 5 commits contributed to the release over the course of 1 calendar day.
+ - 6 commits contributed to the release over the course of 1 calendar day.
  - 8 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_config v0.1.1, pctx_code_execution_runtime v0.1.1, pctx_codegen v0.1.1, pctx_deno_transpiler v0.1.1, pctx_type_check_runtime v0.1.1, pctx_executor v0.1.0, pctx_code_mode v0.1.0 ([`f9f91b7`](https://github.com/portofcontext/pctx/commit/f9f91b787f18a7e0a33888013ba240b34ca7c5cf))
     - Adjusting changelogs prior to release of pctx_config v0.1.1, pctx_code_execution_runtime v0.1.1, pctx_codegen v0.1.1, pctx_deno_transpiler v0.1.1, pctx_type_check_runtime v0.1.1, pctx_executor v0.1.0, pctx_code_mode v0.1.0 ([`1226141`](https://github.com/portofcontext/pctx/commit/1226141953fe727fc35c42ef50d1c95bd27037e0))
     - Merge pull request #52 from portofcontext/bump-deps-for-goose ([`8a25938`](https://github.com/portofcontext/pctx/commit/8a259388b64d111a671cf930cdd6294449b70d8b))
     - Bump deps and export needed code mode structs and funcs ([`ddf9f35`](https://github.com/portofcontext/pctx/commit/ddf9f35cfb9d9bc760b8e31d02eb332cbc04b1ed))

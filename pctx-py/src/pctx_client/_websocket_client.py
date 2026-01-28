@@ -213,9 +213,15 @@ class WebSocketClient:
         args = req.params.args or {}
         try:
             if isinstance(tool, Tool):
-                output = tool.invoke(**args)
+                if tool.input_schema is None:
+                    output = tool.invoke()
+                else:
+                    output = tool.invoke(**args)
             else:
-                output = await tool.ainvoke(**args)
+                if tool.input_schema is None:
+                    output = await tool.ainvoke()
+                else:
+                    output = await tool.ainvoke(**args)
 
             return ExecuteToolResponse(
                 id=req.id, result=ExecuteToolResult(output=output)

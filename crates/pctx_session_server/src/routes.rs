@@ -7,7 +7,7 @@ use pctx_code_mode::{
         CallbackConfig, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
     },
 };
-use tracing::{debug, info};
+use tracing::info;
 use uuid::Uuid;
 
 use crate::extractors::CodeModeSession;
@@ -238,13 +238,9 @@ pub(crate) async fn register_tools<B: PctxSessionBackend>(
                 details: None,
             },
         ))?;
-
-    for tool in &request.tools {
-        debug!(tool =? tool.id(), "Adding callback tool {}", tool.id());
-        code_mode
-            .add_callback(tool)
-            .context("Failed adding callback")?;
-    }
+    code_mode
+        .add_callbacks(&request.tools)
+        .context("Failed adding callbacks")?;
 
     // Update the backend with the modified CodeMode
     state.backend.update(session_id, code_mode).await?;
@@ -299,21 +295,10 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
         ))?;
 
     // Use parallel server registration with conversion function
-    let mut results = pctx_code_mode::parallel_registration::register_servers_parallel(
-        &request.servers,
-        30, // 30 second timeout
-    )
-    .await;
-
-    // Add successful registrations to code_mode
-    let registered = results.add_to_code_mode(&mut code_mode);
-
-    // Collect failed server names for response
-    let failed: Vec<String> = results
-        .failed
-        .iter()
-        .map(|f| f.server_name.clone())
-        .collect();
+    code_mode
+        .add_servers(&request.servers, 30)
+        .await
+        .context("Failed adding servers")?;
 
     // Update the backend with the modified CodeMode
     state
@@ -324,10 +309,12 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
 
     info!(
         session_id =% session_id,
-        registered =% registered,
-        failed =? failed,
+        registered =% request.servers.len(),
         "Registered MCP servers",
     );
 
-    Ok(Json(RegisterMcpServersResponse { registered, failed }))
+    Ok(Json(RegisterMcpServersResponse {
+        registered: request.servers.len(),
+        failed: vec![],
+    }))
 }

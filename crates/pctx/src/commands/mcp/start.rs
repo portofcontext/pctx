@@ -2,7 +2,7 @@ use anyhow::Result;
 use clap::Parser;
 use pctx_code_mode::CodeMode;
 use pctx_config::Config;
-use tracing::{info, warn};
+use tracing::info;
 
 use pctx_mcp_server::PctxMcpServer;
 
@@ -32,28 +32,10 @@ impl StartCmd {
             "Creating code mode interface for {} upstream MCP servers (parallel)",
             cfg.servers.len()
         );
-        let mut code_mode = CodeMode::default();
-
-        // Use parallel registration with 30 second timeout per server
-        let mut results =
-            pctx_code_mode::parallel_registration::register_servers_parallel(&cfg.servers, 30)
-                .await;
-
-        // Add successful registrations to code_mode
-        let registered = results.add_to_code_mode(&mut code_mode);
-
-        // Log failures
-        for failure in &results.failed {
-            warn!(
-                server.name = failure.server_name,
-                error = failure.error_message,
-                "Failed creating code mode for MCP server"
-            );
-        }
+        let code_mode = CodeMode::default().with_servers(&cfg.servers, 30).await?;
 
         info!(
-            "Code mode initialized with {}/{} MCP servers",
-            registered,
+            "Code mode initialized with {} upstream MCP servers",
             cfg.servers.len()
         );
 

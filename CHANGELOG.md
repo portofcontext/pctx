@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.4.3] - 2026-01-27
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Callback configurations with empty input schemas causing panic -> now empty input schemas will be handled as `any`, and fully support of optional schemas will be released later.
+
 ## [v0.4.2] - 2026-01-19
 
 ### Added
@@ -22,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - OpenTelemetry distributed tracing support via W3C `traceparent` header in both MCP and session servers
+
 ## [v0.4.1] - 2026-01-12
 
 ### Added

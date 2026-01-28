@@ -5,35 +5,37 @@ A TypeScript code execution engine that enables AI agents to dynamically call to
 ## Quick Start
 
 ```rust
-use pctx_code_mode::{CodeMode, Tool, ToolSet, RootSchema, CallbackRegistry};
-use schemars::schema_for;
-use serde::{Deserialize, Serialize};
+use pctx_code_mode::{CodeMode, CallbackRegistry};
+use pctx_code_mode::model::CallbackConfig;
+use serde_json::json;
 use std::sync::Arc;
-
-#[derive(Serialize, Deserialize, schemars::JsonSchema)]
-struct GreetInput {
-    name: String,
-}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    // 1. Define your tools with JSON schemas
-    let tool = Tool::new_callback(
-        "greet",
-        Some("Greets a person by name".to_string()),
-        serde_json::from_value(serde_json::to_value(schema_for!(GreetInput))?)?,
-        None,
-    )?;
+    // 1. Define callback tools with JSON schemas
+    let callback = CallbackConfig {
+        namespace: "Greeter".to_string(),
+        name: "greet".to_string(),
+        description: Some("Greets a person by name".to_string()),
+        input_schema: Some(json!({
+            "type": "object",
+            "properties": { "name": { "type": "string" } },
+            "required": ["name"]
+        })),
+        output_schema: Some(json!({
+            "type": "object",
+            "properties": { "message": { "type": "string" } },
+            "required": ["message"]
+        })),
+    };
 
-    let toolset = ToolSet::new("Greeter", "Greeting functions", vec![tool]);
-
-    // 2. Create CodeMode instance with your tools
+    // 2. Create CodeMode instance and add callback
     let mut code_mode = CodeMode::default();
-    code_mode.tool_sets = vec![toolset];
+    code_mode.add_callback(&callback)?;
 
-    // 3. Register callbacks that execute when tools are called
+    // 3. Register callback functions that execute when tools are called
     let registry = CallbackRegistry::default();
-    registry.add("Greeter.greet", Arc::new(|args| {
+    registry.add(&callback.id(), Arc::new(|args| {
         Box::pin(async move {
             let name = args
                 .and_then(|v| v.get("name"))
@@ -65,36 +67,52 @@ async fn main() -> anyhow::Result<()> {
 
 ## Core Concepts
 
-### 1. Tools and ToolSets
+### 1. CodeMode
 
-Tools represent individual functions that can be called from TypeScript code. They are organized into ToolSets (namespaces).
+The [`CodeMode`] struct is the main execution engine. It provides:
+
+**Builder methods** (chainable):
+
+- `with_server()` / `with_servers()` - Add MCP servers
+- `with_callback()` / `with_callbacks()` - Add callback tools
+
+**Registration methods** (mutable):
+
+- `add_server()` / `add_servers()` - Add MCP servers
+- `add_callback()` / `add_callbacks()` - Add callback tools
+- `add_tool_set()` - Add a pre-built ToolSet directly
+
+**Accessor methods**:
+
+- `tool_sets()` - Get registered ToolSets
+- `servers()` - Get registered server configurations
+- `callbacks()` - Get registered callback configurations
+
+**Execution methods**:
+
+- `list_functions()` - List all available functions with minimal interfaces
+- `get_function_details()` - Get full typed interfaces for specific functions
+- `execute()` - Execute TypeScript code in the sandbox
 
 ```rust
-use pctx_code_mode::{Tool, ToolSet};
+use pctx_code_mode::CodeMode;
+use pctx_code_mode::model::{CallbackConfig, GetFunctionDetailsInput, FunctionId};
+use serde_json::json;
 
-// Create a tool with input/output schemas
-let tool = Tool::new_callback(
-    "fetchData",                           // Function name
-    Some("Fetches data from API"),         // Description
-    input_schema,                          // JSON Schema for input
-    Some(output_schema),                   // Optional output schema
-)?;
-
-// Organize tools into a namespace
-let toolset = ToolSet::new(
-    "DataApi",                             // Namespace
-    "Data fetching functions",             // Description
-    vec![tool],                            // Tools
-);
-```
-
-### 2. CodeMode
-
-The main execution engine that manages tools and executes TypeScript code.
-
-```rust
 let mut code_mode = CodeMode::default();
-code_mode.tool_sets = vec![toolset1, toolset2];
+
+// Add callback tools
+code_mode.add_callback(&CallbackConfig {
+    namespace: "DataApi".to_string(),
+    name: "fetchData".to_string(),
+    description: Some("Fetches data from API".to_string()),
+    input_schema: Some(json!({
+        "type": "object",
+        "properties": { "id": { "type": "integer" } },
+        "required": ["id"]
+    })),
+    output_schema: None,
+})?;
 
 // List available functions
 let list = code_mode.list_functions();
@@ -111,9 +129,18 @@ let details = code_mode.get_function_details(GetFunctionDetailsInput {
 println!("TypeScript definitions:\n{}", details.code);
 ```
 
+### 2. Tools and ToolSets
+
+[`Tool`]s represent individual functions callable from TypeScript.
+They are organized into [`ToolSet`]s (namespaces). Tools can be:
+
+- **MCP tools**: Loaded from MCP servers via `add_server()`
+- **Callback tools**: Defined via `CallbackConfig` and `add_callback()`
+
 ### 3. Callbacks
 
-Callbacks are Rust functions that execute when TypeScript code calls your tools.
+[`CallbackFn`] are Rust async functions that execute when TypeScript code calls callback tools.
+Register them in a [`CallbackRegistry`] and pass it to `execute()`.
 
 ```rust
 use pctx_code_mode::{CallbackRegistry, CallbackFn};
@@ -177,10 +204,66 @@ match output.success {
 
 The main execution engine.
 
-#### `new()` / `default()`
+#### `default()`
 
 ```rust
 let code_mode = CodeMode::default();
+```
+
+#### Builder Methods
+
+Chainable methods for fluent construction:
+
+```rust
+use pctx_code_mode::CodeMode;
+use pctx_code_mode::model::CallbackConfig;
+use pctx_config::server::ServerConfig;
+
+// Build with callbacks
+let code_mode = CodeMode::default()
+    .with_callback(&callback_config)?
+    .with_callbacks(&[callback1, callback2])?;
+
+// Build with MCP servers (async)
+let code_mode = CodeMode::default()
+    .with_server(&server_config).await?
+    .with_servers(&server_configs, 30).await?;
+```
+
+#### `add_callback(config: &CallbackConfig) -> Result<()>`
+
+Adds a callback-based tool to the code mode.
+
+```rust
+use pctx_code_mode::model::CallbackConfig;
+use serde_json::json;
+
+code_mode.add_callback(&CallbackConfig {
+    namespace: "Logger".to_string(),
+    name: "logMessage".to_string(),
+    description: Some("Logs a message".to_string()),
+    input_schema: Some(json!({
+        "type": "object",
+        "properties": {
+            "message": { "type": "string" }
+        },
+        "required": ["message"]
+    })),
+    output_schema: None,
+})?;
+```
+
+#### `add_server(server: &ServerConfig) -> Result<()>`
+
+Connects to an MCP server and registers its tools.
+
+```rust
+use pctx_config::server::ServerConfig;
+
+code_mode.add_server(&server_config).await?;
+
+// Or add multiple servers with a timeout (in seconds)
+code_mode.add_servers(&server_configs, 30).await?;
 ```
 
 #### `list_functions() -> ListFunctionsOutput`
@@ -229,26 +312,17 @@ if output.success {
 }
 ```
 
-#### `add_callback(config: &CallbackConfig) -> Result<()>`
-
-Dynamically adds a callback-based tool to the code mode.
+#### Accessor Methods
 
 ```rust
-use pctx_code_mode::model::CallbackConfig;
+// Get registered tool sets
+let tool_sets: &[ToolSet] = code_mode.tool_sets();
 
-code_mode.add_callback(&CallbackConfig {
-    name: "logMessage".to_string(),
-    namespace: "Logger".to_string(),
-    description: Some("Logs a message".to_string()),
-    input_schema: Some(serde_json::json!({
-        "type": "object",
-        "properties": {
-            "message": { "type": "string" }
-        },
-        "required": ["message"]
-    })),
-    output_schema: None,
-})?;
+// Get registered server configurations
+let servers: &[ServerConfig] = code_mode.servers();
+
+// Get registered callback configurations
+let callbacks: &[CallbackConfig] = code_mode.callbacks();
 ```
 
 ### CallbackRegistry
@@ -286,53 +360,49 @@ if registry.has("DataApi.fetchData") {
 
 ### Types
 
-#### `Tool`
+#### `CallbackConfig`
+
+Configuration for defining callback-based tools:
 
 ```rust
-pub struct Tool {
-    pub name: String,
-    pub fn_name: String,
-    pub description: Option<String>,
-    pub input_signature: String,
-    pub output_signature: String,
-    pub types: String,
-    // ... internal fields
-}
-```
-
-Create tools for MCP-style tools or callbacks:
-
-```rust
-// MCP-style tool
-let tool = Tool::new_mcp(
-    "toolName",
-    Some("Description"),
-    input_schema,
-    output_schema,
-)?;
-
-// Callback-based tool
-let tool = Tool::new_callback(
-    "toolName",
-    Some("Description"),
-    input_schema,
-    output_schema,
-)?;
-```
-
-#### `ToolSet`
-
-```rust
-pub struct ToolSet {
+pub struct CallbackConfig {
     pub name: String,
     pub namespace: String,
-    pub description: String,
-    pub tools: Vec<Tool>,
+    pub description: Option<String>,
+    pub input_schema: Option<serde_json::Value>,
+    pub output_schema: Option<serde_json::Value>,
 }
 ```
 
 ```rust
-let toolset = ToolSet::new("MyNamespace", "Description", vec![tool1, tool2]);
+use pctx_code_mode::model::CallbackConfig;
+use serde_json::json;
+
+let config = CallbackConfig {
+    namespace: "MyNamespace".to_string(),
+    name: "myFunction".to_string(),
+    description: Some("Does something useful".to_string()),
+    input_schema: Some(json!({
+        "type": "object",
+        "properties": { "id": { "type": "integer" } },
+        "required": ["id"]
+    })),
+    output_schema: None,
+};
+```
+
+#### `Tool` and `ToolSet`
+
+Tools represent individual functions callable from TypeScript. They are organized into ToolSets (namespaces). These are typically created internally when you call `add_callback()` or `add_server()`.
+
+```rust
+// Access registered tool sets
+for tool_set in code_mode.tool_sets() {
+    println!("Namespace: {}", tool_set.namespace);
+    for tool in &tool_set.tools {
+        println!("  - {}: {:?}", tool.fn_name, tool.description);
+    }
+}
 ```
 
 #### `ExecuteOutput`
@@ -360,28 +430,24 @@ pub type CallbackFn = Arc<
 
 ## Advanced Usage
 
-### Converting MCP Tools
+### Adding MCP Servers
 
-Convert MCP (Model Context Protocol) tools into Code Mode tools:
+Connect to MCP (Model Context Protocol) servers to automatically register their tools:
 
 ```rust
-use rmcp::model::Tool as McpTool;
+use pctx_config::server::ServerConfig;
 
-fn convert_mcp_tool(mcp_tool: &McpTool) -> Result<Tool> {
-    let mut schema_value = serde_json::to_value(&mcp_tool.input_schema)?;
+// Create server configuration
+let server_config = ServerConfig::new_stdio("my-server", "npx", vec!["-y", "my-mcp-server"]);
 
-    // Dereference JSON Schema $refs
-    unbinder::dereference_schema(&mut schema_value, unbinder::Options::default());
+// Or for HTTP-based servers
+let server_config = ServerConfig::new_http("my-server", "https://api.example.com/mcp");
 
-    let input_schema: RootSchema = serde_json::from_value(schema_value)?;
+// Add to CodeMode (connects and registers tools)
+code_mode.add_server(&server_config).await?;
 
-    Tool::new_mcp(
-        &mcp_tool.name,
-        mcp_tool.description.as_ref().map(|s| s.to_string()),
-        input_schema,
-        None,
-    )
-}
+// Add multiple servers in parallel with timeout
+code_mode.add_servers(&[server1, server2], 30).await?;
 ```
 
 ### Dynamic Tool Registration
@@ -389,16 +455,18 @@ fn convert_mcp_tool(mcp_tool: &McpTool) -> Result<Tool> {
 Register tools at runtime based on configuration:
 
 ```rust
+use pctx_code_mode::model::CallbackConfig;
+
 for config in tool_configs {
     code_mode.add_callback(&CallbackConfig {
-        name: config.name,
         namespace: config.namespace,
+        name: config.name,
         description: Some(config.description),
         input_schema: Some(config.input_schema),
         output_schema: config.output_schema,
     })?;
 
-    // Register the corresponding callback
+    // Register the corresponding callback function
     let callback_id = format!("{}.{}", config.namespace, config.name);
     registry.add(&callback_id, create_callback_for_config(&config))?;
 }
@@ -451,15 +519,16 @@ LLM-generated code must follow this pattern:
 
 ```typescript
 async function run() {
-    // Your code that calls registered tools
-    const result = await Namespace.toolName({ param: value });
+  // Your code that calls registered tools
+  const result = await Namespace.toolName({ param: value });
 
-    // MUST return a value
-    return result;
+  // MUST return a value
+  return result;
 }
 ```
 
 The code execution engine:
+
 - Wraps your code with namespace implementations
 - Automatically calls `run()` and captures its return value
 - Provides the return value in `ExecuteOutput.output`
@@ -469,29 +538,21 @@ The code execution engine:
 1. **Tool Definition**: Tools are defined with JSON Schemas for inputs/outputs
 2. **Code Generation**: TypeScript interface definitions are generated from schemas
 3. **Code Execution**: User code is wrapped with namespace implementations and executed in Deno
-4. **Callback Routing**: Function calls in TypeScript are routed to Rust callbacks
+4. **Callback Routing**: Function calls in TypeScript are routed to Rust callbacks or MCP servers
 5. **Result Marshaling**: JSON values are passed between TypeScript and Rust
 
-### Sandbox Security
+## Sandbox Security
 
 Code is executed in a Deno runtime with:
-- Network access restricted to allowed hosts
+
+- Network access restricted to allowed hosts (from registered MCP servers)
 - No file system access
 - No subprocess spawning
 - Isolated V8 context per execution
 
-Configure allowed hosts:
-
 ```rust
-code_mode.servers = vec![
-    ServerConfig {
-        // Your server configuration
-        // Only hosts in server configs are allowed network access
-    }
-];
-
-let allowed = code_mode.allowed_hosts();
-println!("Allowed hosts: {:?}", allowed);
+// Add servers
+code_mode.add_server(&server_config).await?;
 ```
 
 ## Examples
@@ -569,6 +630,7 @@ let code = r#"
 
 ## Related Crates
 
+- `pctx_config`: Server configuration types (`ServerConfig`)
 - `pctx_codegen`: TypeScript code generation from JSON schemas
 - `pctx_executor`: Deno runtime execution engine
 - `pctx_code_execution_runtime`: Runtime environment and callback system

@@ -35,8 +35,8 @@ echo "======================================"
 # Test 1: Start server (tests HTTP endpoint with parallel MCP initialization)
 echo -e "\n${YELLOW}Test 1: Starting pctx MCP server${NC}"
 
-# Create test config with both stdio and HTTP MCP servers
-# This tests parallel initialization with mixed transport types
+# Create test config with multiple stdio MCP servers
+# This tests parallel initialization of multiple stdio servers
 cat > "$TEST_DIR/pctx-test.json" <<'EOF'
 {
   "name": "pctx-test",
@@ -48,8 +48,9 @@ cat > "$TEST_DIR/pctx-test.json" <<'EOF'
       "args": ["-y", "@modelcontextprotocol/server-memory"]
     },
     {
-      "name": "time",
-      "url": "https://mcp.run/time"
+      "name": "filesystem",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
     }
   ]
 }
@@ -98,7 +99,7 @@ else
     echo -e "${RED}✗ MCP endpoint check failed${NC}"
     echo "Response: $mcp_response"
     echo "Server logs:"
-    tail -20 "$TEST_DIR/pctx-test.log"
+    tail -30 "$TEST_DIR/pctx-test.log" | grep -v 'code="async function' | tail -10
     exit 1
 fi
 
@@ -148,6 +149,9 @@ if echo "$list_response" | grep -q '"result"'; then
     # Check that we got function definitions back
     if echo "$list_response" | grep -q '"functions"'; then
         echo "  Response contains function definitions"
+        # Extract and count function namespaces
+        namespace_count=$(echo "$list_response" | grep -o '"[A-Z][a-zA-Z]*\.' | sort -u | wc -l | tr -d ' ')
+        echo "  Found $namespace_count namespaces"
     fi
 else
     echo -e "${RED}✗ list_functions call failed${NC}"
@@ -167,7 +171,7 @@ details_response=$(curl -s -X POST http://localhost:8080/mcp \
       "params": {
         "name": "get_function_details",
         "arguments": {
-          "functions": ["Time.get_current_time"]
+          "functions": ["Memory.createEntities"]
         }
       }
     }')
@@ -189,23 +193,27 @@ echo -e "\n${YELLOW}Test 6: Call execute with TypeScript code${NC}"
 execute_response=$(curl -s -X POST http://localhost:8080/mcp \
     -H "Content-Type: application/json" \
     -H "Accept: application/json, text/event-stream" \
-    -d '{
-      "jsonrpc": "2.0",
-      "id": 4,
-      "method": "tools/call",
-      "params": {
-        "name": "execute",
-        "arguments": {
-          "code": "async function run() { const result = await Time.get_current_time(); return result; }"
+    -d "{
+      \"jsonrpc\": \"2.0\",
+      \"id\": 4,
+      \"method\": \"tools/call\",
+      \"params\": {
+        \"name\": \"execute\",
+        \"arguments\": {
+          \"code\": \"async function run() { const result = await Memory.createEntities({ entities: [{ name: 'test', entityType: 'item', observations: ['test observation'] }] }); return result; }\"
         }
       }
-    }')
+    }")
 
 if echo "$execute_response" | grep -q '"result"'; then
     echo -e "${GREEN}✓ execute called successfully${NC}"
-    # Check that we got a result back with content
-    if echo "$execute_response" | grep -q '"content"'; then
-        echo "  Code executed and returned result"
+    # Check that the code execution succeeded (not just that we got a response)
+    if echo "$execute_response" | grep -q '"success":true'; then
+        echo "  Code executed successfully and returned result"
+    else
+        echo -e "${RED}✗ Code execution failed${NC}"
+        echo "Response: $execute_response"
+        exit 1
     fi
 else
     echo -e "${RED}✗ execute call failed${NC}"
@@ -237,7 +245,7 @@ echo ""
 if [ "${SHOW_LOGS}" = "1" ]; then
     echo -e "${YELLOW}Server logs:${NC}"
     echo "---"
-    tail -20 "$TEST_DIR/pctx-test.log"
+    tail -50 "$TEST_DIR/pctx-test.log" | grep -v 'code="async function' | tail -10
     echo "---"
     echo ""
 fi

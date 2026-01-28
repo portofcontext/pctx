@@ -449,7 +449,7 @@ async fn load_code_mode_for_dev(cfg: &Config) -> Result<pctx_code_mode::CodeMode
         Ok(pctx_code_mode::CodeMode::default())
     } else {
         let loaded = StartCmd::load_code_mode(cfg).await?;
-        if loaded.tool_sets.is_empty() {
+        if loaded.tool_sets().is_empty() {
             tracing::warn!(
                 "Failed loading all configured MCP servers, add servers with 'pctx add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
                 cfg.path()
@@ -522,7 +522,7 @@ mod tests {
     use chrono::Utc;
     use pctx_code_mode::CodeMode;
     use pctx_codegen::{Tool, ToolSet};
-    use pctx_config::{logger::LogLevel, server::ServerConfig};
+    use pctx_config::logger::LogLevel;
     use serde_json::json;
 
     fn create_pctx_tools() -> CodeMode {
@@ -567,14 +567,11 @@ mod tests {
             .unwrap(),
         ];
 
-        CodeMode {
-            tool_sets: vec![ToolSet::new("banking", "Banking MCP Server", tools)],
-            servers: vec![ServerConfig::new(
-                "banking".into(),
-                "http://localhost:8080/mcp".parse().unwrap(),
-            )],
-            callbacks: vec![],
-        }
+        let mut cm = CodeMode::default();
+        cm.add_tool_set(ToolSet::new("banking", "Banking MCP Server", tools))
+            .unwrap();
+
+        cm
     }
 
     #[test]

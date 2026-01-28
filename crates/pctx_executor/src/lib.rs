@@ -313,13 +313,11 @@ async fn execute_code(
             });
         }
     }
-    let allowed_hosts = pctx_code_execution_runtime::AllowedHosts::new(options.allowed_hosts);
 
     // Build extensions list
     let extensions = vec![pctx_code_execution_runtime::pctx_runtime_snapshot::init(
         mcp_registry,
         options.callback_registry,
-        allowed_hosts,
     )];
 
     // Create JsRuntime from `pctx_runtime` snapshot and extension

@@ -1,6 +1,6 @@
 [package]
 name = "pctx_config"
-version = "0.1.1"
+version = "0.1.3"
 edition = "2024"
 license = "MIT"
 description = "Configuration management for pctx toolkit"
@@ -29,9 +29,20 @@ rmcp = { workspace = true, features = [
     "client",
     "transport-streamable-http-client-reqwest",
     "transport-child-process",
-    "reqwest",
 ] }
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { workspace = true, features = [
+    "rustls-tls-native-roots",
+    "json",
+    "cookies",
+    "gzip",
+    "brotli",
+    "deflate",
+    "zstd",
+    "charset",
+    "http2",
+    "stream",
+    "blocking",
+] }
 thiserror.workspace = true
 http = "1"
 opentelemetry-otlp = { workspace = true, features = [

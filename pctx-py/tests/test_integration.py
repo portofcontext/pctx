@@ -1,5 +1,7 @@
 """Integration tests for pctx code mode against a running server"""
 
+from datetime import datetime
+
 import pytest
 
 from pctx_client import Pctx, tool
@@ -300,7 +302,12 @@ async def test_local_python_tool_registration_and_calling():
             """Greet someone with a custom greeting"""
             return f"{greeting}, {name}!"
 
-        async with Pctx(tools=[add_numbers, greet]) as pctx:
+        @tool
+        def now_timestamp() -> float:
+            """Returns current timestamp"""
+            return datetime.now().timestamp()
+
+        async with Pctx(tools=[add_numbers, greet, now_timestamp]) as pctx:
             # Verify tools are listed
             functions = await pctx.list_functions()
             function_names = [f"{f.namespace}.{f.name}" for f in functions.functions]
@@ -311,13 +318,18 @@ async def test_local_python_tool_registration_and_calling():
             assert "Tools.greet" in function_names, (
                 f"greet tool should be registered, got: {function_names}"
             )
+            assert "Tools.nowTimestamp" in function_names, (
+                f"now_timestamp tool should be registered, got: {function_names}"
+            )
 
             # Test calling the add_numbers tool
             code = """
             async function run() {
-                const result = await Tools.addNumbers({ a: 10, b: 32 });
-                console.log("Addition result:", result);
-                return { sum: result };
+                const sum = await Tools.addNumbers({ a: 10, b: 32 });
+                console.log("Addition result:", sum);
+                const now = await Tools.nowTimestamp(null);
+                console.log("Now result:", now);
+                return { sum, now };
             }
             """
             output = await pctx.execute(code)

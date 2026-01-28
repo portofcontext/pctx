@@ -170,12 +170,12 @@ impl App {
             tracing::trace!(
                 "Found code_from_llm field (length={}), checking for tool usage. Servers available: {}",
                 code_from_llm.len(),
-                self.tools.tool_sets.len()
+                self.tools.tool_sets().len()
             );
 
             // Parse the code to find upstream tool calls like "Banking.getAccountBalance"
             // Pattern: namespace.methodName(
-            for tool_set in &self.tools.tool_sets {
+            for tool_set in self.tools.tool_sets() {
                 let namespace_pattern = format!("{}.", &tool_set.namespace);
                 tracing::trace!(
                     "Checking for server '{}' with namespace pattern '{namespace_pattern}' in code",
@@ -298,7 +298,7 @@ impl App {
                 // Re-process all existing logs now that we have server metadata
                 tracing::info!(
                     "ServerConnected: {} servers available. Re-processing existing logs for tool usage tracking.",
-                    self.tools.tool_sets.len()
+                    self.tools.tool_sets().len()
                 );
                 self.reprocess_logs_for_tool_usage();
             }
@@ -397,7 +397,7 @@ impl App {
 
     pub(super) fn scroll_tools_down(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -433,7 +433,7 @@ impl App {
 
     pub(super) fn scroll_tools_up(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -462,12 +462,12 @@ impl App {
     }
 
     pub(super) fn move_to_next_namespace(&mut self) {
-        if self.tools.tool_sets.is_empty() {
+        if self.tools.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -483,12 +483,12 @@ impl App {
     }
 
     pub(super) fn move_to_prev_namespace(&mut self) {
-        if self.tools.tool_sets.is_empty() {
+        if self.tools.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -509,7 +509,7 @@ impl App {
 
     pub(super) fn select_first_tool_in_current_namespace(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if self.selected_namespace_index >= sorted.len() {
@@ -538,7 +538,7 @@ impl App {
         let mut counter = 0;
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted = self.tools.tool_sets.clone();
+        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         for tool_set in sorted {

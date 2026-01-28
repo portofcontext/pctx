@@ -104,18 +104,7 @@ export async function invokeCallback(call) {
   return await ops.op_invoke_callback(call.id, call.arguments);
 }
 
-/**
- * Fetch with host-based permissions
- * @param {string} url - URL to fetch
- * @param {Object} [options] - Fetch options (method, headers, body)
- * @returns {Promise<{status: number, headers: Object, body: string}>}
- */
-async function fetch(url, options) {
-  return await ops.op_fetch(url, options);
-}
-
 // Make APIs available globally for convenience (matching original behavior)
 globalThis.callMCPTool = callMCPTool;
 globalThis.invokeCallback = invokeCallback;
-globalThis.fetch = fetch;
 globalThis.justBash = Bash; // lowercase to avoid any clashes with namespaces

@@ -261,7 +261,7 @@ impl PctxMcpServer {
         ]);
         builder.push_record(["Docs", &fmt_dimmed("https://github.com/portofcontext/pctx")]);
 
-        if !code_mode.tool_sets.is_empty() {
+        if !code_mode.tool_sets().is_empty() {
             builder.push_record(["", ""]);
 
             let tool_record = |s: &pctx_codegen::ToolSet| {
@@ -275,12 +275,12 @@ impl PctxMcpServer {
             builder.push_record([
                 "Upstream MCPs",
                 &code_mode
-                    .tool_sets
+                    .tool_sets()
                     .first()
                     .map(tool_record)
                     .unwrap_or_default(),
             ]);
-            for s in &code_mode.tool_sets[1..] {
+            for s in &code_mode.tool_sets()[1..] {
                 builder.push_record(["", &tool_record(s)]);
             }
         }

@@ -11,6 +11,8 @@ pctx.json
 pctx-dev.jsonl
 .pctx
 
+scratch/*
+
 # Python
 *.pyc
 __pycache__/
@@ -24,7 +26,6 @@ venv/
 .pytest_cache/
 *.lock
 uv.lock
-scratch/*
 
 # Sphinx documentation
 pctx-py/docs/_build/

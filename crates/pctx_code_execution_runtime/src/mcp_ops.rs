@@ -9,7 +9,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::error::McpError;
-use crate::fetch::{AllowedHosts, FetchOptions, FetchResponse};
 use crate::mcp_registry::MCPRegistry;
 
 /// Call an MCP tool (async op)
@@ -26,19 +25,4 @@ pub(crate) async fn op_call_mcp_tool(
         borrowed.borrow::<MCPRegistry>().clone()
     };
     crate::mcp_registry::call_mcp_tool(&registry, &server_name, &tool_name, args).await
-}
-
-/// Fetch with host-based permissions
-#[op2(async)]
-#[serde]
-pub(crate) async fn op_fetch(
-    state: Rc<RefCell<OpState>>,
-    #[string] url: String,
-    #[serde] options: Option<FetchOptions>,
-) -> Result<FetchResponse, McpError> {
-    let allowed_hosts = {
-        let borrowed = state.borrow();
-        borrowed.borrow::<AllowedHosts>().clone()
-    };
-    crate::fetch::fetch_with_permissions(url, options, &allowed_hosts).await
 }
