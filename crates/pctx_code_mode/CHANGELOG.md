@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release.
+ - 7 commits contributed to the release.
  - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`2b9e359`](https://github.com/portofcontext/pctx/commit/2b9e359c8366d1cf50fdf23b49287e77025ecf4e))
     - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`ca2531d`](https://github.com/portofcontext/pctx/commit/ca2531dac6d202d926c55beec03c73496a75e056))
     - Bump code mode ([`f980ad0`](https://github.com/portofcontext/pctx/commit/f980ad0e0489cada6e3ee0f6a0d6156f78793f7f))
     - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`8cd4cb3`](https://github.com/portofcontext/pctx/commit/8cd4cb3354416208f70927e8fdb6540162402eef))
