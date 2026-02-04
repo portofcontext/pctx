@@ -1,0 +1,58 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: toolset.namespace_interface(true)
+---
+/**
+* A collection of utility tools
+*/
+namespace MyTools {
+  export type GetWeatherInput = {
+  location: string;
+
+  units?: "celsius" | "fahrenheit" | undefined;
+};
+
+
+export type GetWeatherOutput = {
+  temperature: number;
+
+  condition: string;
+
+  humidity?: number | undefined;
+};
+
+
+/**
+* Get the current weather for a given location
+*/
+export async function getWeather(input: GetWeatherInput): Promise<GetWeatherOutput>
+
+export type CreateDocumentInput = {
+  title: string;
+
+  content: CreateDocumentInputContent;
+
+  tags?: string[] | undefined;
+};
+
+export type CreateDocumentInputContent = {
+  body: string;
+
+  format?: "markdown" | "html" | "plain" | undefined;
+};
+
+
+export type CreateDocumentOutput = {
+  id: string;
+
+  created_at: string;
+
+  url?: string | undefined;
+};
+
+
+/**
+* Create a new document with metadata and content sections
+*/
+export async function createDocument(input: CreateDocumentInput): Promise<CreateDocumentOutput>
+}

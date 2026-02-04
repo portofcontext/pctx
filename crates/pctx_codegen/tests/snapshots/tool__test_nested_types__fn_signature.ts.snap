@@ -1,0 +1,32 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: tool.fn_signature(true)
+---
+export type CreateDocumentInput = {
+  title: string;
+
+  content: CreateDocumentInputContent;
+
+  tags?: string[] | undefined;
+};
+
+export type CreateDocumentInputContent = {
+  body: string;
+
+  format?: "markdown" | "html" | "plain" | undefined;
+};
+
+
+export type CreateDocumentOutput = {
+  id: string;
+
+  created_at: string;
+
+  url?: string | undefined;
+};
+
+
+/**
+* Create a new document with metadata and content sections
+*/
+export async function createDocument(input: CreateDocumentInput): Promise<CreateDocumentOutput>
