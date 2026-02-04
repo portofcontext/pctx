@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.1.2 (2026-01-28)
+## 0.1.2 (2026-02-04)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 4 commits contributed to the release over the course of 6 calendar days.
  - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,7 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
-    - Remove generic fectch from runtime ([`fdfc800`](https://github.com/portofcontext/pctx/commit/fdfc80069eb561177410fc55909ce422f2450280))
+    - Merge pull request #55 from portofcontext/vec-panic ([`f1b3a91`](https://github.com/portofcontext/pctx/commit/f1b3a912d955fdecef9531b10a4910ddb05cffb0))
+    - Fix cargo fmt ([`9edb5d8`](https://github.com/portofcontext/pctx/commit/9edb5d886522e14523782f8305bd10d9757cf98c))
+    - Cetralized mutex ([`9d072f3`](https://github.com/portofcontext/pctx/commit/9d072f3a387c80e7f5191a41e56cc81e54690a71))
+    - Remove allowed hosts tests (fetch no longer available ([`4b413be`](https://github.com/portofcontext/pctx/commit/4b413beed11f8ebcff00c423a6e229c67ded8208))
 </details>
 
 ## 0.1.1 (2026-01-20)
