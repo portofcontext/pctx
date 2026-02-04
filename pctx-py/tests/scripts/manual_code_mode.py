@@ -14,6 +14,15 @@ def now_timestamp() -> float:
     return datetime.now().timestamp()
 
 
+@tool
+def search_logs(query: str = "", level: str = "info", limit: int = 100) -> list[dict]:
+    """Search application logs with optional filters"""
+    return [
+        {"message": f"match for '{query}'", "level": level, "index": i}
+        for i in range(min(limit, 3))
+    ]
+
+
 @tool("add", namespace="my_math")
 def add(a: float, b: float) -> float:
     """adds two numbers"""
@@ -41,7 +50,7 @@ async def main():
     async with Pctx(
         # url="https://....",
         # api_key="pctx_xxxx",
-        tools=[add, subtract, multiply, now_timestamp],
+        tools=[add, subtract, multiply, now_timestamp, search_logs],
         servers=[
             {
                 "name": "stripe",
@@ -64,8 +73,11 @@ async function run() {
     let addval = await MyMath.add({a: 40, b: 2});
     let subval = await MyMath.subtract({a: addval, b: 2});
     let multval = await MyMath.multiply({a: subval, b: 2});
-    let now = await Tools.nowTimestamp({});
+    let now = await Tools.nowTimestamp();
     let customers = await Stripe.listCustomers({});
+    let logs = await Tools.searchLogs();
+    let logs2 = await Tools.searchLogs({});
+    let logs3 = await Tools.searchLogs({ query: "custom query" });
 
 
     return { multval, now };

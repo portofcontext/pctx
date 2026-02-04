@@ -1,0 +1,40 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: impl_code
+---
+export type SearchLogsInput = {
+  query?: string | undefined;
+
+  level?: "debug" | "info" | "warn" | "error" | undefined;
+
+  limit?: number | undefined;
+
+  start_date?: string | undefined;
+};
+
+export type SearchLogsOutput = {
+  results: SearchLogsOutputResults[];
+
+  total_count?: number | undefined;
+};
+
+export type SearchLogsOutputResults = {
+  message: string;
+
+  timestamp: string;
+
+  level?: string | undefined;
+};
+
+/**
+ * Search application logs with optional filters
+ */
+export async function searchLogs(
+  input: SearchLogsInput = {},
+): Promise<SearchLogsOutput> {
+  return await callMCPTool<SearchLogsOutput>({
+    serverName: "test_server",
+    toolName: "search_logs",
+    arguments: input,
+  });
+}

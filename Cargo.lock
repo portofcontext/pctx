@@ -4120,7 +4120,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_codegen"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "biome_formatter",
  "biome_js_formatter",

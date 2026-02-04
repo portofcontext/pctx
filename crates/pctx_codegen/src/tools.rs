@@ -3,7 +3,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::debug;
 
-use crate::{CodegenResult, case::Case, generate_docstring, typegen::generate_types_new};
+use crate::{
+    CodegenResult,
+    case::Case,
+    generate_docstring,
+    typegen::{TypegenResult, generate_types},
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ToolSet {
@@ -53,23 +58,22 @@ namespace {namespace} {{
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Tool {
     pub name: String,
+    pub fn_name: String,
     pub description: Option<String>,
-    pub input_schema: RootSchema,
+    pub variant: ToolVariant,
+
+    pub input_schema: Option<RootSchema>,
     pub output_schema: Option<RootSchema>,
 
-    pub fn_name: String,
-    pub input_signature: String,
-    pub output_signature: String,
-    pub types: String,
-
-    pub variant: ToolVariant,
+    input_type: Option<TypegenResult>,
+    output_type: Option<TypegenResult>,
 }
 
 impl Tool {
     pub fn new_mcp(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
     ) -> CodegenResult<Self> {
         Self::_new(name, description, input, output, ToolVariant::Mcp)
@@ -78,7 +82,7 @@ impl Tool {
     pub fn new_callback(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
     ) -> CodegenResult<Self> {
         Self::_new(name, description, input, output, ToolVariant::Callback)
@@ -87,7 +91,7 @@ impl Tool {
     fn _new(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
         variant: ToolVariant,
     ) -> CodegenResult<Self> {
@@ -97,15 +101,16 @@ impl Tool {
             "Generating Typescript interface for tool: '{name}' -> function {fn_name}",
         );
 
-        let input_types = generate_types_new(input.clone(), &format!("{fn_name}Input"))?;
-        let mut type_defs = input_types.types;
-        let output_signature = if let Some(o) = output.clone() {
-            let output_types = generate_types_new(o, &format!("{fn_name}Output"))?;
-            type_defs = format!("{type_defs}\n\n{}", output_types.types);
-            output_types.type_signature
+        let input_type = if let Some(i) = &input {
+            Some(generate_types(i.clone(), &format!("{fn_name}Input"))?)
         } else {
-            debug!("No output type listed, falling back on `any`");
-            "any".to_string()
+            None
+        };
+
+        let output_type = if let Some(o) = output.clone() {
+            Some(generate_types(o, &format!("{fn_name}Output"))?)
+        } else {
+            None
         };
 
         Ok(Self {
@@ -114,32 +119,65 @@ impl Tool {
             input_schema: input,
             output_schema: output,
             fn_name,
-            input_signature: input_types.type_signature,
-            output_signature,
-            types: type_defs,
+            input_type,
+            output_type,
             variant,
         })
+    }
+
+    pub fn input_signature(&self) -> Option<String> {
+        // No input schema -> no params for the generated function
+        self.input_type.as_ref().map(|i| i.type_signature.clone())
+    }
+
+    pub fn output_signature(&self) -> String {
+        // No output schema -> usually means not documented so output type fallback is `any`, not `void`
+        self.output_type
+            .as_ref()
+            .map(|o| o.type_signature.clone())
+            .unwrap_or("any".into())
+    }
+
+    pub fn types(&self) -> String {
+        let mut type_defs = String::new();
+        if let Some(i) = &self.input_type {
+            type_defs = i.types.clone();
+        }
+        if let Some(o) = &self.output_type {
+            type_defs = format!("{type_defs}\n\n{}", &o.types);
+        }
+
+        type_defs
     }
 
     pub fn fn_signature(&self, include_types: bool) -> String {
         let docstring_content = self.description.clone().unwrap_or_default();
 
-        let types = if include_types && !self.types.is_empty() {
-            format!("{}\n\n", &self.types)
-        } else {
-            String::new()
+        let mut types = self.types();
+        if include_types && !types.is_empty() {
+            types = format!("{types}\n\n");
+        }
+
+        let params = match &self.input_type {
+            Some(i) if i.all_optional => format!("input: {} = {{}}", &i.type_signature),
+            Some(i) => format!("input: {}", &i.type_signature),
+            None => String::default(),
         };
 
         format!(
-            "{types}{docstring}\nexport async function {fn_name}(input: {input}): Promise<{output}>",
+            "{types}{docstring}\nexport async function {fn_name}({params}): Promise<{output}>",
             docstring = generate_docstring(&docstring_content),
             fn_name = &self.fn_name,
-            input = &self.input_signature,
-            output = &self.output_signature,
+            output = &self.output_signature(),
         )
     }
 
     pub fn fn_impl(&self, toolset_name: &str) -> String {
+        let arguments = self
+            .input_schema
+            .as_ref()
+            .map(|_| format!("arguments: input,"))
+            .unwrap_or_default();
         match self.variant {
             ToolVariant::Mcp => {
                 format!(
@@ -147,13 +185,13 @@ impl Tool {
   return await callMCPTool<{output}>({{
     serverName: {name},
     toolName: {tool},
-    arguments: input,
+    {arguments}
   }});
 }}",
                     fn_sig = self.fn_signature(true),
                     name = json!(toolset_name),
                     tool = json!(&self.name),
-                    output = &self.output_signature,
+                    output = &self.output_signature(),
                 )
             }
             ToolVariant::Callback => {
@@ -161,12 +199,12 @@ impl Tool {
                     "{fn_sig} {{
   return await invokeCallback<{output}>({{
      id: {id},
-     arguments: input,
+     {arguments}
   }});
 }}",
                     fn_sig = self.fn_signature(true),
                     id = json!(format!("{toolset_name}.{}", &self.name)),
-                    output = &self.output_signature,
+                    output = &self.output_signature(),
                 )
             }
         }

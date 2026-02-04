@@ -1,10 +1,10 @@
-use pctx_codegen::case::Case;
+use pctx_codegen::{RootSchema, case::Case};
 use pctx_type_check_runtime::type_check;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 struct TypegenTest {
-    pub schema: serde_json::Value,
+    pub schema: RootSchema,
     pub tests: SchemaTests,
 }
 

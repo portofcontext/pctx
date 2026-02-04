@@ -1,6 +1,4 @@
-use schemars::schema::{
-    InstanceType, ObjectValidation, Schema, SchemaObject, SingleOrVec, SubschemaValidation,
-};
+use schemars::schema::{InstanceType, Schema, SchemaObject, SingleOrVec, SubschemaValidation};
 use serde_json::json;
 
 use crate::{
@@ -11,21 +9,9 @@ use crate::{
     },
 };
 
+/// returns standardized empty schema representing `any`
 pub fn anything_schema() -> Schema {
     Schema::Object(SchemaObject::default())
-}
-
-pub fn map_schema(value_schema: &Schema) -> Schema {
-    let obj = SchemaObject {
-        instance_type: Some(SingleOrVec::Single(Box::new(InstanceType::Object))),
-        object: Some(Box::new(ObjectValidation {
-            additional_properties: Some(Box::new(value_schema.clone())),
-            ..Default::default()
-        })),
-        ..Default::default()
-    };
-
-    Schema::Object(obj)
 }
 
 /// gets description from schema, in the case of a ref, it will prioritize the first description it finds

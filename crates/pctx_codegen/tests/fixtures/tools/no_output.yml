@@ -1,0 +1,16 @@
+name: send_notification
+description: "Send a notification to a user"
+
+input_schema:
+  type: object
+  required:
+    - user_id
+    - message
+  properties:
+    user_id:
+      type: string
+    message:
+      type: string
+    priority:
+      type: string
+      enum: ["low", "medium", "high"]

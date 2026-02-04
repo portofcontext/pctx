@@ -1,0 +1,30 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: impl_code
+---
+export type GetWeatherInput = {
+  location: string;
+
+  units?: "celsius" | "fahrenheit" | undefined;
+};
+
+export type GetWeatherOutput = {
+  temperature: number;
+
+  condition: string;
+
+  humidity?: number | undefined;
+};
+
+/**
+ * Get the current weather for a given location
+ */
+export async function getWeather(
+  input: GetWeatherInput,
+): Promise<GetWeatherOutput> {
+  return await callMCPTool<GetWeatherOutput>({
+    serverName: "test_server",
+    toolName: "get_weather",
+    arguments: input,
+  });
+}
