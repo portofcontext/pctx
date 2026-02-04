@@ -71,7 +71,6 @@ pub mod ignored_codes;
 
 use deno_core::JsRuntime;
 use deno_core::RuntimeOptions;
-use futures::lock::Mutex;
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use thiserror::Error;
@@ -133,12 +132,16 @@ deno_core::extension!(
     esm = [ dir "src", "type_check_runtime_generated.js" ],
 );
 
-// Global mutex to serialize type checking operations and prevent V8 race conditions
-static TYPE_CHECK_MUTEX: std::sync::LazyLock<Mutex<()>> = std::sync::LazyLock::new(|| {
-    // Initialize V8 platform once
-    deno_core::JsRuntime::init_platform(None);
-    Mutex::new(())
-});
+/// Initialize the V8 platform. Must be called before any JsRuntime is created.
+/// Safe to call multiple times - only the first call has effect.
+static V8_INIT: std::sync::Once = std::sync::Once::new();
+
+/// Ensure V8 platform is initialized. Called automatically by type_check.
+pub fn init_v8_platform() {
+    V8_INIT.call_once(|| {
+        deno_core::JsRuntime::init_platform(None);
+    });
+}
 
 /// Type check TypeScript code using an isolated Deno runtime with TypeScript compiler
 ///
@@ -200,17 +203,15 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         });
     }
 
-    // Create an isolated runtime with the type check snapshot
-    // Serialize runtime creation to prevent V8 race conditions
-    let mut js_runtime = {
-        let _guard = TYPE_CHECK_MUTEX.lock().await;
-        JsRuntime::new(RuntimeOptions {
-            module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
-            startup_snapshot: Some(TYPE_CHECK_SNAPSHOT),
-            extensions: vec![pctx_type_check_snapshot::init()],
-            ..Default::default()
-        })
-    };
+    // Ensure V8 platform is initialized (safe to call multiple times)
+    init_v8_platform();
+
+    let mut js_runtime = JsRuntime::new(RuntimeOptions {
+        module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
+        startup_snapshot: Some(TYPE_CHECK_SNAPSHOT),
+        extensions: vec![pctx_type_check_snapshot::init()],
+        ..Default::default()
+    });
 
     // Call the type checking function from the runtime
     let code_json =
