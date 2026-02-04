@@ -1,4 +1,5 @@
 use pctx_codegen::{RootSchema, Tool, ToolSet};
+use pctx_type_check_runtime::type_check;
 use serde::Deserialize;
 
 const BASIC_TOOL: &str = include_str!("./fixtures/tools/basic.yml");
@@ -6,34 +7,23 @@ const NESTED_TYPES_TOOL: &str = include_str!("./fixtures/tools/nested_types.yml"
 const NO_OUTPUT_TOOL: &str = include_str!("./fixtures/tools/no_output.yml");
 const NO_INPUT_TOOL: &str = include_str!("./fixtures/tools/no_input.yml");
 const NO_INPUT_OR_OUTPUT_TOOL: &str = include_str!("./fixtures/tools/no_input_or_output.yml");
+const ALL_OPTIONAL_INPUT_TOOL: &str = include_str!("./fixtures/tools/all_optional_input.yml");
 
 #[derive(Debug, Deserialize)]
 struct ToolFixture {
     pub name: String,
     pub description: Option<String>,
-    pub input_schema: Option<serde_json::Value>,
-    pub output_schema: Option<serde_json::Value>,
+    pub input_schema: Option<RootSchema>,
+    pub output_schema: Option<RootSchema>,
 }
 
 impl ToolFixture {
-    fn input_root_schema(&self) -> Option<RootSchema> {
-        self.input_schema
-            .as_ref()
-            .map(|v| serde_json::from_value(v.clone()).expect("invalid input_schema"))
-    }
-
-    fn output_root_schema(&self) -> Option<RootSchema> {
-        self.output_schema
-            .as_ref()
-            .map(|v| serde_json::from_value(v.clone()).expect("invalid output_schema"))
-    }
-
     fn to_mcp_tool(&self) -> Tool {
         Tool::new_mcp(
             &self.name,
             self.description.clone(),
-            self.input_root_schema(),
-            self.output_root_schema(),
+            self.input_schema.clone(),
+            self.output_schema.clone(),
         )
         .expect("Tool::new_mcp failed")
     }
@@ -42,8 +32,8 @@ impl ToolFixture {
         Tool::new_callback(
             &self.name,
             self.description.clone(),
-            self.input_root_schema(),
-            self.output_root_schema(),
+            self.input_schema.clone(),
+            self.output_schema.clone(),
         )
         .expect("Tool::new_callback failed")
     }
@@ -57,34 +47,19 @@ fn load_fixture(yml: &str) -> ToolFixture {
 
 macro_rules! tool_test {
     ($test_name:ident, variant: $variant:ident, $fixture:expr) => {
-        #[test]
-        fn $test_name() {
+        #[tokio::test]
+        async fn $test_name() {
             let fixture = load_fixture($fixture);
             let tool = fixture.$variant();
 
-            let mut failures = vec![];
-
-            let sig = pctx_codegen::format::format_d_ts(&tool.fn_signature(true));
-            if let Err(e) = std::panic::catch_unwind(|| {
-                insta::assert_snapshot!(
-                    format!("{}__fn_signature.ts", stringify!($test_name)),
-                    sig
-                );
-            }) {
-                failures.push(e);
-            }
-
             let impl_code = pctx_codegen::format::format_ts(&tool.fn_impl("test_server"));
-            if let Err(e) = std::panic::catch_unwind(|| {
-                insta::assert_snapshot!(
-                    format!("{}__fn_impl.ts", stringify!($test_name)),
-                    impl_code
-                );
-            }) {
-                failures.push(e);
-            }
+            let check_res = type_check(&impl_code).await.expect("failed typecheck");
 
-            assert!(failures.is_empty(), "{} snapshot(s) failed", failures.len());
+            assert!(
+                check_res.success,
+                "tool fn_impl failed typecheck: {check_res:?}"
+            );
+            insta::assert_snapshot!(format!("{}__fn_impl.ts", stringify!($test_name)), impl_code);
         }
     };
 }
@@ -94,6 +69,7 @@ tool_test!(test_nested_types, variant: to_mcp_tool, NESTED_TYPES_TOOL);
 tool_test!(test_no_output, variant: to_callback_tool, NO_OUTPUT_TOOL);
 tool_test!(test_no_input, variant: to_callback_tool, NO_INPUT_TOOL);
 tool_test!(test_no_input_or_output, variant: to_callback_tool, NO_INPUT_OR_OUTPUT_TOOL);
+tool_test!(test_all_optional_input, variant: to_mcp_tool, ALL_OPTIONAL_INPUT_TOOL);
 
 // --- ToolSet tests ---
 

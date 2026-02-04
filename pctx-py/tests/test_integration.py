@@ -307,7 +307,17 @@ async def test_local_python_tool_registration_and_calling():
             """Returns current timestamp"""
             return datetime.now().timestamp()
 
-        async with Pctx(tools=[add_numbers, greet, now_timestamp]) as pctx:
+        @tool
+        def search_logs(
+            query: str = "", level: str = "info", limit: int = 100
+        ) -> list[dict]:
+            """Search application logs with optional filters"""
+            return [
+                {"message": f"match for '{query}'", "level": level, "index": i}
+                for i in range(min(limit, 3))
+            ]
+
+        async with Pctx(tools=[add_numbers, greet, now_timestamp, search_logs]) as pctx:
             # Verify tools are listed
             functions = await pctx.list_functions()
             function_names = [f"{f.namespace}.{f.name}" for f in functions.functions]
@@ -321,15 +331,15 @@ async def test_local_python_tool_registration_and_calling():
             assert "Tools.nowTimestamp" in function_names, (
                 f"now_timestamp tool should be registered, got: {function_names}"
             )
+            assert "Tools.searchLogs" in function_names, (
+                f"searchLogs tool should be registered, got: {function_names}"
+            )
 
             # Test calling the add_numbers tool
             code = """
             async function run() {
-                const sum = await Tools.addNumbers({ a: 10, b: 32 });
-                console.log("Addition result:", sum);
-                const now = await Tools.nowTimestamp();
-                console.log("Now result:", now);
-                return { sum, now };
+                const result = await Tools.addNumbers({ a: 10, b: 32 });
+                return { sum: result };
             }
             """
             output = await pctx.execute(code)
@@ -367,6 +377,50 @@ async def test_local_python_tool_registration_and_calling():
             assert output3.output.get("greeting") == "Hi, Alice!", (
                 "Expected greeting to be 'Hi, Alice!'"
             )
+
+            # Test calling the now_timestamp tool
+            code4 = """
+            async function run() {
+                const result = await Tools.nowTimestamp();
+                return { timestamp: result };
+            }
+            """
+            output4 = await pctx.execute(code4)
+            assert output4.success, "Fourth execution should succeed"
+            assert output4.output is not None, "output4 should have output"
+            assert isinstance(output4.output.get("timestamp"), float), (
+                "Expected timestamp to be a float"
+            )
+
+            # Test calling search_logs - all optional params with defaults, and with explicit filters
+            code5 = """
+            async function run() {
+                const noInput = await Tools.searchLogs();
+                const empty = await Tools.searchLogs({});
+                const filtered = await Tools.searchLogs({ query: "error", level: "error", limit: 1 });
+                return { noInput, empty, filtered };
+            }
+            """
+            output5 = await pctx.execute(code5)
+
+            assert output5.success, (
+                f"search_logs should succeed. stderr: {output5.stderr}"
+            )
+            assert output5.output is not None, "output5 should have output"
+
+            for return_attr in ["noInput", "empty"]:
+                val = output5.output.get(return_attr)
+                assert len(val) == 3, (
+                    f"Expected 3 log entries with {return_attr}, got {len(val)}"
+                )
+                assert val[0].get("level") == "info", "Expected default level 'info'"
+
+            filtered = output5.output.get("filtered")
+            assert len(filtered) == 1, (
+                f"Expected 1 log entry with limit=1, got {len(filtered)}"
+            )
+            assert filtered[0].get("level") == "error", "Expected level 'error'"
+            assert "error" in filtered[0].get("message"), "Expected query in message"
 
     except ConnectionError:
         pytest.fail(

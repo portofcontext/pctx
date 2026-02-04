@@ -480,7 +480,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             "Input Type:",
             Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
         )]));
-        if let Some(i) = &tool.input_signature {
+        if let Some(i) = &tool.input_signature() {
             lines.push(Line::from(format!("  {i}")));
         } else {
             lines.push(Line::from("void"));
@@ -492,7 +492,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             "Output Type:",
             Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
         )]));
-        lines.push(Line::from(format!("  {}", tool.output_signature)));
+        lines.push(Line::from(format!("  {}", tool.output_signature())));
         lines.push(Line::from(""));
 
         // TypeScript types
@@ -500,7 +500,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             "TypeScript Definition:",
             Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
         )]));
-        for line in tool.types.lines() {
+        for line in tool.types().lines() {
             lines.push(Line::from(format!("  {line}")));
         }
 

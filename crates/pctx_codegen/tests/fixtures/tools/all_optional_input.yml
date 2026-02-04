@@ -1,0 +1,37 @@
+name: search_logs
+description: "Search application logs with optional filters"
+
+input_schema:
+  type: object
+  properties:
+    query:
+      type: string
+    level:
+      type: string
+      enum: ["debug", "info", "warn", "error"]
+    limit:
+      type: integer
+    start_date:
+      type: string
+
+output_schema:
+  type: object
+  required:
+    - results
+  properties:
+    results:
+      type: array
+      items:
+        type: object
+        required:
+          - message
+          - timestamp
+        properties:
+          message:
+            type: string
+          timestamp:
+            type: string
+          level:
+            type: string
+    total_count:
+      type: integer

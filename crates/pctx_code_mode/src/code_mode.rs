@@ -370,9 +370,9 @@ impl CodeMode {
                             name: t.fn_name.clone(),
                             description: t.description.clone(),
                         },
-                        input_type: t.input_signature.clone().unwrap_or_default(),
-                        output_type: t.output_signature.clone(),
-                        types: t.types.clone(),
+                        input_type: t.input_signature().unwrap_or_default(),
+                        output_type: t.output_signature(),
+                        types: t.types(),
                     }));
                 }
             }
