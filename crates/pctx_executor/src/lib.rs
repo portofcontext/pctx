@@ -145,9 +145,7 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
     // This ensures no concurrent V8 isolate usage across the process
     let _guard = V8_MUTEX.lock().await;
 
-    println!("[execute] about to run type check (code length: {})", code.len());
     let check_result = run_type_check(code).await?;
-    println!("[execute] type check completed");
 
     // Check if we have diagnostics
     if !check_result.diagnostics.is_empty() {

@@ -178,7 +178,6 @@ pub fn init_v8_platform() {
 /// # }
 /// ```
 pub async fn type_check(code: &str) -> Result<CheckResult> {
-    println!("[type_check] starting syntax check");
     // First do a quick syntax check with deno_ast
     let parse_result = deno_ast::parse_module(deno_ast::ParseParams {
         specifier: deno_ast::ModuleSpecifier::parse("file:///check.ts")
@@ -204,7 +203,6 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         });
     }
 
-    println!("[type_check] syntax check passed, creating JS runtime");
     // Ensure V8 platform is initialized (safe to call multiple times)
     init_v8_platform();
 
@@ -214,7 +212,6 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         extensions: vec![pctx_type_check_snapshot::init()],
         ..Default::default()
     });
-    println!("[type_check] creating JS runtime passed");
 
     // Call the type checking function from the runtime
     let code_json =
@@ -229,13 +226,9 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         "
     );
 
-    println!("[type_check] starting typecheck");
-
     let result = js_runtime
         .execute_script("<type_check>", check_script)
         .map_err(|e| TypeCheckError::InternalError(e.to_string()))?;
-
-    println!("[type_check] finished typecheck");
 
     // Extract the result using v8 scope
     let check_result = {
@@ -244,8 +237,6 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         deno_core::serde_v8::from_v8::<CheckResult>(scope, local)
             .map_err(|e| TypeCheckError::InternalError(e.to_string()))?
     };
-
-    println!("[type_check] finished check_result");
 
     Ok(check_result)
 }
