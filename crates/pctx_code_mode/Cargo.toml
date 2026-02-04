@@ -1,6 +1,6 @@
 [package]
 name = "pctx_code_mode"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 license = "MIT"
 description = "TypeScript code execution engine for AI agents with tool schemas, sandboxed Deno runtime, and Rust callbacks"
