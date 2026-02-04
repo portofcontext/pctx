@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release.
+ - 5 commits contributed to the release.
  - 14 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`8cd4cb3`](https://github.com/portofcontext/pctx/commit/8cd4cb3354416208f70927e8fdb6540162402eef))
     - Merge pull request #54 from portofcontext/empty-args ([`bf72e21`](https://github.com/portofcontext/pctx/commit/bf72e211d13336baf1f79d89e60c98ba6aa4bf7c))
     - Support for automatic default objects for "all optional" inputs ([`1df03d0`](https://github.com/portofcontext/pctx/commit/1df03d0b5996ec96b64bb3f0d64fc72ef3535108))
     - Upgrade codegen, tests, and dependants to support optional input schemas ([`11f9b86`](https://github.com/portofcontext/pctx/commit/11f9b86f1884a5adfcc27bbc13409eb4faf42467))

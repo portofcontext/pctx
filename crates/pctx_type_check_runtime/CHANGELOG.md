@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 3 commits contributed to the release.
+ - 4 commits contributed to the release.
  - 14 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`8cd4cb3`](https://github.com/portofcontext/pctx/commit/8cd4cb3354416208f70927e8fdb6540162402eef))
     - Merge pull request #55 from portofcontext/vec-panic ([`f1b3a91`](https://github.com/portofcontext/pctx/commit/f1b3a912d955fdecef9531b10a4910ddb05cffb0))
     - Fix cargo fmt ([`9edb5d8`](https://github.com/portofcontext/pctx/commit/9edb5d886522e14523782f8305bd10d9757cf98c))
     - Cetralized mutex ([`9d072f3`](https://github.com/portofcontext/pctx/commit/9d072f3a387c80e7f5191a41e56cc81e54690a71))
