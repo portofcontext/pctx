@@ -64,7 +64,7 @@ async function run() {
     let addval = await MyMath.add({a: 40, b: 2});
     let subval = await MyMath.subtract({a: addval, b: 2});
     let multval = await MyMath.multiply({a: subval, b: 2});
-    let now = await Tools.nowTimestamp({});
+    let now = await Tools.nowTimestamp();
     let customers = await Stripe.listCustomers({});
 
 

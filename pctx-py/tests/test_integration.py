@@ -327,7 +327,7 @@ async def test_local_python_tool_registration_and_calling():
             async function run() {
                 const sum = await Tools.addNumbers({ a: 10, b: 32 });
                 console.log("Addition result:", sum);
-                const now = await Tools.nowTimestamp(null);
+                const now = await Tools.nowTimestamp();
                 console.log("Now result:", now);
                 return { sum, now };
             }

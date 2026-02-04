@@ -1,6 +1,6 @@
 ---
 source: crates/pctx_codegen/tests/tool.rs
-expression: sig
+expression: impl_code
 ---
 export type CreateDocumentInput = {
   title: string;
@@ -27,4 +27,12 @@ export type CreateDocumentOutput = {
 /**
  * Create a new document with metadata and content sections
  */
-export async function createDocument(input: CreateDocumentInput): Promise<CreateDocumentOutput>
+export async function createDocument(
+  input: CreateDocumentInput,
+): Promise<CreateDocumentOutput> {
+  return await callMCPTool<CreateDocumentOutput>({
+    serverName: "test_server",
+    toolName: "create_document",
+    arguments: input,
+  });
+}

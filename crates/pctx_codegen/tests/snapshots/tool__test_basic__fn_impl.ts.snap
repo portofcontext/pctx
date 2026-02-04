@@ -1,6 +1,6 @@
 ---
 source: crates/pctx_codegen/tests/tool.rs
-expression: sig
+expression: impl_code
 ---
 export type GetWeatherInput = {
   location: string;
@@ -19,4 +19,12 @@ export type GetWeatherOutput = {
 /**
  * Get the current weather for a given location
  */
-export async function getWeather(input: GetWeatherInput): Promise<GetWeatherOutput>
+export async function getWeather(
+  input: GetWeatherInput,
+): Promise<GetWeatherOutput> {
+  return await callMCPTool<GetWeatherOutput>({
+    serverName: "test_server",
+    toolName: "get_weather",
+    arguments: input,
+  });
+}

@@ -54,11 +54,11 @@ namespace {namespace} {{
 pub struct Tool {
     pub name: String,
     pub description: Option<String>,
-    pub input_schema: RootSchema,
+    pub input_schema: Option<RootSchema>,
     pub output_schema: Option<RootSchema>,
 
     pub fn_name: String,
-    pub input_signature: String,
+    pub input_signature: Option<String>,
     pub output_signature: String,
     pub types: String,
 
@@ -69,7 +69,7 @@ impl Tool {
     pub fn new_mcp(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
     ) -> CodegenResult<Self> {
         Self::_new(name, description, input, output, ToolVariant::Mcp)
@@ -78,7 +78,7 @@ impl Tool {
     pub fn new_callback(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
     ) -> CodegenResult<Self> {
         Self::_new(name, description, input, output, ToolVariant::Callback)
@@ -87,7 +87,7 @@ impl Tool {
     fn _new(
         name: &str,
         description: Option<String>,
-        input: RootSchema,
+        input: Option<RootSchema>,
         output: Option<RootSchema>,
         variant: ToolVariant,
     ) -> CodegenResult<Self> {
@@ -97,8 +97,18 @@ impl Tool {
             "Generating Typescript interface for tool: '{name}' -> function {fn_name}",
         );
 
-        let input_types = generate_types_new(input.clone(), &format!("{fn_name}Input"))?;
-        let mut type_defs = input_types.types;
+        let mut type_defs = String::new();
+
+        // No input schema -> no params for the generated function
+        let input_signature = if let Some(i) = &input {
+            let input_types = generate_types_new(i.clone(), &format!("{fn_name}Input"))?;
+            type_defs = input_types.types;
+            Some(input_types.type_signature)
+        } else {
+            None
+        };
+
+        // No output schema -> usually means not documented so output type fallback is `any`, not `void`
         let output_signature = if let Some(o) = output.clone() {
             let output_types = generate_types_new(o, &format!("{fn_name}Output"))?;
             type_defs = format!("{type_defs}\n\n{}", output_types.types);
@@ -114,7 +124,7 @@ impl Tool {
             input_schema: input,
             output_schema: output,
             fn_name,
-            input_signature: input_types.type_signature,
+            input_signature,
             output_signature,
             types: type_defs,
             variant,
@@ -130,16 +140,26 @@ impl Tool {
             String::new()
         };
 
+        let params = self
+            .input_signature
+            .as_ref()
+            .map(|i| format!("input: {i}"))
+            .unwrap_or_default();
+
         format!(
-            "{types}{docstring}\nexport async function {fn_name}(input: {input}): Promise<{output}>",
+            "{types}{docstring}\nexport async function {fn_name}({params}): Promise<{output}>",
             docstring = generate_docstring(&docstring_content),
             fn_name = &self.fn_name,
-            input = &self.input_signature,
             output = &self.output_signature,
         )
     }
 
     pub fn fn_impl(&self, toolset_name: &str) -> String {
+        let arguments = self
+            .input_schema
+            .as_ref()
+            .map(|_| format!("arguments: input,"))
+            .unwrap_or_default();
         match self.variant {
             ToolVariant::Mcp => {
                 format!(
@@ -147,7 +167,7 @@ impl Tool {
   return await callMCPTool<{output}>({{
     serverName: {name},
     toolName: {tool},
-    arguments: input,
+    {arguments}
   }});
 }}",
                     fn_sig = self.fn_signature(true),
@@ -161,7 +181,7 @@ impl Tool {
                     "{fn_sig} {{
   return await invokeCallback<{output}>({{
      id: {id},
-     arguments: input,
+     {arguments}
   }});
 }}",
                     fn_sig = self.fn_signature(true),

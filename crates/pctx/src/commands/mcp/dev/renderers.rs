@@ -480,7 +480,11 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             "Input Type:",
             Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
         )]));
-        lines.push(Line::from(format!("  {}", tool.input_signature)));
+        if let Some(i) = &tool.input_signature {
+            lines.push(Line::from(format!("  {i}")));
+        } else {
+            lines.push(Line::from("void"));
+        }
         lines.push(Line::from(""));
 
         // Output type
