@@ -3,12 +3,26 @@ use deno_core::ModuleCodeString;
 use deno_core::RuntimeOptions;
 use deno_core::anyhow;
 use deno_core::error::CoreError;
+use futures::lock::Mutex;
 use pctx_code_execution_runtime::CallbackRegistry;
-pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error, type_check};
+pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error};
+use pctx_type_check_runtime::{init_v8_platform, type_check};
 use serde::{Deserialize, Serialize};
 use std::rc::Rc;
 use thiserror::Error;
 use tracing::{debug, warn};
+
+/// Process-wide mutex to serialize all V8 isolate creation and usage.
+///
+/// V8 isolates share platform-level state (code pages, thread pool, etc.) that is not
+/// safe to access concurrently from multiple OS threads. All code that creates or uses
+/// a `JsRuntime` must hold this lock for the runtime's entire lifetime.
+///
+/// This mutex is acquired by `execute()` and held for both type checking and code execution.
+static V8_MUTEX: std::sync::LazyLock<Mutex<()>> = std::sync::LazyLock::new(|| {
+    init_v8_platform();
+    Mutex::new(())
+});
 
 pub type Result<T> = std::result::Result<T, DenoExecutorError>;
 
@@ -126,7 +140,14 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
         code_length = code.len(),
         "Code submitted for typecheck & execution"
     );
+
+    // Acquire V8 mutex for the entire operation (type check + execution)
+    // This ensures no concurrent V8 isolate usage across the process
+    let _guard = V8_MUTEX.lock().await;
+
+    println!("[execute] about to run type check (code length: {})", code.len());
     let check_result = run_type_check(code).await?;
+    println!("[execute] type check completed");
 
     // Check if we have diagnostics
     if !check_result.diagnostics.is_empty() {
@@ -269,6 +290,8 @@ async fn execute_code(
     options: ExecuteOptions,
 ) -> anyhow::Result<InternalExecuteResult> {
     debug!("Starting code execution");
+
+    // Note: V8_MUTEX is held by the caller (execute()) for the entire operation
 
     // Transpile TypeScript to JavaScript
     let js_code = match pctx_deno_transpiler::transpile(code, None) {
