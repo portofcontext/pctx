@@ -679,8 +679,8 @@ async def test_mixed_tools_and_mcp_servers():
 async def test_concurrent_executions_with_callback():
     """Test that two concurrent executions with callbacks both succeed.
 
-    Each execution calls a sleep callback that takes 2 seconds.
-    If executed concurrently, the total time should be ~2 seconds (< 4s).
+    The first execution sleeps 15s. The second starts 4s later and also sleeps 15s.
+    If concurrent, total time should be ~19s (< 30s). If sequential, it would be ~34s.
     """
     try:
 
@@ -690,18 +690,25 @@ async def test_concurrent_executions_with_callback():
             await asyncio.sleep(seconds)
             return f"slept {seconds}s"
 
-        code = """
-        async function run() {
-            const result = await Tools.sleep({ seconds: 2 });
-            return { result };
-        }
+        sleep_for = 5
+        second_exec_delay = 2
+
+        code = f"""
+        async function run() {{
+            const result = await Tools.sleep({{ seconds: {sleep_for} }});
+            return {{ result }};
+        }}
         """
+
+        async def delayed_execute(pctx, code, delay):
+            await asyncio.sleep(delay)
+            return await pctx.execute(code)
 
         async with Pctx(tools=[sleep]) as pctx1, Pctx(tools=[sleep]) as pctx2:
             start = asyncio.get_event_loop().time()
             output1, output2 = await asyncio.gather(
                 pctx1.execute(code),
-                pctx2.execute(code),
+                delayed_execute(pctx2, code, second_exec_delay),
             )
             elapsed = asyncio.get_event_loop().time() - start
 
@@ -711,11 +718,11 @@ async def test_concurrent_executions_with_callback():
             assert output2.success, (
                 f"Second execution should succeed. stderr: {output2.stderr}"
             )
-            assert output1.output.get("result") == "slept 2s"
-            assert output2.output.get("result") == "slept 2s"
-            assert elapsed < 4, (
-                f"Executions appear to have run sequentially ({elapsed:.1f}s >= 4s). "
-                f"Expected concurrent execution to complete in ~2s."
+            assert output1.output.get("result") == f"slept {sleep_for}s"
+            assert output2.output.get("result") == f"slept {sleep_for}s"
+            assert elapsed < sleep_for * 2, (
+                f"Executions appear to have run sequentially ({elapsed:.1f}s >= {sleep_for * 2}s). "
+                f"Expected concurrent execution to complete in ~{sleep_for + second_exec_delay}s."
             )
 
     except ConnectionError:
