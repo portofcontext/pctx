@@ -1,5 +1,6 @@
 """Integration tests for pctx code mode against a running server"""
 
+import asyncio
 from datetime import datetime
 
 import pytest
@@ -663,6 +664,58 @@ async def test_mixed_tools_and_mcp_servers():
             assert output.output.get("product") == 42, "Expected product to be 42"
             assert output.output.get("formatted") == "Result: 42", (
                 "Expected formatted string"
+            )
+
+    except ConnectionError:
+        pytest.fail(
+            "Failed to connect to pctx server at http://localhost:8080.\n"
+            "Please ensure the pctx server is running.\n"
+            "Start the server with: pctx server start"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_executions_with_callback():
+    """Test that two concurrent executions with callbacks both succeed.
+
+    Each execution calls a sleep callback that takes 2 seconds.
+    If executed concurrently, the total time should be ~2 seconds (< 4s).
+    """
+    try:
+
+        @tool
+        async def sleep(seconds: float) -> str:
+            """Sleep for the given number of seconds"""
+            await asyncio.sleep(seconds)
+            return f"slept {seconds}s"
+
+        code = """
+        async function run() {
+            const result = await Tools.sleep({ seconds: 2 });
+            return { result };
+        }
+        """
+
+        async with Pctx(tools=[sleep]) as pctx1, Pctx(tools=[sleep]) as pctx2:
+            start = asyncio.get_event_loop().time()
+            output1, output2 = await asyncio.gather(
+                pctx1.execute(code),
+                pctx2.execute(code),
+            )
+            elapsed = asyncio.get_event_loop().time() - start
+
+            assert output1.success, (
+                f"First execution should succeed. stderr: {output1.stderr}"
+            )
+            assert output2.success, (
+                f"Second execution should succeed. stderr: {output2.stderr}"
+            )
+            assert output1.output.get("result") == "slept 2s"
+            assert output2.output.get("result") == "slept 2s"
+            assert elapsed < 4, (
+                f"Executions appear to have run sequentially ({elapsed:.1f}s >= 4s). "
+                f"Expected concurrent execution to complete in ~2s."
             )
 
     except ConnectionError:
