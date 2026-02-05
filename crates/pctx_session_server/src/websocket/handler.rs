@@ -254,51 +254,25 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
     );
 
     tokio::spawn(async move {
-        let code_mode_clone = code_mode.clone();
-        let code_clone = params.code.clone();
+        let _guard = execution_span.enter();
 
-        let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
-            let _guard = execution_span.enter();
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
-
-            // create callback registry to execute callback requests over the same ws which
-            // initiated the request
-            rt.block_on(async {
-                code_mode_clone
-                    .execute(&code_clone, Some(callback_registry))
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-            })
-        })
-        .await;
+        let output = code_mode
+            .execute(&params.code, Some(callback_registry))
+            .await;
 
         let (msg, execution_res) = match output {
-            Ok(Ok(exec_output)) => (
+            Ok(exec_output) => (
                 WsJsonRpcMessage::response(
                     PctxJsonRpcResponse::ExecuteCode(exec_output.clone()),
                     req_id,
                 ),
                 Ok(exec_output),
             ),
-            Ok(Err(e)) => (
-                WsJsonRpcMessage::error(
-                    ErrorData {
-                        code: ErrorCode::INTERNAL_ERROR,
-                        message: format!("Execution failed: {e}").into(),
-                        data: None,
-                    },
-                    req_id,
-                ),
-                Err(anyhow!(e)),
-            ),
             Err(e) => (
                 WsJsonRpcMessage::error(
                     ErrorData {
                         code: ErrorCode::INTERNAL_ERROR,
-                        message: format!("Task join failed: {e}").into(),
+                        message: format!("Execution failed: {e}").into(),
                         data: None,
                     },
                     req_id,

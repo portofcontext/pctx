@@ -25,6 +25,7 @@ regex = "1"
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = "0.3"
+tokio = {workspace = true, features = ["rt", "sync"]}
 
 [target.'cfg(windows)'.dependencies]
 # Need version 0.59 to match deno_subprocess_windows transitive dependency

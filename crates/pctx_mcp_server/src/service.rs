@@ -130,38 +130,14 @@ impl PctxMcpService {
         &self,
         Parameters(input): Parameters<ExecuteInput>,
     ) -> McpResult<CallToolResult> {
-        // Capture current tracing context to propagate to spawned thread
-        let current_span = tracing::Span::current();
-
-        let code_mode = self.code_mode.clone();
-        let code = input.code;
-
-        let execution_output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
-            // Enter the captured span context in the new thread
-            let _guard = current_span.enter();
-
-            // Create a new current-thread runtime for Deno ops that use deno_unsync
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
-
-            rt.block_on(async {
-                code_mode
-                    .execute(&code, None)
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-            })
-        })
-        .await
-        .map_err(|e| {
-            error!("Task join failed: {e}");
-            rmcp::ErrorData::internal_error(format!("Task join failed: {e}"), None)
-        })?
-        .map_err(|e| {
-            error!("Sandbox execution error: {e}");
-            rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
-        })?;
+        let execution_output = self
+            .code_mode
+            .execute(&input.code, None)
+            .await
+            .map_err(|e| {
+                error!("Sandbox execution error: {e}");
+                rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
+            })?;
 
         let mut res = CallToolResult::success(vec![Content::text(execution_output.markdown())]);
         res.structured_content = Some(json!(execution_output));
