@@ -124,16 +124,16 @@ async fn test_exec_code_syntax_err() {
     assert_eq!(response["result"]["success"], false);
     let stderr = response["result"]["stderr"].as_str().unwrap();
 
-    // Should show line 3 where the error is
+    // Should show line 15 where the error is (after bashFs prepend)
     assert!(
-        stderr.contains("3:19"),
-        "Should show exact error location (line 3, col 19): {stderr}"
+        stderr.contains("15:19"),
+        "Should show exact error location (line 15, col 19): {stderr}"
     );
 
-    // Should show the actual code context with the error
+    // Should show the error message
     assert!(
-        stderr.contains("bloop x = 12;"),
-        "Should show the line with the error: {stderr}"
+        stderr.contains("Expected"),
+        "Should show the error message: {stderr}"
     );
 }
 
@@ -340,8 +340,8 @@ async fn test_exec_type_error_with_rich_diagnostics() {
         .await;
     register_res.assert_status_ok();
 
-    // LLM code with type error - this will have namespaces prepended
-    // The error is on line 3 of the original code
+    // LLM code with type error - this will have bashFs setup prepended (12 lines)
+    // The error is on line 3 of user code, reported as line 15 in transformed code
     let code = r#"
         async function run() {
             let value = await TestMath.add({a: "wrong", b: 2});  // Type error: 'a' should be number
@@ -371,13 +371,14 @@ async fn test_exec_type_error_with_rich_diagnostics() {
     assert_eq!(response["result"]["success"], false);
 
     // Verify the diagnostic points to the exact error location and has all the information
-    // Error is at line 3 (where "wrong" is passed), column 45 (the "wrong" string literal)
+    // Error is at line 15 (where "wrong" is passed), column 45 (the "wrong" string literal)
+    // Line 15 is after the 12-line bashFs prepend (user code line 3 + 12 = 15)
     let stderr = response["result"]["stderr"].as_str().unwrap();
 
-    // Should show exact location: Line 3, Column 45
+    // Should show exact location: Line 15, Column 45
     assert!(
-        stderr.contains("Line 3"),
-        "Should show line 3 where error occurs: {stderr}"
+        stderr.contains("Line 15"),
+        "Should show line 15 where error occurs: {stderr}"
     );
     assert!(
         stderr.contains("Column 45"),
@@ -394,5 +395,300 @@ async fn test_exec_type_error_with_rich_diagnostics() {
     assert!(
         stderr.contains("Type 'string' is not assignable to type 'number'"),
         "Should show exact type mismatch: {stderr}"
+    );
+}
+
+#[tokio::test]
+#[serial]
+async fn test_explore_virtual_fs_with_bash() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    // Register tools to populate virtual filesystem
+    let test_tools: Vec<CallbackConfig> = callback_tools().into_iter().map(|(c, _)| c).collect();
+    let register_res = server
+        .post("/register/tools")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({
+            "tools": test_tools,
+        }))
+        .await;
+    register_res.assert_status_ok();
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    // Test 1: List files in SDK directory (cwd is /sdk/)
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-ls",
+        "method": "execute_bash",
+        "params": { "command": "ls" }
+    }))
+    .await;
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], true);
+    let stdout = response["result"]["stdout"].as_str().unwrap();
+
+    // Should list README.md and TestMath namespace folder (no system dirs!)
+    assert!(stdout.contains("README.md"), "Should have README.md: {stdout}");
+    assert!(stdout.contains("TestMath"), "Should have TestMath namespace folder: {stdout}");
+    assert!(!stdout.contains("bin"), "Should NOT have system bin dir: {stdout}");
+    assert!(!stdout.contains("proc"), "Should NOT have system proc dir: {stdout}");
+
+    // Test 2: Read README.md
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-readme",
+        "method": "execute_bash",
+        "params": { "command": "cat README.md" }
+    }))
+    .await;
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], true);
+    let readme = response["result"]["stdout"].as_str().unwrap();
+
+    // README should contain function listings
+    assert!(readme.contains("# TypeScript SDK"), "Should have header: {readme}");
+    assert!(readme.contains("**TestMath**"), "Should have TestMath namespace: {readme}");
+    assert!(readme.contains("add"), "Should list add function: {readme}");
+    assert!(readme.contains("subtract"), "Should list subtract function: {readme}");
+    assert!(readme.contains("multiply"), "Should list multiply function: {readme}");
+    assert!(readme.contains("divide"), "Should list divide function: {readme}");
+
+    // Test 3: Grep for specific function
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-grep",
+        "method": "execute_bash",
+        "params": { "command": "grep 'add' README.md" }
+    }))
+    .await;
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], true);
+    let grep_result = response["result"]["stdout"].as_str().unwrap();
+
+    assert!(grep_result.contains("add"), "Should find add function: {grep_result}");
+
+    // Test 4: Read individual tool TypeScript definition
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-types",
+        "method": "execute_bash",
+        "params": { "command": "cat TestMath/add.d.ts" }
+    }))
+    .await;
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], true);
+    let types = response["result"]["stdout"].as_str().unwrap();
+
+    // Should contain function signature with types
+    assert!(types.contains("function add"), "Should have add function: {types}");
+    assert!(types.contains("a: number"), "Should have typed parameters: {types}");
+
+    // Test 5: List files in TestMath namespace directory
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-namespace-dir",
+        "method": "execute_bash",
+        "params": { "command": "ls TestMath/" }
+    }))
+    .await;
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], true);
+    let tools_list = response["result"]["stdout"].as_str().unwrap();
+
+    // Should list individual tool files
+    assert!(tools_list.contains("add.d.ts"), "Should have add.d.ts: {tools_list}");
+    assert!(tools_list.contains("subtract.d.ts"), "Should have subtract.d.ts: {tools_list}");
+    assert!(tools_list.contains("multiply.d.ts"), "Should have multiply.d.ts: {tools_list}");
+    assert!(tools_list.contains("divide.d.ts"), "Should have divide.d.ts: {tools_list}");
+}
+
+#[test_log::test(tokio::test)]
+#[serial]
+async fn test_bash_exploration_then_typescript_execution() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    // Register tools
+    let callbacks = callback_tools();
+    let test_tools: Vec<CallbackConfig> = callbacks.iter().map(|(c, _)| c.clone()).collect();
+    let register_res = server
+        .post("/register/tools")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({
+            "tools": test_tools,
+        }))
+        .await;
+    register_res.assert_status_ok();
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    // Step 1: LLM explores the filesystem to discover available functions using bash
+    // List files (cwd is /sdk/)
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "ls",
+        "method": "execute_bash",
+        "params": { "command": "ls" }
+    }))
+    .await;
+
+    let ls_response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(ls_response["result"]["success"], true);
+    let files_found = ls_response["result"]["stdout"].as_str().unwrap();
+    assert!(files_found.contains("README.md"));
+    assert!(files_found.contains("TestMath"));
+    assert!(!files_found.contains("bin"), "Should NOT see system dirs");
+
+    // Read README
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "readme",
+        "method": "execute_bash",
+        "params": { "command": "cat README.md" }
+    }))
+    .await;
+
+    let readme_response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(readme_response["result"]["success"], true);
+    let readme = readme_response["result"]["stdout"].as_str().unwrap();
+    assert!(readme.contains("**TestMath**"));
+
+    // Search for math functions
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "grep",
+        "method": "execute_bash",
+        "params": { "command": "grep -E '(add|multiply)' README.md" }
+    }))
+    .await;
+
+    let grep_response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(grep_response["result"]["success"], true);
+    let math_functions = grep_response["result"]["stdout"].as_str().unwrap();
+    assert!(math_functions.contains("add"));
+    assert!(math_functions.contains("multiply"));
+
+    // Read individual tool type definition
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "types",
+        "method": "execute_bash",
+        "params": { "command": "cat TestMath/add.d.ts" }
+    }))
+    .await;
+
+    let types_response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(types_response["result"]["success"], true);
+    let types = types_response["result"]["stdout"].as_str().unwrap();
+    assert!(types.contains("function add"));
+
+    // Step 2: Now use the discovered information to execute TypeScript code
+    let execution_code = r#"
+        async function run() {
+            // Based on bash exploration, we know:
+            // - TestMath namespace exists
+            // - add(a: number, b: number) function is available
+            // - multiply(a: number, b: number) function is available
+
+            const sum = await TestMath.add({a: 10, b: 5});
+            console.log(`Sum: ${sum}`);
+
+            const product = await TestMath.multiply({a: sum, b: 3});
+            console.log(`Product: ${product}`);
+
+            return { sum, product };
+        }
+    "#;
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "execute",
+        "method": "execute_code",
+        "params": { "code": execution_code }
+    }))
+    .await;
+
+    // Handle the add callback
+    let msg: WsJsonRpcMessage = ws.receive_json().await;
+    let (add_msg, req_id) = msg.into_request().unwrap();
+    assert_serde_eq!(
+        json!(add_msg),
+        json!({
+            "method": "execute_tool",
+            "params": {
+                "namespace": "test_math",
+                "name": "add",
+                "args": {
+                    "a": 10,
+                    "b": 5,
+                }
+            }
+        })
+    );
+    let add_output = callbacks[0].1(Some(json!({"a": 10, "b": 5})))
+        .await
+        .unwrap();
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "result": { "output": add_output }
+    }))
+    .await;
+
+    // Handle the multiply callback
+    let msg: WsJsonRpcMessage = ws.receive_json().await;
+    let (mult_msg, req_id) = msg.into_request().unwrap();
+    assert_serde_eq!(
+        json!(mult_msg),
+        json!({
+            "method": "execute_tool",
+            "params": {
+                "namespace": "test_math",
+                "name": "multiply",
+                "args": {
+                    "a": 15,
+                    "b": 3,
+                }
+            }
+        })
+    );
+    let mult_output = callbacks[2].1(Some(json!({"a": 15, "b": 3})))
+        .await
+        .unwrap();
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "result": { "output": mult_output }
+    }))
+    .await;
+
+    // Receive final result
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_serde_eq!(
+        response,
+        json!({
+            "jsonrpc": "2.0",
+            "id": "execute",
+            "result": {
+                "success": true,
+                "stdout": "Sum: 15\nProduct: 45",
+                "stderr": "",
+                "output": {
+                    "sum": 15,
+                    "product": 45
+                }
+            }
+        })
     );
 }

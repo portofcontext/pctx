@@ -26,6 +26,9 @@ pub struct CodeMode {
     // configurations
     servers: Vec<ServerConfig>,
     callbacks: Vec<CallbackConfig>,
+
+    // Virtual filesystem for just-bash exploration
+    virtual_fs: HashMap<String, String>,
 }
 
 impl CodeMode {
@@ -251,6 +254,7 @@ impl CodeMode {
         // add tool & it's configuration
         tool_set.tools.push(tool);
         self.callbacks.push(callback.clone());
+        self.refresh_virtual_fs();
 
         Ok(())
     }
@@ -264,8 +268,85 @@ impl CodeMode {
         }
 
         self.tool_sets.push(tool_set);
+        self.refresh_virtual_fs();
 
         Ok(())
+    }
+
+    /// Regenerates the virtual filesystem from current tool_sets
+    fn refresh_virtual_fs(&mut self) {
+        self.virtual_fs = self
+            .load_tools_into_bashable_filesystem()
+            .unwrap_or_default();
+    }
+
+    /// Initializes code mode interface into the filesystem
+    /// Returns a map of virtual file paths to their contents for use with just-bash
+    pub fn load_tools_into_bashable_filesystem(&self) -> Result<HashMap<String, String>> {
+        let mut files = HashMap::new();
+
+        // Create token-efficient README
+        let mut readme = String::from(
+            r#"# TypeScript SDK
+
+Functions organized by namespace. Call as `Namespace.functionName({ params })`.
+
+Example:
+```typescript
+async function run() {
+  return await Tools.addNumbers({ a: 5, b: 3 });
+}
+```
+
+Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>.d.ts` (types).
+
+## Functions
+
+"#,
+        );
+
+        for tool_set in &self.tool_sets {
+            if tool_set.tools.is_empty() {
+                continue;
+            }
+
+            // Namespace header
+            readme.push_str(&format!("**{}**\n", tool_set.namespace));
+
+            // Build inline function list
+            let func_list: Vec<String> = tool_set
+                .tools
+                .iter()
+                .map(|tool| {
+                    let desc = tool
+                        .description
+                        .as_deref()
+                        .unwrap_or("")
+                        .lines()
+                        .next()
+                        .unwrap_or("")
+                        .to_lowercase();
+
+                    // Create file for this function under /sdk/
+                    let tool_file_path = format!("/sdk/{}/{}.d.ts", tool_set.namespace, tool.fn_name);
+                    let tool_code = tool.fn_signature(true);
+                    let formatted = pctx_codegen::format::format_d_ts(&tool_code);
+                    files.insert(tool_file_path, formatted);
+
+                    if desc.is_empty() {
+                        tool.fn_name.clone()
+                    } else {
+                        format!("{} ({})", tool.fn_name, desc)
+                    }
+                })
+                .collect();
+
+            readme.push_str(&format!("{}\n\n", func_list.join(", ")));
+        }
+
+        files.insert("/sdk/README.md".to_string(), readme);
+
+        Ok(files)
     }
 
     // --------------- Accessor functions ---------------
@@ -283,6 +364,12 @@ impl CodeMode {
     /// Returns an immutable reference to the registered callback configurations
     pub fn callbacks(&self) -> &[CallbackConfig] {
         &self.callbacks
+    }
+
+    /// Returns an immutable reference to the virtual filesystem
+    /// This contains .d.ts files, README.md, and index.d.ts for just-bash exploration
+    pub fn virtual_fs(&self) -> &HashMap<String, String> {
+        &self.virtual_fs
     }
 
     pub fn allowed_hosts(&self) -> HashSet<String> {
@@ -387,8 +474,89 @@ impl CodeMode {
         GetFunctionDetailsOutput { code, functions }
     }
 
+    /// Execute bash commands directly in the virtual filesystem
+    #[instrument(skip(self), ret(Display), err)]
+    pub async fn execute_bash(&self, command: &str) -> Result<ExecuteOutput> {
+        debug!(command = %command, "Executing bash command");
+
+        // Serialize virtual_fs for injection into JavaScript
+        let virtual_fs_json = serde_json::to_string(&self.virtual_fs)
+            .unwrap_or_else(|_| "{}".to_string());
+
+        // Wrap bash command in async IIFE and export the result
+        // The result from bashFs.exec() contains: { stdout: string, stderr: string, exitCode: number }
+        let to_execute = format!(
+            r#"// Initialize bash filesystem with tool definitions
+const bashFs = new justBash({{
+    files: {virtual_fs_json},
+    cwd: "/sdk",
+}});
+
+// Execute the bash command in an async IIFE
+const result = await (async () => {{
+    return await bashFs.exec({command});
+}})();
+
+export default result;"#,
+            virtual_fs_json = virtual_fs_json,
+            command = serde_json::to_string(command).unwrap_or_else(|_| "\"\"".to_string()),
+        );
+
+        debug!(to_execute = %to_execute, "Executing bash in sandbox");
+
+        let options = pctx_executor::ExecuteOptions::new()
+            .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
+            .with_servers(self.servers.clone());
+
+        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+
+        // Extract stdout and stderr from the bash result object
+        // The output field contains the result object: { stdout, stderr, exitCode }
+        let (bash_stdout, bash_stderr, exit_code) = if execution_res.success {
+            if let Some(output_value) = &execution_res.output {
+                if let Some(result_obj) = output_value.as_object() {
+                    let stdout = result_obj.get("stdout")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let stderr = result_obj.get("stderr")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let exit_code = result_obj.get("exitCode")
+                        .and_then(|v| v.as_i64())
+                        .unwrap_or(0);
+                    (stdout, stderr, exit_code)
+                } else {
+                    (String::new(), String::new(), 0)
+                }
+            } else {
+                (String::new(), String::new(), 0)
+            }
+        } else {
+            // If execution failed at the TypeScript level, use the execution error
+            (String::new(), execution_res.stderr.clone(), 1)
+        };
+
+        let success = execution_res.success && exit_code == 0;
+
+        if success {
+            debug!("Bash execution completed successfully");
+        } else {
+            warn!("Bash execution failed with exit code {}: {}", exit_code, bash_stderr);
+        }
+
+        Ok(ExecuteOutput {
+            success,
+            stdout: bash_stdout,
+            stderr: bash_stderr,
+            output: None,
+        })
+    }
+
+    /// Execute TypeScript code with access to registered tools and virtual filesystem
     #[instrument(skip(self, callback_registry), ret(Display), err)]
-    pub async fn execute(
+    pub async fn execute_typescript(
         &self,
         code: &str,
         callback_registry: Option<CallbackRegistry>,
@@ -402,7 +570,7 @@ impl CodeMode {
             formatted_code = %formatted_code,
             code_length = code.len(),
             callbacks =? registry.ids(),
-            "Received code to execute"
+            "Received TypeScript code to execute"
         );
 
         // confirm all configured callbacks in the CodeMode interface have
@@ -437,13 +605,35 @@ impl CodeMode {
             })
             .collect();
 
-        // Put LLM code at the top, then namespaces below
+        // Serialize virtual_fs for injection into JavaScript
+        let virtual_fs_json = serde_json::to_string(&self.virtual_fs)
+            .unwrap_or_else(|_| "{}".to_string());
+
+        // Initialize bashFs with tool definitions, then user code, then namespaces
         let to_execute = format!(
-            "{code}\n\n{namespaces}\n\nexport default await run();\n",
+            r#"// TypeScript declaration for bashFs
+declare global {{
+    var bashFs: InstanceType<typeof justBash>;
+}}
+
+// Initialize bash filesystem with tool definitions
+const bashFs = new justBash({{
+    files: {virtual_fs_json},
+    cwd: "/sdk",
+}});
+globalThis.bashFs = bashFs;
+
+{code}
+
+{namespaces}
+
+export default await run();
+"#,
+            virtual_fs_json = virtual_fs_json,
             namespaces = namespaces.join("\n\n"),
         );
 
-        debug!(to_execute = %to_execute, "Executing code in sandbox");
+        debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
 
         let options = pctx_executor::ExecuteOptions::new()
             .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
@@ -453,9 +643,9 @@ impl CodeMode {
         let execution_res = pctx_executor::execute(&to_execute, options).await?;
 
         if execution_res.success {
-            debug!("Sandbox execution completed successfully");
+            debug!("TypeScript execution completed successfully");
         } else {
-            warn!("Sandbox execution failed: {:?}", execution_res.stderr);
+            warn!("TypeScript execution failed: {:?}", execution_res.stderr);
         }
 
         Ok(ExecuteOutput {
@@ -464,5 +654,17 @@ impl CodeMode {
             stderr: execution_res.stderr,
             output: execution_res.output,
         })
+    }
+
+    /// Main execute function that routes to bash or typescript execution
+    /// Defaults to TypeScript for backward compatibility
+    #[instrument(skip(self, callback_registry), ret(Display), err)]
+    pub async fn execute(
+        &self,
+        code: &str,
+        callback_registry: Option<CallbackRegistry>,
+    ) -> Result<ExecuteOutput> {
+        // Default to TypeScript execution for backward compatibility
+        self.execute_typescript(code, callback_registry).await
     }
 }

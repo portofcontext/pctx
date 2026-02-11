@@ -119,6 +119,8 @@ pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, Pctx
 pub enum PctxJsonRpcRequest {
     #[serde(rename = "execute_code")]
     ExecuteCode { params: ExecuteCodeParams },
+    #[serde(rename = "execute_bash")]
+    ExecuteBash { params: ExecuteBashParams },
     #[serde(rename = "execute_tool")]
     ExecuteTool { params: ExecuteToolParams },
 }
@@ -133,6 +135,11 @@ pub struct ExecuteToolParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteCodeParams {
     pub code: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecuteBashParams {
+    pub command: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

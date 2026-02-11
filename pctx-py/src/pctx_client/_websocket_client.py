@@ -18,6 +18,9 @@ from pctx_client._tool import AsyncTool, Tool
 from pctx_client.models import (
     ErrorCode,
     ErrorData,
+    ExecuteBashParams,
+    ExecuteBashRequest,
+    ExecuteBashResponse,
     ExecuteCodeParams,
     ExecuteCodeRequest,
     ExecuteCodeResponse,
@@ -33,6 +36,8 @@ from .exceptions import ConnectionError
 WebSocketMessage = Union[
     ExecuteCodeRequest,
     ExecuteCodeResponse,
+    ExecuteBashRequest,
+    ExecuteBashResponse,
     ExecuteToolRequest,
     ExecuteToolResponse,
     JsonRpcError,
@@ -151,6 +156,54 @@ class WebSocketClient:
             self._pending_executions.pop(request_id, None)
             await self._disconnect()
 
+    async def execute_bash(
+        self, code_mode_session: str, command: str, timeout: float = 30.0
+    ) -> ExecuteOutput:
+        """
+        Execute bash command via WebSocket.
+
+        Args:
+            code_mode_session: CodeMode session to run execution in
+            command: Bash command to execute
+            timeout: Timeout in seconds (default 30)
+
+        Returns:
+            ExecuteOutput with success, stdout, stderr, and output
+
+        Raises:
+            TimeoutError: If execution times out
+            Exception: If execution fails
+        """
+        if self.ws is None:
+            await self._connect(code_mode_session)
+
+        # Generate unique request ID
+        request_id = str(uuid.uuid4())
+
+        # Create future for response
+        future: asyncio.Future[dict[str, Any]] = asyncio.Future()
+        self._pending_executions[request_id] = future
+
+        # Send request
+        request = ExecuteBashRequest(
+            id=request_id,
+            method="execute_bash",
+            params=ExecuteBashParams(command=command),
+        )
+
+        try:
+            await self._send(request)
+
+            # Wait for response with timeout
+            result = await asyncio.wait_for(future, timeout=timeout)
+            return ExecuteOutput.model_validate(result)
+        except asyncio.TimeoutError:
+            self._pending_executions.pop(request_id, None)
+            raise TimeoutError(f"Bash execution timed out after {timeout}s")
+        finally:
+            self._pending_executions.pop(request_id, None)
+            await self._disconnect()
+
     async def _handle_messages(self):
         """Background task to handle incoming WebSocket messages."""
         if self.ws is None:
@@ -167,7 +220,9 @@ class WebSocketClient:
                     if isinstance(message, ExecuteToolRequest):
                         res = await self._handle_execute_tool(message)
                         await self._send(res)
-                    elif isinstance(message, ExecuteCodeResponse):
+                    elif isinstance(
+                        message, (ExecuteCodeResponse, ExecuteBashResponse)
+                    ):
                         future = self._pending_executions.get(message.id)
                         if future is not None:
                             future.set_result(message.result)

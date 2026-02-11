@@ -348,6 +348,40 @@ class Pctx:
             self._session_id, code, timeout=self._execute_timeout
         )
 
+    async def execute_bash(self, command: str) -> ExecuteOutput:
+        """
+        Execute a bash command in the virtual filesystem.
+
+        The bash environment has access to the virtual filesystem populated with
+        tool definitions, README.md, and TypeScript definition files.
+
+        Args:
+            command: Bash command to execute (e.g., "ls /", "cat /README.md", "grep -r 'function' /")
+
+        Returns:
+            ExecuteOutput with success status, stdout, stderr, and optional output
+
+        Raises:
+            SessionError: If not connected to a session
+
+        Example:
+            >>> async with Pctx() as pctx:
+            ...     # List files in the virtual filesystem
+            ...     output = await pctx.execute_bash("ls /")
+            ...     print(output.stdout)  # Shows README.md, index.d.ts, etc.
+            ...
+            ...     # Read the README to see available functions
+            ...     output = await pctx.execute_bash("cat /README.md")
+            ...     print(output.stdout)  # Shows available functions
+        """
+        if self._session_id is None:
+            raise SessionError(
+                "No code mode session exists, run Pctx(...).connect() before calling"
+            )
+        return await self._ws_client.execute_bash(
+            self._session_id, command, timeout=self._execute_timeout
+        )
+
     # ========== Registrations ==========
 
     async def _register_tools(self, configs: list[ToolConfig]):
