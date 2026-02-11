@@ -328,7 +328,8 @@ Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>
                         .to_lowercase();
 
                     // Create file for this function under /sdk/
-                    let tool_file_path = format!("/sdk/{}/{}.d.ts", tool_set.namespace, tool.fn_name);
+                    let tool_file_path =
+                        format!("/sdk/{}/{}.d.ts", tool_set.namespace, tool.fn_name);
                     let tool_code = tool.fn_signature(true);
                     let formatted = pctx_codegen::format::format_d_ts(&tool_code);
                     files.insert(tool_file_path, formatted);
@@ -480,8 +481,8 @@ Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>
         debug!(command = %command, "Executing bash command");
 
         // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json = serde_json::to_string(&self.virtual_fs)
-            .unwrap_or_else(|_| "{}".to_string());
+        let virtual_fs_json =
+            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
 
         // Wrap bash command in async IIFE and export the result
         // The result from bashFs.exec() contains: { stdout: string, stderr: string, exitCode: number }
@@ -515,15 +516,18 @@ export default result;"#,
         let (bash_stdout, bash_stderr, exit_code) = if execution_res.success {
             if let Some(output_value) = &execution_res.output {
                 if let Some(result_obj) = output_value.as_object() {
-                    let stdout = result_obj.get("stdout")
+                    let stdout = result_obj
+                        .get("stdout")
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let stderr = result_obj.get("stderr")
+                    let stderr = result_obj
+                        .get("stderr")
                         .and_then(|v| v.as_str())
                         .unwrap_or("")
                         .to_string();
-                    let exit_code = result_obj.get("exitCode")
+                    let exit_code = result_obj
+                        .get("exitCode")
                         .and_then(|v| v.as_i64())
                         .unwrap_or(0);
                     (stdout, stderr, exit_code)
@@ -543,7 +547,10 @@ export default result;"#,
         if success {
             debug!("Bash execution completed successfully");
         } else {
-            warn!("Bash execution failed with exit code {}: {}", exit_code, bash_stderr);
+            warn!(
+                "Bash execution failed with exit code {}: {}",
+                exit_code, bash_stderr
+            );
         }
 
         Ok(ExecuteOutput {
@@ -606,8 +613,8 @@ export default result;"#,
             .collect();
 
         // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json = serde_json::to_string(&self.virtual_fs)
-            .unwrap_or_else(|_| "{}".to_string());
+        let virtual_fs_json =
+            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
 
         // Initialize bashFs with tool definitions, then user code, then namespaces
         let to_execute = format!(

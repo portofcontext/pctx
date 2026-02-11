@@ -433,10 +433,22 @@ async fn test_explore_virtual_fs_with_bash() {
     let stdout = response["result"]["stdout"].as_str().unwrap();
 
     // Should list README.md and TestMath namespace folder (no system dirs!)
-    assert!(stdout.contains("README.md"), "Should have README.md: {stdout}");
-    assert!(stdout.contains("TestMath"), "Should have TestMath namespace folder: {stdout}");
-    assert!(!stdout.contains("bin"), "Should NOT have system bin dir: {stdout}");
-    assert!(!stdout.contains("proc"), "Should NOT have system proc dir: {stdout}");
+    assert!(
+        stdout.contains("README.md"),
+        "Should have README.md: {stdout}"
+    );
+    assert!(
+        stdout.contains("TestMath"),
+        "Should have TestMath namespace folder: {stdout}"
+    );
+    assert!(
+        !stdout.contains("bin"),
+        "Should NOT have system bin dir: {stdout}"
+    );
+    assert!(
+        !stdout.contains("proc"),
+        "Should NOT have system proc dir: {stdout}"
+    );
 
     // Test 2: Read README.md
     ws.send_json(&json!({
@@ -452,12 +464,27 @@ async fn test_explore_virtual_fs_with_bash() {
     let readme = response["result"]["stdout"].as_str().unwrap();
 
     // README should contain function listings
-    assert!(readme.contains("# TypeScript SDK"), "Should have header: {readme}");
-    assert!(readme.contains("**TestMath**"), "Should have TestMath namespace: {readme}");
+    assert!(
+        readme.contains("# TypeScript SDK"),
+        "Should have header: {readme}"
+    );
+    assert!(
+        readme.contains("**TestMath**"),
+        "Should have TestMath namespace: {readme}"
+    );
     assert!(readme.contains("add"), "Should list add function: {readme}");
-    assert!(readme.contains("subtract"), "Should list subtract function: {readme}");
-    assert!(readme.contains("multiply"), "Should list multiply function: {readme}");
-    assert!(readme.contains("divide"), "Should list divide function: {readme}");
+    assert!(
+        readme.contains("subtract"),
+        "Should list subtract function: {readme}"
+    );
+    assert!(
+        readme.contains("multiply"),
+        "Should list multiply function: {readme}"
+    );
+    assert!(
+        readme.contains("divide"),
+        "Should list divide function: {readme}"
+    );
 
     // Test 3: Grep for specific function
     ws.send_json(&json!({
@@ -472,7 +499,10 @@ async fn test_explore_virtual_fs_with_bash() {
     assert_eq!(response["result"]["success"], true);
     let grep_result = response["result"]["stdout"].as_str().unwrap();
 
-    assert!(grep_result.contains("add"), "Should find add function: {grep_result}");
+    assert!(
+        grep_result.contains("add"),
+        "Should find add function: {grep_result}"
+    );
 
     // Test 4: Read individual tool TypeScript definition
     ws.send_json(&json!({
@@ -488,8 +518,14 @@ async fn test_explore_virtual_fs_with_bash() {
     let types = response["result"]["stdout"].as_str().unwrap();
 
     // Should contain function signature with types
-    assert!(types.contains("function add"), "Should have add function: {types}");
-    assert!(types.contains("a: number"), "Should have typed parameters: {types}");
+    assert!(
+        types.contains("function add"),
+        "Should have add function: {types}"
+    );
+    assert!(
+        types.contains("a: number"),
+        "Should have typed parameters: {types}"
+    );
 
     // Test 5: List files in TestMath namespace directory
     ws.send_json(&json!({
@@ -505,10 +541,22 @@ async fn test_explore_virtual_fs_with_bash() {
     let tools_list = response["result"]["stdout"].as_str().unwrap();
 
     // Should list individual tool files
-    assert!(tools_list.contains("add.d.ts"), "Should have add.d.ts: {tools_list}");
-    assert!(tools_list.contains("subtract.d.ts"), "Should have subtract.d.ts: {tools_list}");
-    assert!(tools_list.contains("multiply.d.ts"), "Should have multiply.d.ts: {tools_list}");
-    assert!(tools_list.contains("divide.d.ts"), "Should have divide.d.ts: {tools_list}");
+    assert!(
+        tools_list.contains("add.d.ts"),
+        "Should have add.d.ts: {tools_list}"
+    );
+    assert!(
+        tools_list.contains("subtract.d.ts"),
+        "Should have subtract.d.ts: {tools_list}"
+    );
+    assert!(
+        tools_list.contains("multiply.d.ts"),
+        "Should have multiply.d.ts: {tools_list}"
+    );
+    assert!(
+        tools_list.contains("divide.d.ts"),
+        "Should have divide.d.ts: {tools_list}"
+    );
 }
 
 #[test_log::test(tokio::test)]
