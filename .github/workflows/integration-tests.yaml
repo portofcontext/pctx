@@ -47,8 +47,9 @@ jobs:
           shared-key: "integration-tests"
 
       # Build pctx binary in release mode
+      # Limit parallelism to prevent resource exhaustion from multiple large const evals
       - name: Build pctx
-        run: cargo build --release --bin pctx
+        run: cargo build --release --bin pctx -j 2
 
       # Run the CLI integration test script with built binary
       - name: Run CLI integration tests
