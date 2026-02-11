@@ -378,9 +378,11 @@ class Pctx:
             raise SessionError(
                 "No code mode session exists, run Pctx(...).connect() before calling"
             )
-        return await self._ws_client.execute_bash(
-            self._session_id, command, timeout=self._execute_timeout
+        response = await self._client.post(
+            "/code-mode/execute-bash", json={"command": command}
         )
+        response.raise_for_status()
+        return ExecuteOutput.model_validate(response.json())
 
     # ========== Registrations ==========
 

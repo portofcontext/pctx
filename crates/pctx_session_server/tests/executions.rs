@@ -414,23 +414,16 @@ async fn test_explore_virtual_fs_with_bash() {
         .await;
     register_res.assert_status_ok();
 
-    let mut ws = connect_websocket(&server, session_id)
-        .await
-        .into_websocket()
-        .await;
-
     // Test 1: List files in SDK directory (cwd is /sdk/)
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "test-ls",
-        "method": "execute_bash",
-        "params": { "command": "ls" }
-    }))
-    .await;
+    let response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "ls" }))
+        .await
+        .json();
 
-    let response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(response["result"]["success"], true);
-    let stdout = response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(response["success"], true);
+    let stdout = response["stdout"].as_str().unwrap();
 
     // Should list README.md and TestMath namespace folder (no system dirs!)
     assert!(
@@ -451,17 +444,15 @@ async fn test_explore_virtual_fs_with_bash() {
     );
 
     // Test 2: Read README.md
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "test-readme",
-        "method": "execute_bash",
-        "params": { "command": "cat README.md" }
-    }))
-    .await;
+    let response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "cat README.md" }))
+        .await
+        .json();
 
-    let response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(response["result"]["success"], true);
-    let readme = response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(response["success"], true);
+    let readme = response["stdout"].as_str().unwrap();
 
     // README should contain function listings
     assert!(
@@ -487,17 +478,15 @@ async fn test_explore_virtual_fs_with_bash() {
     );
 
     // Test 3: Grep for specific function
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "test-grep",
-        "method": "execute_bash",
-        "params": { "command": "grep 'add' README.md" }
-    }))
-    .await;
+    let response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "grep 'add' README.md" }))
+        .await
+        .json();
 
-    let response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(response["result"]["success"], true);
-    let grep_result = response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(response["success"], true);
+    let grep_result = response["stdout"].as_str().unwrap();
 
     assert!(
         grep_result.contains("add"),
@@ -505,17 +494,15 @@ async fn test_explore_virtual_fs_with_bash() {
     );
 
     // Test 4: Read individual tool TypeScript definition
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "test-types",
-        "method": "execute_bash",
-        "params": { "command": "cat TestMath/add.d.ts" }
-    }))
-    .await;
+    let response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "cat TestMath/add.d.ts" }))
+        .await
+        .json();
 
-    let response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(response["result"]["success"], true);
-    let types = response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(response["success"], true);
+    let types = response["stdout"].as_str().unwrap();
 
     // Should contain function signature with types
     assert!(
@@ -528,17 +515,15 @@ async fn test_explore_virtual_fs_with_bash() {
     );
 
     // Test 5: List files in TestMath namespace directory
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "test-namespace-dir",
-        "method": "execute_bash",
-        "params": { "command": "ls TestMath/" }
-    }))
-    .await;
+    let response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "ls TestMath/" }))
+        .await
+        .json();
 
-    let response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(response["result"]["success"], true);
-    let tools_list = response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(response["success"], true);
+    let tools_list = response["stdout"].as_str().unwrap();
 
     // Should list individual tool files
     assert!(
@@ -576,72 +561,63 @@ async fn test_bash_exploration_then_typescript_execution() {
         .await;
     register_res.assert_status_ok();
 
-    let mut ws = connect_websocket(&server, session_id)
-        .await
-        .into_websocket()
-        .await;
-
     // Step 1: LLM explores the filesystem to discover available functions using bash
     // List files (cwd is /sdk/)
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "ls",
-        "method": "execute_bash",
-        "params": { "command": "ls" }
-    }))
-    .await;
+    let ls_response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "ls" }))
+        .await
+        .json();
 
-    let ls_response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(ls_response["result"]["success"], true);
-    let files_found = ls_response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(ls_response["success"], true);
+    let files_found = ls_response["stdout"].as_str().unwrap();
     assert!(files_found.contains("README.md"));
     assert!(files_found.contains("TestMath"));
     assert!(!files_found.contains("bin"), "Should NOT see system dirs");
 
     // Read README
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "readme",
-        "method": "execute_bash",
-        "params": { "command": "cat README.md" }
-    }))
-    .await;
+    let readme_response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "cat README.md" }))
+        .await
+        .json();
 
-    let readme_response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(readme_response["result"]["success"], true);
-    let readme = readme_response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(readme_response["success"], true);
+    let readme = readme_response["stdout"].as_str().unwrap();
     assert!(readme.contains("**TestMath**"));
 
     // Search for math functions
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "grep",
-        "method": "execute_bash",
-        "params": { "command": "grep -E '(add|multiply)' README.md" }
-    }))
-    .await;
+    let grep_response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "grep -E '(add|multiply)' README.md" }))
+        .await
+        .json();
 
-    let grep_response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(grep_response["result"]["success"], true);
-    let math_functions = grep_response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(grep_response["success"], true);
+    let math_functions = grep_response["stdout"].as_str().unwrap();
     assert!(math_functions.contains("add"));
     assert!(math_functions.contains("multiply"));
 
     // Read individual tool type definition
-    ws.send_json(&json!({
-        "jsonrpc": "2.0",
-        "id": "types",
-        "method": "execute_bash",
-        "params": { "command": "cat TestMath/add.d.ts" }
-    }))
-    .await;
+    let types_response: serde_json::Value = server
+        .post("/code-mode/execute-bash")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "command": "cat TestMath/add.d.ts" }))
+        .await
+        .json();
 
-    let types_response: serde_json::Value = ws.receive_json().await;
-    assert_eq!(types_response["result"]["success"], true);
-    let types = types_response["result"]["stdout"].as_str().unwrap();
+    assert_eq!(types_response["success"], true);
+    let types = types_response["stdout"].as_str().unwrap();
     assert!(types.contains("function add"));
 
     // Step 2: Now use the discovered information to execute TypeScript code
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
     let execution_code = r#"
         async function run() {
             // Based on bash exploration, we know:

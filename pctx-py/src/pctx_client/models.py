@@ -159,19 +159,6 @@ class ExecuteCodeResponse(JsonRpcBase):
     result: ExecuteOutput
 
 
-class ExecuteBashParams(BaseModel):
-    command: str
-
-
-class ExecuteBashRequest(JsonRpcBase):
-    method: Literal["execute_bash"]
-    params: ExecuteBashParams
-
-
-class ExecuteBashResponse(JsonRpcBase):
-    result: ExecuteOutput
-
-
 class ExecuteToolParams(BaseModel):
     namespace: str
     name: str

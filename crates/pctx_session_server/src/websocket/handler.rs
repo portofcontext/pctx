@@ -4,8 +4,8 @@ use crate::{
     PctxSessionBackend,
     extractors::CodeModeSession,
     model::{
-        ExecuteBashParams, ExecuteCodeParams, ExecuteToolParams, PctxJsonRpcRequest,
-        PctxJsonRpcResponse, WsJsonRpcMessage,
+        ExecuteCodeParams, ExecuteToolParams, PctxJsonRpcRequest, PctxJsonRpcResponse,
+        WsJsonRpcMessage,
     },
     state::ws_manager::WsSession,
 };
@@ -361,25 +361,6 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
     .await
 }
 
-/// Handle an `execute_bash` request from the client
-async fn handle_execute_bash_request<B: PctxSessionBackend>(
-    req_id: RequestId,
-    params: ExecuteBashParams,
-    ws_session: Uuid,
-    state: AppState<B>,
-) -> Result<(), String> {
-    let command = params.command.clone();
-    handle_execution_inner(
-        req_id,
-        ws_session,
-        state,
-        command.clone(),
-        false, // no callbacks needed
-        move |code_mode, _| Box::pin(async move { code_mode.execute_bash(&command).await }),
-    )
-    .await
-}
-
 /// Handle a single WebSocket message
 /// Messages coming from a client, needs to be routed to the correct `WsSession` for handling.
 async fn handle_message<B: PctxSessionBackend>(
@@ -399,10 +380,6 @@ async fn handle_message<B: PctxSessionBackend>(
                     PctxJsonRpcRequest::ExecuteCode { params } => {
                         debug!("Executing TypeScript code...");
                         handle_execute_code_request(req.id, params, ws_session, state.clone()).await
-                    }
-                    PctxJsonRpcRequest::ExecuteBash { params } => {
-                        debug!("Executing bash command...");
-                        handle_execute_bash_request(req.id, params, ws_session, state.clone()).await
                     }
                     PctxJsonRpcRequest::ExecuteTool { .. } => {
                         // the server is only responsible for servicing execute_code requests, execute_tool
