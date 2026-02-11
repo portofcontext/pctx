@@ -44,12 +44,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: false
-          shared-key: "integration-tests"
+          # Changed cache key to invalidate corrupted v8 cache from adding just-bash/bundle.js
+          shared-key: "integration-tests-v2"
 
       # Build pctx binary in release mode
-      # Limit parallelism to prevent resource exhaustion from multiple large const evals
       - name: Build pctx
-        run: cargo build --release --bin pctx -j 2
+        run: cargo build --release --bin pctx
 
       # Run the CLI integration test script with built binary
       - name: Run CLI integration tests
@@ -88,7 +88,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: false
-          shared-key: "integration-tests"
+          # Changed cache key to invalidate corrupted v8 cache from adding just-bash/bundle.js
+          shared-key: "integration-tests-v2"
 
       # Build pctx binary in release mode (should hit cache from cli-tests)
       - name: Build pctx
