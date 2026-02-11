@@ -1,0 +1,12 @@
+name: list_files
+description: "List all files in the current workspace"
+
+output_schema:
+  type: object
+  required:
+    - files
+  properties:
+    files:
+      type: array
+      items:
+        type: string

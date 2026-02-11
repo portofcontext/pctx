@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.2.2 (2026-01-28)
+## 0.2.3 (2026-02-04)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 8 commits contributed to the release.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +23,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`dbe7858`](https://github.com/portofcontext/pctx/commit/dbe78587850bc31d42e24f8132069ce705313351))
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`2b9e359`](https://github.com/portofcontext/pctx/commit/2b9e359c8366d1cf50fdf23b49287e77025ecf4e))
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`ca2531d`](https://github.com/portofcontext/pctx/commit/ca2531dac6d202d926c55beec03c73496a75e056))
+    - Bump code mode ([`f980ad0`](https://github.com/portofcontext/pctx/commit/f980ad0e0489cada6e3ee0f6a0d6156f78793f7f))
+    - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`8cd4cb3`](https://github.com/portofcontext/pctx/commit/8cd4cb3354416208f70927e8fdb6540162402eef))
+    - Merge pull request #54 from portofcontext/empty-args ([`bf72e21`](https://github.com/portofcontext/pctx/commit/bf72e211d13336baf1f79d89e60c98ba6aa4bf7c))
+    - Support for automatic default objects for "all optional" inputs ([`1df03d0`](https://github.com/portofcontext/pctx/commit/1df03d0b5996ec96b64bb3f0d64fc72ef3535108))
+    - Upgrade codegen, tests, and dependants to support optional input schemas ([`11f9b86`](https://github.com/portofcontext/pctx/commit/11f9b86f1884a5adfcc27bbc13409eb4faf42467))
+</details>
+
+## 0.2.2 (2026-01-28)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_config v0.1.3, pctx_code_execution_runtime v0.1.3, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`d89a17a`](https://github.com/portofcontext/pctx/commit/d89a17a1dcf724dd9545c3a59cadae7ba1bfeff7))
     - Improve pctx code mode re-exports & update readme ([`6d15c75`](https://github.com/portofcontext/pctx/commit/6d15c75052db5d317a875b368ed5677d90755c76))
 </details>
 

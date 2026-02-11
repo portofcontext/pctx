@@ -11,7 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- [#53](https://github.com/portofcontext/pctx/issues/53) Improved code generation support for tools with no input schema or all optional input schemas
+
 ### Fixed
+
+- When removing a websocket session, graceful cancel of all pending client tool executions
+
+- JS runtime race condition by moving the V8 mutex to be held for the entire typecheck/execute process. This previously caused a panic: `../../../../third_party/libc++/src/include/__vector/vector.h:416: libc++ Hardening assertion __n < size() failed: vector[] index out of bounds`
 
 ## [v0.4.3] - 2026-01-27
 

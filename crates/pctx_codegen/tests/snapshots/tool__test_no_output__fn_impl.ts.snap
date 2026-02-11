@@ -1,0 +1,23 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: impl_code
+---
+export type SendNotificationInput = {
+  user_id: string;
+
+  message: string;
+
+  priority?: "low" | "medium" | "high" | undefined;
+};
+
+/**
+ * Send a notification to a user
+ */
+export async function sendNotification(
+  input: SendNotificationInput,
+): Promise<any> {
+  return await invokeCallback<any>({
+    id: "test_server.send_notification",
+    arguments: input,
+  });
+}

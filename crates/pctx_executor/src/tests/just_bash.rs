@@ -26,11 +26,12 @@ export default await test();
     assert!(
         result.success,
         "just-bash ls should work. diagnostics: {:?}, runtime_error: {:?}, stderr: {}",
-        result.diagnostics,
-        result.runtime_error,
-        result.stderr
+        result.diagnostics, result.runtime_error, result.stderr
     );
-    assert!(result.runtime_error.is_none(), "Should have no runtime errors");
+    assert!(
+        result.runtime_error.is_none(),
+        "Should have no runtime errors"
+    );
     // ls output should contain both files
     let output = result.output.unwrap();
     let output_str = output.as_str().unwrap();
@@ -62,11 +63,12 @@ export default await test();
     assert!(
         result.success,
         "just-bash head should work. diagnostics: {:?}, runtime_error: {:?}, stderr: {}",
-        result.diagnostics,
-        result.runtime_error,
-        result.stderr
+        result.diagnostics, result.runtime_error, result.stderr
     );
-    assert!(result.runtime_error.is_none(), "Should have no runtime errors");
+    assert!(
+        result.runtime_error.is_none(),
+        "Should have no runtime errors"
+    );
     assert_eq!(
         result.output,
         Some(serde_json::json!("line1\nline2\nline3\n")),
@@ -98,11 +100,12 @@ export default await test();
     assert!(
         result.success,
         "just-bash grep should work. diagnostics: {:?}, runtime_error: {:?}, stderr: {}",
-        result.diagnostics,
-        result.runtime_error,
-        result.stderr
+        result.diagnostics, result.runtime_error, result.stderr
     );
-    assert!(result.runtime_error.is_none(), "Should have no runtime errors");
+    assert!(
+        result.runtime_error.is_none(),
+        "Should have no runtime errors"
+    );
     assert_eq!(
         result.output,
         Some(serde_json::json!("apple\napricot\navocado\n")),
@@ -137,15 +140,22 @@ export default await test();
     assert!(
         result.success,
         "just-bash find should work. diagnostics: {:?}, runtime_error: {:?}, stderr: {}",
-        result.diagnostics,
-        result.runtime_error,
-        result.stderr
+        result.diagnostics, result.runtime_error, result.stderr
     );
-    assert!(result.runtime_error.is_none(), "Should have no runtime errors");
+    assert!(
+        result.runtime_error.is_none(),
+        "Should have no runtime errors"
+    );
     let output = result.output.unwrap();
     let output_str = output.as_str().unwrap();
     assert!(output_str.contains("main.ts"), "find should locate main.ts");
     assert!(output_str.contains("util.ts"), "find should locate util.ts");
-    assert!(output_str.contains("main.test.ts"), "find should locate main.test.ts");
-    assert!(!output_str.contains("readme.md"), "find should not match readme.md");
+    assert!(
+        output_str.contains("main.test.ts"),
+        "find should locate main.test.ts"
+    );
+    assert!(
+        !output_str.contains("readme.md"),
+        "find should not match readme.md"
+    );
 }

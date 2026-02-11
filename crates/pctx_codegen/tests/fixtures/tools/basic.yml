@@ -1,0 +1,26 @@
+name: get_weather
+description: "Get the current weather for a given location"
+
+input_schema:
+  type: object
+  required:
+    - location
+  properties:
+    location:
+      type: string
+    units:
+      type: string
+      enum: ["celsius", "fahrenheit"]
+
+output_schema:
+  type: object
+  required:
+    - temperature
+    - condition
+  properties:
+    temperature:
+      type: number
+    condition:
+      type: string
+    humidity:
+      type: number

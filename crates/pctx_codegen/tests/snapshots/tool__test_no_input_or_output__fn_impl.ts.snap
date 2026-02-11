@@ -1,0 +1,12 @@
+---
+source: crates/pctx_codegen/tests/tool.rs
+expression: impl_code
+---
+/**
+ * Health check ping
+ */
+export async function ping(): Promise<any> {
+  return await invokeCallback<any>({
+    id: "test_server.ping",
+  });
+}

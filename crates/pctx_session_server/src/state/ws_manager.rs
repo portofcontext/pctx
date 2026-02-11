@@ -39,8 +39,21 @@ impl WsManager {
         session_id
     }
 
-    /// Remove a session
+    /// Remove a session and cancel all pending executions
     pub async fn remove_session(&self, session_id: Uuid) {
+        // First, get the session and clear its pending executions
+        // This will drop all response_tx senders, causing waiting recv() calls
+        // to immediately fail with ChannelClosed instead of waiting for timeout
+        {
+            let sessions = self.sessions.read().await;
+            if let Some(session_lock) = sessions.get(&session_id) {
+                let session = session_lock.read().await;
+                session.pending_executions.write().await.clear();
+                debug!("Cleared pending executions for session {session_id}");
+            }
+        }
+
+        // Then remove the session from the map
         let mut sessions = self.sessions.write().await;
         sessions.remove(&session_id);
     }

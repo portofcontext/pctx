@@ -160,7 +160,7 @@ impl CodeMode {
                 Tool::new_mcp(
                     &mcp_tool.name,
                     mcp_tool.description.map(String::from),
-                    input_schema,
+                    Some(input_schema),
                     output_schema,
                 )
                 .map_err(|e| {
@@ -220,17 +220,15 @@ impl CodeMode {
         }
 
         // convert callback config into tool
-        let input_schema = if let Some(i) = &callback.input_schema {
-            serde_json::from_value::<pctx_codegen::RootSchema>(json!(i)).map_err(|e| {
-                Error::Message(format!(
-                    "Failed parsing inputSchema as json schema for tool `{}`: {e}",
-                    &callback.name
-                ))
-            })?
-        } else {
-            // TODO: better empty input schema support
-            serde_json::from_value::<pctx_codegen::RootSchema>(json!({})).unwrap()
-        };
+        let input_schema = serde_json::from_value::<Option<pctx_codegen::RootSchema>>(json!(
+            &callback.input_schema
+        ))
+        .map_err(|e| {
+            Error::Message(format!(
+                "Failed parsing inputSchema as json schema for tool `{}`: {e}",
+                &callback.name
+            ))
+        })?;
         let output_schema = if let Some(o) = &callback.output_schema {
             Some(
                 serde_json::from_value::<pctx_codegen::RootSchema>(json!(o)).map_err(|e| {
@@ -372,9 +370,9 @@ impl CodeMode {
                             name: t.fn_name.clone(),
                             description: t.description.clone(),
                         },
-                        input_type: t.input_signature.clone(),
-                        output_type: t.output_signature.clone(),
-                        types: t.types.clone(),
+                        input_type: t.input_signature().unwrap_or_default(),
+                        output_type: t.output_signature(),
+                        types: t.types(),
                     }));
                 }
             }

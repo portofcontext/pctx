@@ -15,11 +15,11 @@ pub(crate) fn init_rustls_crypto() {
 }
 
 mod callback_usage;
+mod concurrent_v8_stress;
 mod default_export_capture;
 mod diagnostic_filtering;
+mod just_bash;
 mod mcp_client_usage;
 mod output_capture;
-mod permissions;
 mod runtime_execution;
 mod type_checking;
-mod just_bash;

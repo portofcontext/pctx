@@ -1,0 +1,38 @@
+name: create_document
+description: "Create a new document with metadata and content sections"
+
+input_schema:
+  type: object
+  required:
+    - title
+    - content
+  properties:
+    title:
+      type: string
+    content:
+      type: object
+      required:
+        - body
+      properties:
+        body:
+          type: string
+        format:
+          type: string
+          enum: ["markdown", "html", "plain"]
+    tags:
+      type: array
+      items:
+        type: string
+
+output_schema:
+  type: object
+  required:
+    - id
+    - created_at
+  properties:
+    id:
+      type: string
+    created_at:
+      type: string
+    url:
+      type: string
