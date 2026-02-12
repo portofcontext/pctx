@@ -110,6 +110,15 @@ class ExecuteOutput(BaseModel):
     output: Any | None = None
 
     def markdown(self) -> str:
+        # For bash commands, output is None - just show stdout/stderr directly
+        if self.output is None:
+            if self.stderr:
+                return f"ERROR:\n{self.stderr}"
+            if self.stdout:
+                return self.stdout
+            return "Command executed successfully (no output)"
+
+        # For TypeScript execution, show everything including return value
         return f"""Code Executed Successfully: {self.success}
 
 # Return Value
