@@ -1,8 +1,17 @@
 """Tests for create_output_schema"""
 
+from typing import Annotated, get_args, get_origin
+
 from pydantic import BaseModel, TypeAdapter
 
 from pctx_client._tool import create_output_schema
+
+
+def _unwrap_annotated(typ):
+    """Helper to unwrap Annotated types"""
+    if get_origin(typ) is Annotated:
+        return get_args(typ)[0]
+    return typ
 
 
 def test_output_schema_simple_type():
@@ -68,6 +77,8 @@ def test_output_schema_with_pydantic_model():
     """Test that Pydantic model return types are used as-is"""
 
     class UserOutput(BaseModel):
+        """User data from the database"""
+
         name: str
         age: int
 
@@ -76,8 +87,8 @@ def test_output_schema_with_pydantic_model():
 
     typ = create_output_schema(returns_model)
 
-    # Should be the same type
-    assert typ is UserOutput
+    # Should be the same type (possibly wrapped in Annotated)
+    assert _unwrap_annotated(typ) is UserOutput
 
     # Can use with TypeAdapter
     adapter = TypeAdapter(typ)
@@ -85,6 +96,7 @@ def test_output_schema_with_pydantic_model():
         "type": "object",
         "required": ["name", "age"],
         "title": "UserOutput",
+        "description": "User data from the database",
         "properties": {
             "age": {
                 "title": "Age",
@@ -114,8 +126,8 @@ def test_output_schema_with_nested_pydantic_model():
 
     typ = create_output_schema(returns_person)
 
-    # Should return Person as-is
-    assert typ is Person
+    # Should return Person as-is (possibly wrapped in Annotated)
+    assert _unwrap_annotated(typ) is Person
     adapter = TypeAdapter(typ)
     assert adapter.json_schema() == {
         "type": "object",

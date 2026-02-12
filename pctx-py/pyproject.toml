@@ -8,7 +8,12 @@ authors = [
     { name = "Patrick Kelly", email = "pmkelly4444@gmail.com" },
 ]
 requires-python = ">=3.10,<3.14"
-dependencies = ["httpx>=0.28.1", "pydantic>=2.7.2", "websockets>=15.0.1"]
+dependencies = [
+    "docstring-parser>=0.17.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.7.2",
+    "websockets>=15.0.1",
+]
 
 [project.optional-dependencies]
 langchain = ["langchain>=1.1.2"]

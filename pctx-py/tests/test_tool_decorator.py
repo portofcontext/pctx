@@ -119,9 +119,7 @@ def test_registration_indented_docstring_dedented() -> None:
         """
         return "result"
 
-    lines = indented_doc.description.strip().split("\n")
-    assert lines[0] == "First line"
-    assert "    Indented line" in indented_doc.description
+    assert indented_doc.description == "First line\nIndented line\nLast line"
 
 
 def test_registration_no_docstring() -> None:
@@ -499,3 +497,162 @@ async def test_validation_async_valid_input() -> None:
     # Should not raise any validation error
     result = await fetch_data.ainvoke(url="https://example.com", timeout=60)
     assert result == "Data from https://example.com with timeout 60"
+
+
+# ============================================================================
+# SECTION 4: DOCSTRING PARSING TESTS
+# Tests for parsing various docstring formats (Google, NumPy, REST, Epydoc)
+# ============================================================================
+
+
+# Docstring formats for parametrized testing
+GOOGLE_DOCSTRING = """Calculate the Euclidean distance between two points.
+
+This function computes the distance between two points in 2D space
+using the Euclidean distance formula.
+
+Args:
+    x1: The x-coordinate of the first point
+    y1: The y-coordinate of the first point
+    x2: The x-coordinate of the second point (defaults to origin)
+    y2: The y-coordinate of the second point (defaults to origin)
+
+Returns:
+    The Euclidean distance between the two points as a floating point number
+
+Raises:
+    ValueError: If coordinates are invalid
+"""
+
+NUMPY_DOCSTRING = """Calculate the Euclidean distance between two points.
+
+This function computes the distance between two points in 2D space
+using the Euclidean distance formula.
+
+Parameters
+----------
+x1 : float
+    The x-coordinate of the first point
+y1 : float
+    The y-coordinate of the first point
+x2 : float, optional
+    The x-coordinate of the second point (defaults to origin)
+y2 : float, optional
+    The y-coordinate of the second point (defaults to origin)
+
+Returns
+-------
+float
+    The Euclidean distance between the two points as a floating point number
+
+Raises
+------
+ValueError
+    If coordinates are invalid
+"""
+
+REST_DOCSTRING = """Calculate the Euclidean distance between two points.
+
+This function computes the distance between two points in 2D space
+using the Euclidean distance formula.
+
+:param x1: The x-coordinate of the first point
+:type x1: float
+:param y1: The y-coordinate of the first point
+:type y1: float
+:param x2: The x-coordinate of the second point (defaults to origin)
+:type x2: float
+:param y2: The y-coordinate of the second point (defaults to origin)
+:type y2: float
+:returns: The Euclidean distance between the two points as a floating point number
+:rtype: float
+:raises ValueError: If coordinates are invalid
+"""
+
+EPYDOC_DOCSTRING = """Calculate the Euclidean distance between two points.
+
+This function computes the distance between two points in 2D space
+using the Euclidean distance formula.
+
+@param x1: The x-coordinate of the first point
+@type x1: float
+@param y1: The y-coordinate of the first point
+@type y1: float
+@param x2: The x-coordinate of the second point (defaults to origin)
+@type x2: float
+@param y2: The y-coordinate of the second point (defaults to origin)
+@type y2: float
+@return: The Euclidean distance between the two points as a floating point number
+@rtype: float
+@raise ValueError: If coordinates are invalid
+"""
+
+
+@pytest.mark.parametrize(
+    "docstring_format,docstring_text",
+    [
+        ("google", GOOGLE_DOCSTRING),
+        ("numpy", NUMPY_DOCSTRING),
+        ("rest", REST_DOCSTRING),
+        ("epydoc", EPYDOC_DOCSTRING),
+    ],
+)
+def test_docstring_parsing_formats(docstring_format: str, docstring_text: str) -> None:
+    """Test that various docstring formats are parsed correctly into tool metadata"""
+
+    def calculate_distance(
+        x1: float, y1: float, x2: float = 0.0, y2: float = 0.0
+    ) -> float:
+        import math
+
+        return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+    calculate_distance.__doc__ = docstring_text
+
+    # Apply tool decorator
+    decorated_tool = tool(calculate_distance)
+
+    assert isinstance(decorated_tool, Tool)
+    assert decorated_tool.name == "calculate_distance"
+
+    # Test that description contains the short & long description
+    assert (
+        "Calculate the Euclidean distance between two points"
+        in decorated_tool.description
+    )
+    assert "2D space" in decorated_tool.description
+    assert "Euclidean distance formula" in decorated_tool.description
+
+    # Test that input schema includes parameter descriptions
+    input_schema = decorated_tool.input_json_schema()
+    assert input_schema is not None
+
+    properties = input_schema["properties"]
+    assert "x1" in properties
+    assert "y1" in properties
+    assert "x2" in properties
+    assert "y2" in properties
+
+    # Verify parameter descriptions are extracted from docstring
+    assert "x-coordinate" in properties["x1"]["description"]
+    assert "first point" in properties["x1"]["description"]
+    assert "y-coordinate" in properties["y1"]["description"]
+    assert "first point" in properties["y1"]["description"]
+    assert "x-coordinate" in properties["x2"]["description"]
+    assert "second point" in properties["x2"]["description"]
+    assert "y-coordinate" in properties["y2"]["description"]
+    assert "second point" in properties["y2"]["description"]
+
+    # Verify required and optional parameters are correct
+    assert "x1" in input_schema["required"]
+    assert "y1" in input_schema["required"]
+    assert properties["x2"]["default"] == 0.0
+    assert properties["y2"]["default"] == 0.0
+
+    # Test that output schema includes return description
+    output_schema = decorated_tool.output_json_schema()
+    assert output_schema is not None
+    assert output_schema["type"] == "number"
+    assert "description" in output_schema
+    assert "Euclidean distance" in output_schema["description"]
+    assert "floating point" in output_schema["description"]
