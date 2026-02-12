@@ -97,6 +97,10 @@ class ExecuteInput(BaseModel):
     code: str
 
 
+class ExecuteBashInput(BaseModel):
+    command: str
+
+
 class ExecuteOutput(BaseModel):
     """Output from executing TypeScript code"""
 
