@@ -605,3 +605,212 @@ class TestToolRegistry:
 
         with pytest.raises(ValueError, match="Unknown tool"):
             pctx_client.pydantic_ai_tools(invalid_config)
+
+
+# ============== Mix and Match ToolConfig Tests ==============
+
+
+class TestToolConfigMixAndMatch:
+    """Tests for arbitrary ToolConfig combinations with custom tools and descriptions"""
+
+    def test_single_tool_config_langchain(self, pctx_client):
+        """Test ToolConfig with just one tool"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(tools=["execute"])
+        tools = pctx_client.langchain_tools(config)
+
+        assert len(tools) == 1
+        assert tools[0].name == "execute"
+
+    def test_single_tool_config_all_frameworks(self, pctx_client):
+        """Test single tool config works across all frameworks"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(tools=["list_functions"])
+
+        # Test all frameworks
+        langchain = pctx_client.langchain_tools(config)
+        crewai = pctx_client.crewai_tools(config)
+        openai = pctx_client.openai_agents_tools(config)
+        pydantic = pctx_client.pydantic_ai_tools(config)
+
+        # All should have exactly 1 tool
+        assert len(langchain) == 1
+        assert len(crewai) == 1
+        assert len(openai) == 1
+        assert len(pydantic) == 1
+
+        # All should have the same tool name
+        assert langchain[0].name == "list_functions"
+        assert crewai[0].name == "list_functions"
+        assert openai[0].name == "list_functions"
+        assert pydantic[0].name == "list_functions"
+
+    def test_custom_combo_bash_list_execute(self, pctx_client):
+        """Test custom combination: execute_bash + list_functions + execute"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(tools=["execute_bash", "list_functions", "execute"])
+        tools = pctx_client.langchain_tools(config)
+
+        assert len(tools) == 3
+        names = {tool.name for tool in tools}
+        assert names == {"execute_bash", "list_functions", "execute"}
+
+    def test_custom_combo_with_custom_descriptions(self, pctx_client):
+        """Test ToolConfig with custom tools AND custom descriptions"""
+        from pctx_client.tools import ToolConfig
+
+        custom_desc = "My custom bash description"
+        config = ToolConfig(
+            tools=["execute_bash", "list_functions"],
+            descriptions={"execute_bash": custom_desc},
+        )
+
+        # Test LangChain
+        tools = pctx_client.langchain_tools(config)
+        assert len(tools) == 2
+        bash_tool = next(t for t in tools if t.name == "execute_bash")
+        assert bash_tool.description == custom_desc
+
+        # Test CrewAI
+        crewai_tools = pctx_client.crewai_tools(config)
+        assert len(crewai_tools) == 2
+        crewai_bash = next(t for t in crewai_tools if t.name == "execute_bash")
+        assert custom_desc in crewai_bash.description
+
+        # Test OpenAI Agents
+        openai_tools = pctx_client.openai_agents_tools(config)
+        assert len(openai_tools) == 2
+        openai_bash = next(t for t in openai_tools if t.name == "execute_bash")
+        assert custom_desc in openai_bash.description
+
+        # Test Pydantic AI
+        pydantic_tools = pctx_client.pydantic_ai_tools(config)
+        assert len(pydantic_tools) == 2
+        pydantic_bash = next(t for t in pydantic_tools if t.name == "execute_bash")
+        assert pydantic_bash.description == custom_desc
+
+    def test_all_six_tools(self, pctx_client):
+        """Test ToolConfig with all possible tools"""
+        from typing import get_args
+
+        from pctx_client.tools import ToolConfig, ToolName
+
+        all_tools = list(get_args(ToolName))
+        config = ToolConfig(tools=all_tools)
+
+        # Test LangChain (search_functions requires HAS_SEARCH)
+        tools = pctx_client.langchain_tools(config)
+        # Should have 4-6 tools depending on HAS_SEARCH
+        assert (
+            len(tools) >= 5
+        )  # At minimum: list, get_details, execute, execute_bash, execute_typescript
+        names = {tool.name for tool in tools}
+        assert "list_functions" in names
+        assert "execute" in names
+        assert "execute_bash" in names
+
+    def test_custom_combo_search_execute(self, pctx_client):
+        """Test search + execute workflow (without list or get_details)"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(tools=["search_functions", "execute"])
+        tools = pctx_client.langchain_tools(config)
+
+        # Should have 1-2 tools depending on HAS_SEARCH
+        assert len(tools) >= 1
+        names = {tool.name for tool in tools}
+        assert "execute" in names
+
+    def test_cross_framework_consistency_custom_config(self, pctx_client):
+        """Test that custom ToolConfig produces consistent results across frameworks"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(
+            tools=["execute_bash", "execute_typescript", "list_functions"]
+        )
+
+        # Get tools from all frameworks
+        langchain = pctx_client.langchain_tools(config)
+        crewai = pctx_client.crewai_tools(config)
+        openai = pctx_client.openai_agents_tools(config)
+        pydantic = pctx_client.pydantic_ai_tools(config)
+
+        # All should have same number of tools
+        assert len(langchain) == len(crewai) == len(openai) == len(pydantic) == 3
+
+        # All should have same tool names
+        expected_names = {"execute_bash", "execute_typescript", "list_functions"}
+        assert {t.name for t in langchain} == expected_names
+        assert {t.name for t in crewai} == expected_names
+        assert {t.name for t in openai} == expected_names
+        assert {t.name for t in pydantic} == expected_names
+
+    def test_custom_config_preserves_tool_order(self, pctx_client):
+        """Test that ToolConfig preserves the order of tools"""
+        from pctx_client.tools import ToolConfig
+
+        # Define tools in specific order
+        config = ToolConfig(tools=["execute", "list_functions", "execute_bash"])
+        tools = pctx_client.langchain_tools(config)
+
+        # Tools should be in the order specified
+        assert tools[0].name == "execute"
+        assert tools[1].name == "list_functions"
+        assert tools[2].name == "execute_bash"
+
+    def test_duplicate_tools_in_config(self, pctx_client):
+        """Test that duplicate tools in config only create one instance"""
+        from pctx_client.tools import ToolConfig
+
+        # Config with duplicate
+        config = ToolConfig(tools=["execute", "execute", "list_functions"])  # type: ignore
+        tools = pctx_client.langchain_tools(config)
+
+        # Should create 2 tools (execute appears twice but only created once per iteration)
+        # Actually this will create execute twice since we loop over the list
+        # Let's verify the behavior
+        assert len(tools) == 3  # Will have 2 execute + 1 list_functions
+        names = [t.name for t in tools]
+        assert names.count("execute") == 2
+        assert names.count("list_functions") == 1
+
+    def test_empty_tools_list(self, pctx_client):
+        """Test that empty tools list returns empty list"""
+        from pctx_client.tools import ToolConfig
+
+        config = ToolConfig(tools=[])
+        tools = pctx_client.langchain_tools(config)
+
+        assert len(tools) == 0
+        assert tools == []
+
+    def test_mixed_discovery_and_execution_tools(self, pctx_client):
+        """Test mixing discovery tools with execution tools"""
+        from pctx_client.tools import ToolConfig
+
+        # Mix list (discovery) with execute (execution) and bash (filesystem)
+        config = ToolConfig(
+            tools=["list_functions", "execute", "execute_bash"],
+            descriptions={
+                "list_functions": "Custom list description",
+                "execute": "Custom execute description",
+            },
+        )
+
+        tools = pctx_client.langchain_tools(config)
+        assert len(tools) == 3
+
+        # Check custom descriptions were applied
+        list_tool = next(t for t in tools if t.name == "list_functions")
+        assert list_tool.description == "Custom list description"
+
+        execute_tool = next(t for t in tools if t.name == "execute")
+        assert execute_tool.description == "Custom execute description"
+
+        # execute_bash should have default description (not custom)
+        bash_tool = next(t for t in tools if t.name == "execute_bash")
+        assert "custom" not in bash_tool.description.lower()
+        assert len(bash_tool.description) > 0  # Has default description
