@@ -302,3 +302,77 @@ async function run() {
         result.stderr
     );
 }
+
+#[serial]
+#[tokio::test]
+async fn test_async_function_with_array_operations() {
+    let code = r#"
+async function run() {
+    const reservationIds = ["MZDDS4", "60RX9E", "S5IK51", "OUEA45", "Q69X3R"];
+    const results = [];
+    for (const id of reservationIds) {
+        results.push(id);
+    }
+    return results;
+}
+"#;
+
+    let result = execute(code, ExecuteOptions::new())
+        .await
+        .expect("execution should succeed");
+
+    assert!(
+        result.success,
+        "Valid async function with array operations should pass type checking, got: diagnostics={:?}, runtime_error={:?}",
+        result.diagnostics, result.runtime_error
+    );
+    assert!(
+        result.diagnostics.is_empty(),
+        "Valid async function should have no diagnostics, got: {:?}",
+        result.diagnostics
+    );
+}
+
+#[serial]
+#[tokio::test]
+async fn test_promise_string_to_number_mismatch() {
+    let code = r#"
+async function getString(): Promise<string> {
+    return "hello"
+}
+
+function processNumber(value: number): void {
+    console.log(value);
+}
+
+async function run() {
+    const result = await getString();
+    processNumber(result);  // Type error: string is not assignable to number
+}
+"#;
+
+    let result = execute(code, ExecuteOptions::new())
+        .await
+        .expect("execution should succeed");
+
+    println!("Success: {}", result.success);
+    println!("Diagnostics: {:?}", result.diagnostics);
+    println!("Output: {:?}", result.output);
+    assert!(
+        !result.success,
+        "Type mismatch should fail type checking"
+    );
+    assert!(
+        !result.diagnostics.is_empty(),
+        "Should have type error diagnostics"
+    );
+    assert!(
+        result
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("not assignable")
+                || d.message.contains("string") && d.message.contains("number")),
+        "Error should mention type incompatibility between string and number, got: {:?}",
+        result.diagnostics
+    );
+}

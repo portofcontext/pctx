@@ -34,7 +34,7 @@ fn generate_runtime_js_string() -> String {
         codes.join(", ")
     );
 
-    // Replace the placeholder
+    // Replace the placeholder with codes
     TYPE_CHECK_RUNTIME_JS.replace("// CODEGEN_IGNORED_CODES_PLACEHOLDER", &codes_js)
 }
 
@@ -57,6 +57,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/type_check_runtime.js");
     println!("cargo:rerun-if-changed=src/ignored_codes.rs");
     println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=ts-libs.json");
 
     // Get the output directory
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
