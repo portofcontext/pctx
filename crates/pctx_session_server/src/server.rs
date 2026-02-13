@@ -3,6 +3,7 @@
 use anyhow::Result;
 use axum::{
     Router,
+    http::{HeaderValue, Method},
     routing::{get, post},
 };
 use opentelemetry::{global, trace::TraceContextExt};
@@ -83,8 +84,9 @@ pub async fn start_server<B: PctxSessionBackend>(
     host: &str,
     port: u16,
     state: AppState<B>,
+    allowed_origins: Vec<String>,
 ) -> Result<()> {
-    let app = create_router(state);
+    let app = create_router(state, &allowed_origins);
 
     let addr = format!("{host}:{port}");
     let listener = tokio::net::TcpListener::bind(&addr).await?;
@@ -103,7 +105,10 @@ pub async fn start_server<B: PctxSessionBackend>(
 }
 
 /// Create the Axum router with all routes
-pub fn create_router<B: PctxSessionBackend>(state: AppState<B>) -> Router {
+pub fn create_router<B: PctxSessionBackend>(
+    state: AppState<B>,
+    allowed_origins: &[String],
+) -> Router {
     Router::new()
         // Health check
         .route("/health", get(routes::health))
@@ -124,8 +129,37 @@ pub fn create_router<B: PctxSessionBackend>(state: AppState<B>) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         // Add state
         .with_state(state)
-        // Add middleware
-        .layer(CorsLayer::permissive())
+        // Add middleware - restrict CORS to explicitly allowed origins only
+        .layer({
+            let allowed = allowed_origins.to_owned();
+            CorsLayer::new()
+                .allow_origin(tower_http::cors::AllowOrigin::predicate(
+                    move |origin: &HeaderValue, _request_parts| {
+                        let Ok(origin_str) = origin.to_str() else {
+                            return false;
+                        };
+
+                        // Check if origin matches any allowed origin pattern
+                        allowed.iter().any(|allowed_origin| {
+                            // Support wildcard matching for ports (e.g., "http://localhost" matches any port)
+                            if let (Ok(allowed_url), Ok(origin_url)) =
+                                (url::Url::parse(allowed_origin), url::Url::parse(origin_str))
+                            {
+                                // Match scheme and host, ignore port if allowed origin has no explicit port
+                                allowed_url.scheme() == origin_url.scheme()
+                                    && allowed_url.host_str() == origin_url.host_str()
+                                    && (allowed_url.port().is_none()
+                                        || allowed_url.port() == origin_url.port())
+                            } else {
+                                // Fallback to exact string match
+                                allowed_origin == origin_str
+                            }
+                        })
+                    },
+                ))
+                .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+                .allow_headers(tower_http::cors::Any)
+        })
         .layer(TraceLayer::new_for_http().make_span_with(
             |request: &axum::http::Request<axum::body::Body>| {
                 // Extract trace context from headers using OpenTelemetry propagator
