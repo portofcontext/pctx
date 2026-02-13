@@ -222,10 +222,7 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
     });
 
     // Inject TypeScript lib files as a global variable
-    let inject_libs_script = format!(
-        "globalThis.TS_LIBS = {};",
-        TS_LIBS_JSON
-    );
+    let inject_libs_script = format!("globalThis.TS_LIBS = {};", TS_LIBS_JSON);
     js_runtime
         .execute_script("<inject_ts_libs>", inject_libs_script)
         .map_err(|e| TypeCheckError::InternalError(format!("Failed to inject TS_LIBS: {}", e)))?;

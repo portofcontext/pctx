@@ -16,13 +16,13 @@
 /// and runtime-specific errors. Type system errors (Promise, console, Array)
 /// are now properly checked.
 pub(crate) const IGNORED_DIAGNOSTIC_CODES: &[u32] = &[
-    2307,  // Cannot find module - module resolution handled by runtime
-    2304,  // Cannot find name 'require' - not used in ESM
-    7016,  // Could not find declaration file - not needed for runtime
-    7006,  // Parameter implicitly has an 'any' type - JS compatibility
-    7053,  // Element implicitly has an 'any' type - dynamic object access is valid
-    7005,  // Variable implicitly has an 'any[]' type - JS compatibility
-    7034,  // Variable implicitly has type 'any[]' - JS compatibility
-    2362,  // Left-hand side of arithmetic operation - runtime handles coercion
-    2363,  // Right-hand side of arithmetic operation - runtime handles coercion
+    2307, // Cannot find module - module resolution handled by runtime
+    2304, // Cannot find name 'require' - not used in ESM
+    7016, // Could not find declaration file - not needed for runtime
+    7006, // Parameter implicitly has an 'any' type - JS compatibility
+    7053, // Element implicitly has an 'any' type - dynamic object access is valid
+    7005, // Variable implicitly has an 'any[]' type - JS compatibility
+    7034, // Variable implicitly has type 'any[]' - JS compatibility
+    2362, // Left-hand side of arithmetic operation - runtime handles coercion
+    2363, // Right-hand side of arithmetic operation - runtime handles coercion
 ];

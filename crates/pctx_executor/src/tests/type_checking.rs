@@ -358,10 +358,7 @@ async function run() {
     println!("Success: {}", result.success);
     println!("Diagnostics: {:?}", result.diagnostics);
     println!("Output: {:?}", result.output);
-    assert!(
-        !result.success,
-        "Type mismatch should fail type checking"
-    );
+    assert!(!result.success, "Type mismatch should fail type checking");
     assert!(
         !result.diagnostics.is_empty(),
         "Should have type error diagnostics"

@@ -1,4 +1,4 @@
-use pctx_type_check_runtime::{type_check, is_relevant_error, Diagnostic};
+use pctx_type_check_runtime::{Diagnostic, is_relevant_error, type_check};
 
 #[tokio::test]
 async fn test_type_check_valid_code() {
@@ -89,7 +89,11 @@ async fn test_for_of_loop() {
         }
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "for...of should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "for...of should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -101,7 +105,11 @@ async fn test_promises() {
         const result: Promise<string> = fetchData();
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Promises should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Promises should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -113,7 +121,11 @@ async fn test_promise_all() {
         });
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Promise.all should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Promise.all should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -127,7 +139,11 @@ async fn test_optional_chaining() {
         }
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Optional chaining should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Optional chaining should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -137,7 +153,11 @@ async fn test_nullish_coalescing() {
         const result: string = value ?? "default";
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Nullish coalescing should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Nullish coalescing should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -147,7 +167,11 @@ async fn test_bigint() {
         const sum: bigint = big + 1n;
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "BigInt should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "BigInt should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -163,7 +187,11 @@ async fn test_map_and_set() {
         }
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Map and Set should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Map and Set should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -176,7 +204,11 @@ async fn test_array_methods() {
         const includes = arr.includes(3);
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Array methods should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Array methods should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -194,7 +226,11 @@ async fn test_async_iteration() {
         }
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Async iteration should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Async iteration should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -203,7 +239,11 @@ async fn test_globalthis() {
         const g: typeof globalThis = globalThis;
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "globalThis should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "globalThis should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -214,7 +254,11 @@ async fn test_console_methods() {
         console.warn("warning");
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Console methods should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Console methods should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -224,7 +268,11 @@ async fn test_symbol() {
         const sym2 = Symbol.for("global");
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "Symbol should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "Symbol should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -235,7 +283,11 @@ async fn test_weakmap_weakset() {
         weakMap.set(obj, "value");
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "WeakMap and WeakSet should pass. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "WeakMap and WeakSet should pass. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
 
 #[tokio::test]
@@ -262,5 +314,9 @@ async fn test_mcp_tools_still_available() {
         }
     "#;
     let result = type_check(code).await.expect("type check should not fail");
-    assert!(result.success, "MCP tools should still be available. Diagnostics: {:?}", result.diagnostics);
+    assert!(
+        result.success,
+        "MCP tools should still be available. Diagnostics: {:?}",
+        result.diagnostics
+    );
 }
