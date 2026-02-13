@@ -50,7 +50,7 @@ async function test() {
         });
         return { error: false };
     } catch (e) {
-        return { error: true, message: e.message };
+        return { error: true, message: e instanceof Error ? e.message : String(e) };
     }
 }
 

@@ -38,7 +38,7 @@ async function test() {
         const val = await invokeCallback({ id: "MyMath.add", arguments: { a: 12, b: 4 } });
         return { error: false, value: val };
     } catch (e) {
-        return { error: true, message: e.message };
+        return { error: true, message: e instanceof Error ? e.message : String(e) };
     }
 }
 
@@ -92,7 +92,7 @@ async function test() {
         const val = await invokeCallback({ id: "MyAsync.wait", arguments: { ms: 50 } });
         return { error: false, value: val };
     } catch (e) {
-        return { error: true, message: e.message };
+        return { error: true, message: e instanceof Error ? e.message : String(e) };
     }
 }
 
