@@ -53,7 +53,7 @@ macro_rules! tool_test {
             let tool = fixture.$variant();
 
             let impl_code = pctx_codegen::format::format_ts(&tool.fn_impl("test_server"));
-            let check_res = type_check(&impl_code).await.expect("failed typecheck");
+            let check_res = type_check(&impl_code).expect("failed typecheck");
 
             assert!(
                 check_res.success,

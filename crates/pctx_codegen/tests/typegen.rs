@@ -37,7 +37,7 @@ async fn run_typegen_test(test_name: &str, test: TypegenTest) {
             val = valid.value
         ));
 
-        let check_res = type_check(&typed_code).await.expect("failed typecheck");
+        let check_res = type_check(&typed_code).expect("failed typecheck");
 
         assert!(
             check_res.success,
@@ -53,7 +53,7 @@ async fn run_typegen_test(test_name: &str, test: TypegenTest) {
             val = invalid.value
         ));
 
-        let check_res = type_check(&typed_code).await.expect("failed typecheck");
+        let check_res = type_check(&typed_code).expect("failed typecheck");
 
         assert!(
             !check_res.success,

@@ -29,7 +29,7 @@
 //!     export default x + y.length;
 //! "#;
 //!
-//! let result = type_check(code).await?;
+//! let result = type_check(code)?;
 //! if result.success {
 //!     println!("Type check passed!");
 //! } else {
@@ -132,11 +132,11 @@ deno_core::extension!(
     esm = [ dir "src", "type_check_runtime_generated.js" ],
 );
 
-/// Initialize the V8 platform. Must be called before any JsRuntime is created.
+/// Initialize the V8 platform. Must be called before any `JsRuntime` is created.
 /// Safe to call multiple times - only the first call has effect.
 static V8_INIT: std::sync::Once = std::sync::Once::new();
 
-/// Ensure V8 platform is initialized. Called automatically by type_check.
+/// Ensure V8 platform is initialized. Called automatically by `type_check`.
 pub fn init_v8_platform() {
     V8_INIT.call_once(|| {
         deno_core::JsRuntime::init_platform(None);
@@ -171,13 +171,13 @@ pub fn init_v8_platform() {
 ///     const x: number = "string"; // Type error!
 /// "#;
 ///
-/// let result = type_check(code).await?;
+/// let result = type_check(code)?;
 /// assert!(!result.success);
 /// assert_eq!(result.diagnostics.len(), 1);
 /// # Ok(())
 /// # }
 /// ```
-pub async fn type_check(code: &str) -> Result<CheckResult> {
+pub fn type_check(code: &str) -> Result<CheckResult> {
     // First do a quick syntax check with deno_ast
     let parse_result = deno_ast::parse_module(deno_ast::ParseParams {
         specifier: deno_ast::ModuleSpecifier::parse("file:///check.ts")
@@ -320,7 +320,7 @@ mod tests {
     #[tokio::test]
     async fn test_type_check_valid_code() {
         let code = r"const x: number = 42;";
-        let result = type_check(code).await.expect("type check should not fail");
+        let result = type_check(code).expect("type check should not fail");
         assert!(result.success);
         assert!(result.diagnostics.is_empty());
     }
@@ -328,7 +328,7 @@ mod tests {
     #[tokio::test]
     async fn test_type_check_syntax_error() {
         let code = r"const x: number = ;";
-        let result = type_check(code).await.expect("type check should not fail");
+        let result = type_check(code).expect("type check should not fail");
         assert!(!result.success);
         assert!(!result.diagnostics.is_empty());
     }

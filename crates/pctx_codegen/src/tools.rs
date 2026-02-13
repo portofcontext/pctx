@@ -176,7 +176,7 @@ impl Tool {
         let arguments = self
             .input_schema
             .as_ref()
-            .map(|_| format!("arguments: input,"))
+            .map(|_| "arguments: input,".to_string())
             .unwrap_or_default();
         match self.variant {
             ToolVariant::Mcp => {
