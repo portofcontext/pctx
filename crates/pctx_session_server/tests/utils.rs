@@ -14,11 +14,22 @@ use uuid::Uuid;
 
 #[allow(unused)]
 pub(crate) fn create_test_server() -> (TestServer, AppState<LocalBackend>) {
+    create_test_server_with_origins(&[
+        "http://localhost".to_string(),
+        "http://127.0.0.1".to_string(),
+        "http://[::1]".to_string(),
+    ])
+}
+
+#[allow(unused)]
+pub(crate) fn create_test_server_with_origins(
+    allowed_origins: &[String],
+) -> (TestServer, AppState<LocalBackend>) {
     let state = AppState::new_local();
     (
         TestServer::builder()
             .http_transport()
-            .build(create_router(state.clone()))
+            .build(create_router(state.clone(), allowed_origins))
             .expect("Failed starting test server"),
         state,
     )
@@ -34,11 +45,16 @@ pub(crate) async fn create_test_server_with_session() -> (Uuid, TestServer, AppS
         .insert(session_id, CodeMode::default())
         .await
         .expect("Failed adding test codemode session");
+    let allowed_origins = vec![
+        "http://localhost".to_string(),
+        "http://127.0.0.1".to_string(),
+        "http://[::1]".to_string(),
+    ];
     (
         session_id,
         TestServer::builder()
             .http_transport()
-            .build(create_router(state.clone()))
+            .build(create_router(state.clone(), &allowed_origins))
             .expect("Failed starting test server"),
         state,
     )

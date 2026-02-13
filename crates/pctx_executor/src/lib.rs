@@ -145,7 +145,7 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
     // This ensures no concurrent V8 isolate usage across the process
     let _guard = V8_MUTEX.lock().await;
 
-    let check_result = run_type_check(code).await?;
+    let check_result = run_type_check(code)?;
 
     // Check if we have diagnostics
     if !check_result.diagnostics.is_empty() {
@@ -196,8 +196,8 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
 }
 
 #[tracing::instrument(fields(runtime = "type_check"))]
-async fn run_type_check(code: &str) -> Result<CheckResult> {
-    let mut check_result = type_check(code).await?;
+fn run_type_check(code: &str) -> Result<CheckResult> {
+    let mut check_result = type_check(code)?;
 
     if !check_result.success && !check_result.diagnostics.is_empty() {
         // filter for only relevant diagnostics

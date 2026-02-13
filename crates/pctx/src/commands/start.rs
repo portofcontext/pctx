@@ -14,6 +14,7 @@ use tabled::{
 };
 use terminal_size::terminal_size;
 use tracing::info;
+use url::Url;
 
 use crate::utils::styles::fmt_dimmed;
 
@@ -33,6 +34,14 @@ pub struct StartCmd {
     #[arg(long, default_value = ".pctx/sessions")]
     pub session_dir: Utf8PathBuf,
 
+    /// Allowed CORS origins. Can be specified multiple times.
+    /// Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]).
+    /// Specify your own origins to override the default (can include or exclude localhost).
+    /// Origins without explicit ports will match any port.
+    /// Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
+    #[arg(long = "allowed-origin")]
+    pub allowed_origins: Vec<Url>,
+
     /// Don't show the server banner
     #[arg(long)]
     pub no_banner: bool,
@@ -44,7 +53,21 @@ impl StartCmd {
 
         self.print_banner();
 
-        start_server(&self.host, self.port, state).await?;
+        // Use default localhost origins if none specified
+        let allowed_origins: Vec<String> = if self.allowed_origins.is_empty() {
+            vec![
+                "http://localhost".to_string(),
+                "http://127.0.0.1".to_string(),
+                "http://[::1]".to_string(),
+            ]
+        } else {
+            self.allowed_origins
+                .iter()
+                .map(std::string::ToString::to_string)
+                .collect()
+        };
+
+        start_server(&self.host, self.port, state, allowed_origins).await?;
 
         Ok(())
     }

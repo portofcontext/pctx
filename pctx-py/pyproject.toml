@@ -7,7 +7,7 @@ authors = [
     { name = "Elias Posen", email = "elias@posen.ch" },
     { name = "Patrick Kelly", email = "pmkelly4444@gmail.com" },
 ]
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.10,<=3.14.2"
 dependencies = [
     "docstring-parser>=0.17.0",
     "httpx>=0.28.1",

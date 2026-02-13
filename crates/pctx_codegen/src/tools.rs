@@ -153,9 +153,9 @@ impl Tool {
     pub fn fn_signature(&self, include_types: bool) -> String {
         let docstring_content = self.description.clone().unwrap_or_default();
 
-        let mut types = self.types();
-        if include_types && !types.is_empty() {
-            types = format!("{types}\n\n");
+        let mut types = String::new();
+        if include_types && !self.types().is_empty() {
+            types = format!("{}\n\n", self.types());
         }
 
         let params = match &self.input_type {
@@ -176,7 +176,7 @@ impl Tool {
         let arguments = self
             .input_schema
             .as_ref()
-            .map(|_| format!("arguments: input,"))
+            .map(|_| "arguments: input,".to_string())
             .unwrap_or_default();
         match self.variant {
             ToolVariant::Mcp => {

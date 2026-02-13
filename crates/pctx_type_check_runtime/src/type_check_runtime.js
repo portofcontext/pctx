@@ -9,6 +9,9 @@ import * as tsModule from "ext:pctx_type_check_snapshot/typescript.min.js";
 // CODEGEN_IGNORED_CODES_PLACEHOLDER
 // This placeholder is replaced at build time with the actual ignored diagnostic codes
 // from src/ignored_codes.rs, ensuring Rust and JavaScript stay in sync.
+//
+// NOTE: TS_LIBS is injected as a global variable by the Rust runtime before
+// calling typeCheckCode(). It contains all TypeScript lib.d.ts files.
 
 // Access ts from the imported module or globalThis
 const ts = tsModule.ts || tsModule.default || globalThis.ts;
@@ -35,6 +38,32 @@ interface InvokeCallbackProps {
 
 declare function callMCPTool<T = any>(call: MCPToolProps): Promise<T>;
 declare function invokeCallback<T = any>(call: InvokeCallbackProps): Promise<T>;
+
+// Console API (from lib.dom.d.ts, but needed for runtime)
+interface Console {
+  log(...data: any[]): void;
+  error(...data: any[]): void;
+  warn(...data: any[]): void;
+  info(...data: any[]): void;
+  debug(...data: any[]): void;
+  trace(...data: any[]): void;
+  assert(condition?: boolean, ...data: any[]): void;
+  clear(): void;
+  count(label?: string): void;
+  countReset(label?: string): void;
+  dir(item?: any, options?: any): void;
+  dirxml(...data: any[]): void;
+  group(...data: any[]): void;
+  groupCollapsed(...data: any[]): void;
+  groupEnd(): void;
+  table(tabularData?: any, properties?: string[]): void;
+  time(label?: string): void;
+  timeEnd(label?: string): void;
+  timeLog(label?: string, ...data: any[]): void;
+  timeStamp(label?: string): void;
+}
+
+declare var console: Console;
 `;
 
 /**
@@ -51,6 +80,13 @@ function typeCheckCode(code) {
     const fileName = "check.ts";
     const files = new Map();
     files.set(fileName, code);
+
+    // Add all TypeScript lib files to the virtual file system
+    for (const [libName, libContent] of Object.entries(TS_LIBS)) {
+      files.set(libName, libContent);
+    }
+
+    // Add custom lib.deno.d.ts AFTER TypeScript libs (to allow augmentation)
     files.set("lib.deno.d.ts", LIB_DENO_NS);
 
     // Create a custom compiler host
@@ -68,7 +104,7 @@ function typeCheckCode(code) {
         // Return undefined for files we don't have
         return undefined;
       },
-      getDefaultLibFileName: () => "lib.deno.d.ts",
+      getDefaultLibFileName: () => "lib.es2020.d.ts",
       writeFile: () => {},
       getCurrentDirectory: () => "/",
       getDirectories: () => [],

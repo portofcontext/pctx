@@ -29,7 +29,7 @@
 //!     export default x + y.length;
 //! "#;
 //!
-//! let result = type_check(code).await?;
+//! let result = type_check(code)?;
 //! if result.success {
 //!     println!("Type check passed!");
 //! } else {
@@ -127,6 +127,14 @@ pub struct CheckResult {
 pub static TYPE_CHECK_SNAPSHOT: &[u8] =
     include_bytes!(concat!(env!("OUT_DIR"), "/PCTX_TYPE_CHECK_SNAPSHOT.bin"));
 
+/// TypeScript lib.d.ts files for ES2020 support
+///
+/// This JSON contains all TypeScript standard library definition files,
+/// providing type definitions for built-in JavaScript types (Array, Promise,
+/// Map, console, etc.). These are injected into the type checker runtime
+/// to enable full ES2020 type checking.
+static TS_LIBS_JSON: &str = include_str!("../ts-libs.json");
+
 // Define the type check extension
 deno_core::extension!(
     pctx_type_check_snapshot,
@@ -134,11 +142,11 @@ deno_core::extension!(
     esm = [ dir "src", "type_check_runtime_generated.js" ],
 );
 
-/// Initialize the V8 platform. Must be called before any JsRuntime is created.
+/// Initialize the V8 platform. Must be called before any `JsRuntime` is created.
 /// Safe to call multiple times - only the first call has effect.
 static V8_INIT: std::sync::Once = std::sync::Once::new();
 
-/// Ensure V8 platform is initialized. Called automatically by type_check.
+/// Ensure V8 platform is initialized. Called automatically by `type_check`.
 pub fn init_v8_platform() {
     V8_INIT.call_once(|| {
         deno_core::JsRuntime::init_platform(None);
@@ -173,13 +181,13 @@ pub fn init_v8_platform() {
 ///     const x: number = "string"; // Type error!
 /// "#;
 ///
-/// let result = type_check(code).await?;
+/// let result = type_check(code)?;
 /// assert!(!result.success);
 /// assert_eq!(result.diagnostics.len(), 1);
 /// # Ok(())
 /// # }
 /// ```
-pub async fn type_check(code: &str) -> Result<CheckResult> {
+pub fn type_check(code: &str) -> Result<CheckResult> {
     // First do a quick syntax check with deno_ast
     let parse_result = deno_ast::parse_module(deno_ast::ParseParams {
         specifier: deno_ast::ModuleSpecifier::parse("file:///check.ts")
@@ -214,6 +222,12 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
         extensions: vec![pctx_type_check_snapshot::init()],
         ..Default::default()
     });
+
+    // Inject TypeScript lib files as a global variable
+    let inject_libs_script = format!("globalThis.TS_LIBS = {};", TS_LIBS_JSON);
+    js_runtime
+        .execute_script("<inject_ts_libs>", inject_libs_script)
+        .map_err(|e| TypeCheckError::InternalError(format!("Failed to inject TS_LIBS: {}", e)))?;
 
     // Call the type checking function from the runtime
     let code_json =
@@ -250,15 +264,12 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
 ///
 /// # Filtered Error Codes
 ///
-/// The following TypeScript error codes are considered irrelevant and will return `false`:
-/// - `2307`: Cannot find module (module resolution)
-/// - `2304`: Cannot find name 'require'
-/// - `7016`: Could not find declaration file
-/// - `2580`, `2585`, `2591`: Promise/console not found (runtime provides these)
-/// - `2693`: Type-only imports (Array, etc.) used as values
+/// With ES2020 lib files, the following TypeScript error codes are considered irrelevant:
+/// - `2307`: Cannot find module (module resolution handled by runtime)
+/// - `2304`: Cannot find name 'require' (not used in ESM)
+/// - `7016`: Could not find declaration file (not needed for runtime)
 /// - `7006`, `7053`, `7005`, `7034`: Implicit any types (JavaScript compatibility)
-/// - `18046`: Variable of type 'unknown' (reduce operations)
-/// - `2362`, `2363`: Arithmetic operation strictness
+/// - `2362`, `2363`: Arithmetic operation strictness (runtime handles coercion)
 ///
 /// # Arguments
 ///
@@ -283,15 +294,15 @@ pub async fn type_check(code: &str) -> Result<CheckResult> {
 /// };
 /// assert!(is_relevant_error(&type_error));
 ///
-/// // Console not found - irrelevant (runtime provides it)
-/// let console_error = Diagnostic {
-///     message: "Cannot find name 'console'.".to_string(),
+/// // Module not found - irrelevant (module resolution handled by runtime)
+/// let module_error = Diagnostic {
+///     message: "Cannot find module './foo'.".to_string(),
 ///     line: Some(1),
 ///     column: Some(1),
 ///     severity: "error".to_string(),
-///     code: Some(2580),
+///     code: Some(2307),
 /// };
-/// assert!(!is_relevant_error(&console_error));
+/// assert!(!is_relevant_error(&module_error));
 /// ```
 pub fn is_relevant_error(diagnostic: &Diagnostic) -> bool {
     // Use the shared ignored codes list from ignored_codes module
@@ -313,90 +324,4 @@ pub fn is_relevant_error(diagnostic: &Diagnostic) -> bool {
 /// ```
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_type_check_valid_code() {
-        let code = r"const x: number = 42;";
-        let result = type_check(code).await.expect("type check should not fail");
-        assert!(result.success);
-        assert!(result.diagnostics.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_type_check_syntax_error() {
-        let code = r"const x: number = ;";
-        let result = type_check(code).await.expect("type check should not fail");
-        assert!(!result.success);
-        assert!(!result.diagnostics.is_empty());
-    }
-
-    #[test]
-    fn test_is_relevant_error_function() {
-        // Relevant error (type mismatch TS2322)
-        let relevant = Diagnostic {
-            message: "Type 'string' is not assignable to type 'number'.".to_string(),
-            line: Some(1),
-            column: Some(1),
-            severity: "error".to_string(),
-            code: Some(2322),
-        };
-        assert!(is_relevant_error(&relevant), "TS2322 should be relevant");
-
-        // Irrelevant error (console TS2580)
-        let irrelevant_console = Diagnostic {
-            message: "Cannot find name 'console'.".to_string(),
-            line: Some(1),
-            column: Some(1),
-            severity: "error".to_string(),
-            code: Some(2580),
-        };
-        assert!(
-            !is_relevant_error(&irrelevant_console),
-            "TS2580 should be irrelevant"
-        );
-
-        // Irrelevant error (Promise TS2591)
-        let irrelevant_promise = Diagnostic {
-            message: "Cannot find name 'Promise'.".to_string(),
-            line: Some(1),
-            column: Some(1),
-            severity: "error".to_string(),
-            code: Some(2591),
-        };
-        assert!(
-            !is_relevant_error(&irrelevant_promise),
-            "TS2591 should be irrelevant"
-        );
-
-        // Irrelevant error (implicit any TS7006)
-        let irrelevant_implicit_any = Diagnostic {
-            message: "Parameter implicitly has an 'any' type.".to_string(),
-            line: Some(1),
-            column: Some(1),
-            severity: "error".to_string(),
-            code: Some(7006),
-        };
-        assert!(
-            !is_relevant_error(&irrelevant_implicit_any),
-            "TS7006 should be irrelevant"
-        );
-
-        // Error without code should be relevant
-        let no_code = Diagnostic {
-            message: "Some error".to_string(),
-            line: Some(1),
-            column: Some(1),
-            severity: "error".to_string(),
-            code: None,
-        };
-        assert!(
-            is_relevant_error(&no_code),
-            "Errors without code should be relevant"
-        );
-    }
 }

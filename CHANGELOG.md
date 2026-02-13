@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Python `@tool` decorator now parses docstrings (Google, NumPy, reStructuredText, and Epydoc formats) to extract parameter descriptions, return value descriptions, and detailed function descriptions into tool schemas
+- CORS layer added to pctx session server. Add custom allowed origins via the `--allow-origin` flag
+- Added more of typescript `.d.ts` files for more comprehensive type checking.
 
 ### Changed
 
