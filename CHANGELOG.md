@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- CORS layer added to pctx session server. Add custom allowed origins via the `--allow-origin` flag
+- Added more of typescript `.d.ts` files for more comprehensive type checking.
+
 ### Changed
 
 - [#53](https://github.com/portofcontext/pctx/issues/53) Improved code generation support for tools with no input schema or all optional input schemas
