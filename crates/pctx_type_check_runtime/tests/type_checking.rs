@@ -3,7 +3,7 @@ use pctx_type_check_runtime::{Diagnostic, is_relevant_error, type_check};
 #[tokio::test]
 async fn test_type_check_valid_code() {
     let code = r"const x: number = 42;";
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(result.success);
     assert!(result.diagnostics.is_empty());
 }
@@ -11,7 +11,7 @@ async fn test_type_check_valid_code() {
 #[tokio::test]
 async fn test_type_check_syntax_error() {
     let code = r"const x: number = ;";
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(!result.success);
     assert!(!result.diagnostics.is_empty());
 }
@@ -88,7 +88,7 @@ async fn test_for_of_loop() {
             console.log(x);
         }
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "for...of should pass. Diagnostics: {:?}",
@@ -104,7 +104,7 @@ async fn test_promises() {
         }
         const result: Promise<string> = fetchData();
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Promises should pass. Diagnostics: {:?}",
@@ -120,7 +120,7 @@ async fn test_promise_all() {
             const sum: number = values[0] + values[1];
         });
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Promise.all should pass. Diagnostics: {:?}",
@@ -138,7 +138,7 @@ async fn test_optional_chaining() {
             return user.address?.street;
         }
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Optional chaining should pass. Diagnostics: {:?}",
@@ -152,7 +152,7 @@ async fn test_nullish_coalescing() {
         const value: string | null = null;
         const result: string = value ?? "default";
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Nullish coalescing should pass. Diagnostics: {:?}",
@@ -166,7 +166,7 @@ async fn test_bigint() {
         const big: bigint = 9007199254740991n;
         const sum: bigint = big + 1n;
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "BigInt should pass. Diagnostics: {:?}",
@@ -186,7 +186,7 @@ async fn test_map_and_set() {
             console.log(item);
         }
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Map and Set should pass. Diagnostics: {:?}",
@@ -203,7 +203,7 @@ async fn test_array_methods() {
         const found = arr.find(x => x > 3);
         const includes = arr.includes(3);
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Array methods should pass. Diagnostics: {:?}",
@@ -225,7 +225,7 @@ async fn test_async_iteration() {
             }
         }
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Async iteration should pass. Diagnostics: {:?}",
@@ -238,7 +238,7 @@ async fn test_globalthis() {
     let code = r#"
         const g: typeof globalThis = globalThis;
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "globalThis should pass. Diagnostics: {:?}",
@@ -253,7 +253,7 @@ async fn test_console_methods() {
         console.error("error");
         console.warn("warning");
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Console methods should pass. Diagnostics: {:?}",
@@ -267,7 +267,7 @@ async fn test_symbol() {
         const sym1 = Symbol("test");
         const sym2 = Symbol.for("global");
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "Symbol should pass. Diagnostics: {:?}",
@@ -282,7 +282,7 @@ async fn test_weakmap_weakset() {
         const obj = {};
         weakMap.set(obj, "value");
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "WeakMap and WeakSet should pass. Diagnostics: {:?}",
@@ -295,7 +295,7 @@ async fn test_type_error_still_caught() {
     let code = r#"
         const x: string = 42;
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(!result.success, "Type errors should still be caught");
     assert_eq!(result.diagnostics.len(), 1);
     assert_eq!(result.diagnostics[0].code, Some(2322));
@@ -313,7 +313,7 @@ async fn test_mcp_tools_still_available() {
             return result;
         }
     "#;
-    let result = type_check(code).await.expect("type check should not fail");
+    let result = type_check(code).expect("type check should not fail");
     assert!(
         result.success,
         "MCP tools should still be available. Diagnostics: {:?}",
