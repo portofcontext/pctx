@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Python `@tool` decorator now parses docstrings (Google, NumPy, reStructuredText, and Epydoc formats) to extract parameter descriptions, return value descriptions, and detailed function descriptions into tool schemas
+
 ### Changed
 
 - [#53](https://github.com/portofcontext/pctx/issues/53) Improved code generation support for tools with no input schema or all optional input schemas

@@ -2845,6 +2845,7 @@ name = "pctx-client"
 version = "0.2.2"
 source = { editable = "." }
 dependencies = [
+    { name = "docstring-parser" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "websockets" },
@@ -2894,6 +2895,7 @@ dev = [
 requires-dist = [
     { name = "bm25s", extras = ["stem"], marker = "extra == 'bm25s'", specifier = ">=0.2.12" },
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=1.6.1" },
+    { name = "docstring-parser", specifier = ">=0.17.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "langchain", marker = "extra == 'langchain'", specifier = ">=1.1.2" },
     { name = "openai-agents", marker = "extra == 'openai'", specifier = ">=0.6.2" },

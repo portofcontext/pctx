@@ -5,6 +5,8 @@ from abc import ABC, abstractmethod
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any, get_type_hints
 
+from docstring_parser import Docstring
+from docstring_parser import parse as parse_docstring
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -73,16 +75,12 @@ class BaseTool(BaseModel):
         Creates a tool from a given function.
         """
 
-        if description is None:
-            # use function doc string & remove indents
-            _desc = textwrap.dedent(func.__doc__ or "")
-        else:
-            _desc = description
+        docstring = parse_docstring(textwrap.dedent(description or func.__doc__ or ""))
 
         name_ = name or func.__name__
 
-        in_schema = create_input_schema(f"{name_}_Input", func)
-        out_schema = create_output_schema(func)
+        in_schema = create_input_schema(f"{name_}_Input", func, docstring=docstring)
+        out_schema = create_output_schema(func, docstring=docstring)
 
         input_schema = None if is_empty_schema(in_schema) else in_schema
         output_schema = out_schema
@@ -101,7 +99,7 @@ class BaseTool(BaseModel):
             return _CoroutineTool(
                 name=name_,
                 namespace=namespace,
-                description=_desc,
+                description=docstring.description or "",
                 input_schema=input_schema,
                 output_schema=output_schema,
             )
@@ -118,7 +116,7 @@ class BaseTool(BaseModel):
             return _FunctionTool(
                 name=name_,
                 namespace=namespace,
-                description=_desc,
+                description=docstring.description or "",
                 input_schema=input_schema,
                 output_schema=output_schema,
             )
@@ -214,8 +212,7 @@ _MODEL_CONFIG: ConfigDict = {"extra": "forbid", "arbitrary_types_allowed": True}
 
 
 def create_input_schema(
-    model_name: str,
-    func: Callable,
+    model_name: str, func: Callable, docstring: Docstring | None = None
 ) -> type[BaseModel]:
     """
     Creates pydantic model from function signature.
@@ -232,6 +229,13 @@ def create_input_schema(
     # Build field definitions for create_model
     fields: dict[str, Any] = {}
 
+    # Build a lookup map for parameter descriptions from docstring
+    param_descriptions: dict[str, str] = {}
+    if docstring and docstring.params:
+        for param_doc in docstring.params:
+            if param_doc.arg_name and param_doc.description:
+                param_descriptions[param_doc.arg_name] = param_doc.description
+
     for param_name, param in sig.parameters.items():
         # Skip *args and **kwargs
         if param.kind in (
@@ -245,29 +249,34 @@ def create_input_schema(
             param.annotation if param.annotation != inspect.Parameter.empty else Any
         )
 
+        # Get description from docstring if available
+        param_desc = param_descriptions.get(param_name)
+
         # Determine if the parameter is required or has a default value
         if param.default == inspect.Parameter.empty:
             # Required field - use ... as the Pydantic sentinel for required
-            fields[param_name] = (annotation, ...)
+            fields[param_name] = (annotation, Field(..., description=param_desc))
         else:
             # Optional field with default value
-            fields[param_name] = (annotation, param.default)
+            fields[param_name] = (
+                annotation,
+                Field(default=param.default, description=param_desc),
+            )
 
     return create_model(model_name, __config__=_MODEL_CONFIG, **fields)
 
 
-def create_output_schema(
-    func: Callable,
-) -> Any:
+def create_output_schema(func: Callable, docstring: Docstring | None = None) -> Any:
     """
     Extracts the return type annotation from a function.
 
     Args:
         model_name: Name for the generated Pydantic model (unused, kept for compatibility)
         func: The function to extract return type from
+        docstring: Optional parsed docstring containing return description
 
     Returns:
-        The return type annotation as a type
+        The return type annotation as a type, optionally wrapped with description metadata
     """
     # Use get_type_hints to resolve string annotations to actual types
     # This handles cases where the calling code uses "from __future__ import annotations"
@@ -281,7 +290,14 @@ def create_output_schema(
             sig.return_annotation if sig.return_annotation is not sig.empty else Any
         )
 
-    return return_annotation
+    return Annotated[
+        return_annotation,
+        Field(
+            description=docstring.returns.description
+            if docstring and docstring.returns
+            else None
+        ),
+    ]
 
 
 def is_empty_schema(schema: type[BaseModel]) -> bool:

@@ -1,4 +1,4 @@
-.PHONY: help release publish-crates docs test-python test-cli
+.PHONY: help release publish-crates docs test-python test-python-integration format-python test-cli
 
 # Default target - show help when running just 'make'
 .DEFAULT_GOAL := help
@@ -10,6 +10,7 @@ help:
 	@echo "  make docs                    - Generate CLI and Python documentation"
 	@echo "  make test-python             - Run Python client tests"
 	@echo "  make test-python-integration - Run Python client tests with integration testing"
+	@echo "  make format-python           - Format and lint Python code with ruff"
 	@echo "  make test-cli                - Run CLI integration tests (pctx mcp start)"
 	@echo "  make release                 - Interactive release script (bump version, update changelog)"
 	@echo "  make publish-crates          - Publish pctx_code_mode + dependencies to crates.io (runs locally)"
