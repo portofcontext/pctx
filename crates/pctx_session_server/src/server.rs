@@ -17,9 +17,9 @@ use crate::{
     AppState, PctxSessionBackend,
     extractors::HeaderExtractor,
     model::{
-        CloseSessionResponse, CreateSessionResponse, ErrorData, HealthResponse,
-        RegisterMcpServersRequest, RegisterMcpServersResponse, RegisterToolsRequest,
-        RegisterToolsResponse,
+        CloseSessionResponse, CreateSessionResponse, ErrorData, ExecuteBashRequest,
+        ExecuteBashResponse, HealthResponse, RegisterMcpServersRequest, RegisterMcpServersResponse,
+        RegisterToolsRequest, RegisterToolsResponse,
     },
     routes, websocket,
 };
@@ -36,6 +36,7 @@ use pctx_code_mode::model::{
         routes::close_session,
         routes::list_functions,
         routes::get_function_details,
+        routes::execute_bash,
         routes::register_tools,
         routes::register_servers,
     ),
@@ -52,6 +53,9 @@ use pctx_code_mode::model::{
             GetFunctionDetailsInput,
             GetFunctionDetailsOutput,
             FunctionDetails,
+            // Execute bash
+            ExecuteBashRequest,
+            ExecuteBashResponse,
             // Tool registration
             RegisterToolsRequest,
             CallbackConfig,
@@ -121,6 +125,7 @@ pub fn create_router<B: PctxSessionBackend>(
             "/code-mode/functions/details",
             post(routes::get_function_details),
         )
+        .route("/code-mode/execute-bash", post(routes::execute_bash))
         .route("/register/tools", post(routes::register_tools))
         .route("/register/servers", post(routes::register_servers))
         // WebSocket endpoint

@@ -79,5 +79,5 @@ export default await test();
         result
             .stderr
             .starts_with("ReferenceError: fetch is not defined")
-    )
+    );
 }

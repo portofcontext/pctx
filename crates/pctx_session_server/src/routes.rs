@@ -7,14 +7,14 @@ use pctx_code_mode::{
         CallbackConfig, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
     },
 };
-use tracing::info;
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::extractors::CodeModeSession;
 use crate::model::{
     ApiError, ApiResult, CloseSessionResponse, CreateSessionResponse, ErrorCode, ErrorData,
-    HealthResponse, RegisterMcpServersRequest, RegisterMcpServersResponse, RegisterToolsRequest,
-    RegisterToolsResponse,
+    ExecuteBashRequest, ExecuteBashResponse, HealthResponse, RegisterMcpServersRequest,
+    RegisterMcpServersResponse, RegisterToolsRequest, RegisterToolsResponse,
 };
 use crate::state::{AppState, backend::PctxSessionBackend};
 
@@ -316,5 +316,108 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
     Ok(Json(RegisterMcpServersResponse {
         registered: request.servers.len(),
         failed: vec![],
+    }))
+}
+
+/// Execute a bash command
+#[utoipa::path(
+    post,
+    path = "/code-mode/execute-bash",
+    tag = "CodeMode",
+    params(
+        ("x-code-mode-session" = String, Header, description = "Current code mode session")
+    ),
+    request_body = ExecuteBashRequest,
+    responses(
+        (status = 200, description = "Bash command executed successfully", body = ExecuteBashResponse),
+        (status = 404, description = "Session not found", body = ErrorData),
+        (status = 500, description = "Internal server error", body = ErrorData)
+    )
+)]
+pub(crate) async fn execute_bash<B: PctxSessionBackend>(
+    State(state): State<AppState<B>>,
+    CodeModeSession(session_id): CodeModeSession,
+    Json(request): Json<ExecuteBashRequest>,
+) -> ApiResult<Json<ExecuteBashResponse>> {
+    info!(
+        session_id =? session_id,
+        command =? request.command,
+        "Executing bash command",
+    );
+
+    let code_mode = state
+        .backend
+        .get(session_id)
+        .await
+        .context("Failed getting code mode session")?
+        .ok_or(ApiError::new(
+            StatusCode::NOT_FOUND,
+            ErrorData {
+                code: ErrorCode::InvalidSession,
+                message: format!("Code mode session {session_id} does not exist"),
+                details: None,
+            },
+        ))?;
+
+    let command = request.command.clone();
+    let execution_id = uuid::Uuid::new_v4();
+
+    // Clone for the blocking task
+    let code_mode_clone = code_mode.clone();
+    let command_clone = command.clone();
+
+    // Execute bash command in blocking context
+    let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
+
+        rt.block_on(code_mode_clone.execute_bash(&command_clone))
+            .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
+    })
+    .await;
+
+    let exec_output = match output {
+        Ok(Ok(result)) => result,
+        Ok(Err(e)) => {
+            return Err(ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorData {
+                    code: ErrorCode::Execution,
+                    message: format!("Bash execution failed: {e}"),
+                    details: None,
+                },
+            ));
+        }
+        Err(e) => {
+            return Err(ApiError::new(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                ErrorData {
+                    code: ErrorCode::Internal,
+                    message: format!("Task join failed: {e}"),
+                    details: None,
+                },
+            ));
+        }
+    };
+
+    // Post-execution hook
+    if let Err(e) = state
+        .backend
+        .post_execution(
+            session_id,
+            execution_id,
+            code_mode,
+            pctx_code_mode::model::ExecuteInput { code: command },
+            Ok(exec_output.clone()),
+        )
+        .await
+    {
+        error!("Failed to post_execution hook: {e}");
+    }
+
+    Ok(Json(ExecuteBashResponse {
+        output: exec_output,
     }))
 }

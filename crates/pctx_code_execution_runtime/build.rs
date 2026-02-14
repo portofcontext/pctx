@@ -4,6 +4,9 @@
 //! with all its JavaScript code pre-compiled. This snapshot can be loaded by
 //! `pctx_executor` for faster startup times.
 
+// Allow long const eval for large JavaScript bundles
+#![allow(long_running_const_eval)]
+
 use std::env;
 use std::path::PathBuf;
 
@@ -36,6 +39,11 @@ async fn op_invoke_callback(
     serde_json::Value::Null
 }
 
+/// Sleep (stub for timers)
+#[deno_core::op2(async)]
+#[allow(clippy::unused_async)]
+async fn op_sleep(#[bigint] _delay_ms: u64) {}
+
 // We need to define the extension here as well for snapshot creation
 // The esm_entry_point tells deno_core to execute this module during snapshot creation
 extension!(
@@ -44,14 +52,22 @@ extension!(
         // Op declarations - these will be registered but not executed during snapshot
         op_call_mcp_tool,
         op_invoke_callback,
+        op_sleep,
     ],
     esm_entry_point = "ext:pctx_runtime_snapshot/runtime.js",
-    esm = [ dir "src", "runtime.js" ],
+    esm = [
+        dir "src",
+        "timers.js",
+        "runtime.js",
+        "just-bash/bundle.js",
+        "just-bash/node_zlib_stub.js",
+    ],
 );
 
 fn main() {
-    // Tell cargo to rerun this build script if runtime.js or build.rs changes
+    // Tell cargo to rerun this build script if runtime.js, just-bash/bundle.js, or build.rs changes
     println!("cargo:rerun-if-changed=src/runtime.js");
+    println!("cargo:rerun-if-changed=src/just-bash/bundle.js");
     println!("cargo:rerun-if-changed=build.rs");
 
     // Get the output directory

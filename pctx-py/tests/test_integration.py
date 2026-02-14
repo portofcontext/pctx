@@ -618,6 +618,130 @@ async def test_stdio_mcp_server_registration():
 
 @pytest.mark.integration
 @pytest.mark.asyncio
+async def test_execute_bash_virtual_filesystem():
+    """Test executing bash commands in the virtual filesystem"""
+    try:
+        # Define tools to populate the virtual filesystem
+        @tool
+        def add_numbers(a: int, b: int) -> int:
+            """Add two numbers together"""
+            return a + b
+
+        @tool
+        def greet(name: str) -> str:
+            """Greet someone"""
+            return f"Hello, {name}!"
+
+        async with Pctx(tools=[add_numbers, greet]) as pctx:
+            # Test 1: List files in SDK directory (cwd is /sdk/)
+            output = await pctx.execute_bash("ls")
+            print(output)
+            assert output.success, "ls command should succeed"
+            assert "README.md" in output.stdout, "Should have README.md"
+            assert "Tools" in output.stdout, "Should have Tools namespace folder"
+            assert "bin" not in output.stdout, "Should NOT have system bin dir"
+            assert "proc" not in output.stdout, "Should NOT have system proc dir"
+
+            # Test 2: Read the README
+            output = await pctx.execute_bash("cat README.md")
+            assert output.success, "cat command should succeed"
+            assert "TypeScript SDK" in output.stdout, "README should have header"
+            assert "**Tools**" in output.stdout, "README should list Tools namespace"
+            assert "addNumbers" in output.stdout, (
+                "README should list addNumbers function"
+            )
+            assert "greet" in output.stdout, "README should list greet function"
+
+            # Test 3: Grep for specific content
+            output = await pctx.execute_bash("grep 'add two numbers' README.md")
+            assert output.success, "grep command should succeed"
+            assert "add two numbers" in output.stdout, (
+                "Should find the addNumbers description"
+            )
+
+            # Test 4: List files in Tools namespace directory
+            output = await pctx.execute_bash("ls Tools/")
+            assert output.success, "Should list Tools namespace directory"
+            assert "addNumbers.d.ts" in output.stdout, (
+                "Should have addNumbers.d.ts file"
+            )
+            assert "greet.d.ts" in output.stdout, "Should have greet.d.ts file"
+
+            # Test 5: Read individual function TypeScript definition file
+            output = await pctx.execute_bash("cat Tools/addNumbers.d.ts")
+            assert output.success, "Should read TypeScript definitions"
+            assert "function addNumbers" in output.stdout, (
+                "Should have addNumbers function signature"
+            )
+            assert "a: number" in output.stdout, (
+                "Should have typed parameters in signatures"
+            )
+
+            # Test 6: Test command that should fail
+            output = await pctx.execute_bash("cat nonexistent.txt")
+            assert not output.success, "Should fail for nonexistent file"
+            assert len(output.stderr) > 0, "Should have error message in stderr"
+
+            # Test 7: Complex pipe command to find function files
+            output = await pctx.execute_bash("ls Tools/ | grep '.d.ts'")
+            assert output.success, "Pipe command should succeed"
+            assert "addNumbers.d.ts" in output.stdout, "Should find .d.ts files"
+            assert "greet.d.ts" in output.stdout, "Should find .d.ts files"
+
+    except ConnectionError:
+        pytest.fail(
+            "Failed to connect to pctx server at http://localhost:8080.\n"
+            "Please ensure the pctx server is running.\n"
+            "Start the server with: pctx server start"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_bash_then_typescript_workflow():
+    """Test using bash to explore, then TypeScript to execute"""
+    try:
+
+        @tool
+        def multiply(x: int, y: int) -> int:
+            """Multiply two numbers"""
+            return x * y
+
+        async with Pctx(tools=[multiply]) as pctx:
+            # Step 1: Use bash to discover available functions (cwd is /sdk/)
+            output = await pctx.execute_bash("cat README.md")
+            assert output.success, "Should read README"
+            assert "multiply" in output.stdout, "Should find multiply function"
+
+            # Step 2: Read the individual function TypeScript definition to understand the signature
+            output = await pctx.execute_bash("cat Tools/multiply.d.ts")
+            assert output.success, "Should read TypeScript definitions"
+            assert "function multiply" in output.stdout, (
+                "Should have multiply signature"
+            )
+
+            # Step 3: Use TypeScript to call the function we discovered
+            code = """
+            async function run() {
+                const result = await Tools.multiply({ x: 6, y: 7 });
+                return { product: result };
+            }
+            """
+            output = await pctx.execute(code)
+            assert output.success, "TypeScript execution should succeed"
+            assert output.output is not None, "Should have output"
+            assert output.output.get("product") == 42, "Expected product to be 42"
+
+    except ConnectionError:
+        pytest.fail(
+            "Failed to connect to pctx server at http://localhost:8080.\n"
+            "Please ensure the pctx server is running.\n"
+            "Start the server with: pctx server start"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
 async def test_mixed_tools_and_mcp_servers():
     """Test using local tools alongside MCP servers"""
     try:

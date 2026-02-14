@@ -18,6 +18,7 @@ mod callback_usage;
 mod concurrent_v8_stress;
 mod default_export_capture;
 mod diagnostic_filtering;
+mod just_bash;
 mod mcp_client_usage;
 mod output_capture;
 mod runtime_execution;

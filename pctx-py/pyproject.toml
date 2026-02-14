@@ -1,14 +1,19 @@
 [project]
 name = "pctx-client"
-version = "0.2.1"
+version = "0.2.2"
 description = "Python client for using Code Mode via PCTX"
 readme = "README.md"
 authors = [
     { name = "Elias Posen", email = "elias@posen.ch" },
     { name = "Patrick Kelly", email = "pmkelly4444@gmail.com" },
 ]
-requires-python = ">=3.10,<3.14"
-dependencies = ["httpx>=0.28.1", "pydantic>=2.7.2", "websockets>=15.0.1"]
+requires-python = ">=3.10,<3.15"
+dependencies = [
+    "docstring-parser>=0.17.0",
+    "httpx>=0.28.1",
+    "pydantic>=2.7.2",
+    "websockets>=15.0.1",
+]
 
 [project.optional-dependencies]
 langchain = ["langchain>=1.1.2"]

@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Python `@tool` decorator now parses docstrings (Google, NumPy, reStructuredText, and Epydoc formats) to extract parameter descriptions, return value descriptions, and detailed function descriptions into tool schemas
+- Make code mode config and all tools / descriptions easily configurable from python client
+- Add just-bash and new execute_bash tool to explore filesystem of the generated sdk
+
 ### Changed
 
 ### Fixed

@@ -1,3 +1,6 @@
+// Allow long const eval for large JavaScript bundles
+#![allow(long_running_const_eval)]
+
 //! # PCTX Runtime
 //!
 //! A Deno extension providing MCP (Model Context Protocol) client functionality and console output capturing.
@@ -60,6 +63,7 @@ mod error;
 mod js_error_impl;
 pub mod mcp_ops;
 mod mcp_registry;
+mod timer_ops;
 
 pub use callback_registry::{CallbackFn, CallbackRegistry};
 pub use mcp_registry::MCPRegistry;
@@ -85,9 +89,16 @@ deno_core::extension!(
     ops = [
         mcp_ops::op_call_mcp_tool,
         callback_ops::op_invoke_callback,
+        timer_ops::op_sleep,
     ],
     esm_entry_point = "ext:pctx_runtime_snapshot/runtime.js",
-    esm = [ dir "src", "runtime.js" ],
+    esm = [
+        dir "src",
+        "timers.js",
+        "runtime.js",
+        "just-bash/bundle.js",
+        "just-bash/node_zlib_stub.js",
+    ],
     options = {
         registry: MCPRegistry,
         callback_registry: CallbackRegistry,

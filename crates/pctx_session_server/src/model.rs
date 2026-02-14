@@ -110,6 +110,19 @@ pub struct CloseSessionResponse {
     pub success: bool,
 }
 
+/// Request to execute a bash command
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ExecuteBashRequest {
+    pub command: String,
+}
+
+/// Response after executing a bash command
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct ExecuteBashResponse {
+    #[serde(flatten)]
+    pub output: ExecuteOutput,
+}
+
 // ----------- Websocket JRPC Message structs -----------
 
 pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, PctxJsonRpcResponse>;

@@ -165,12 +165,24 @@ async fn read_messages<B: PctxSessionBackend>(
     }
 }
 
-/// Handle an `execute_code` request from the client
-async fn handle_execute_code_request<B: PctxSessionBackend>(
+/// Common execution handler logic
+async fn handle_execution_inner<B: PctxSessionBackend>(
     req_id: RequestId,
-    params: ExecuteCodeParams,
     ws_session: Uuid,
     state: AppState<B>,
+    input_code: String,
+    needs_callbacks: bool,
+    execute_fn: impl FnOnce(
+        pctx_code_mode::CodeMode,
+        Option<CallbackRegistry>,
+    ) -> std::pin::Pin<
+        Box<
+            dyn std::future::Future<
+                    Output = Result<pctx_code_mode::model::ExecuteOutput, pctx_code_mode::Error>,
+                >,
+        >,
+    > + Send
+    + 'static,
 ) -> Result<(), String> {
     // Save the WebSocket session for later response
     let ws_session_lock = state
@@ -205,57 +217,63 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
 
     let execution_id = Uuid::new_v4();
 
-    let callback_registry = CallbackRegistry::default();
-    for callback_cfg in code_mode.callbacks() {
-        let ws_session_lock_clone = ws_session_lock.clone();
-        let cfg = callback_cfg.clone();
+    // Setup callbacks if needed
+    let callback_registry = if needs_callbacks {
+        let registry = CallbackRegistry::default();
+        for callback_cfg in code_mode.callbacks() {
+            let ws_session_lock_clone = ws_session_lock.clone();
+            let cfg = callback_cfg.clone();
 
-        let callback: CallbackFn = Arc::new(move |args: Option<serde_json::Value>| {
-            let cfg = cfg.clone();
-            let ws_session_lock_clone = ws_session_lock_clone.clone();
+            let callback: CallbackFn = Arc::new(move |args: Option<serde_json::Value>| {
+                let cfg = cfg.clone();
+                let ws_session_lock_clone = ws_session_lock_clone.clone();
 
-            Box::pin(async move {
-                let ws_session = ws_session_lock_clone.read().await;
+                Box::pin(async move {
+                    let ws_session = ws_session_lock_clone.read().await;
 
-                let callback_res = ws_session
-                    .execute_callback(ExecuteToolParams {
-                        namespace: cfg.namespace,
-                        name: cfg.name,
-                        args,
-                    })
-                    .await
-                    .map_err(|e| e.to_string())?;
+                    let callback_res = ws_session
+                        .execute_callback(ExecuteToolParams {
+                            namespace: cfg.namespace,
+                            name: cfg.name,
+                            args,
+                        })
+                        .await
+                        .map_err(|e| e.to_string())?;
 
-                Ok(json!(callback_res.output))
-            })
-        });
+                    Ok(json!(callback_res.output))
+                })
+            });
 
-        if let Err(add_err) = callback_registry.add(&callback_cfg.id(), callback) {
-            let err_res = WsJsonRpcMessage::error(
-                ErrorData {
-                    code: ErrorCode::INTERNAL_ERROR,
-                    message: format!(
-                        "Failed adding callback `{}` to registry: {add_err}",
-                        callback_cfg.id()
-                    )
-                    .into(),
-                    data: None,
-                },
-                req_id.clone(),
-            );
-            let _ = sender.send(err_res);
+            if let Err(add_err) = registry.add(&callback_cfg.id(), callback) {
+                let err_res = WsJsonRpcMessage::error(
+                    ErrorData {
+                        code: ErrorCode::INTERNAL_ERROR,
+                        message: format!(
+                            "Failed adding callback `{}` to registry: {add_err}",
+                            callback_cfg.id()
+                        )
+                        .into(),
+                        data: None,
+                    },
+                    req_id.clone(),
+                );
+                let _ = sender.send(err_res);
+            }
         }
-    }
+        Some(registry)
+    } else {
+        None
+    };
 
-    let execution_span = tracing::info_span!(
-        "execute_code_in_session",
+    let execution_span = tracing::span!(
+        tracing::Level::INFO,
+        "execute_in_session",
         session_id = %code_mode_session_id,
         execution_id = %execution_id,
     );
 
     tokio::spawn(async move {
         let code_mode_clone = code_mode.clone();
-        let code_clone = params.code.clone();
 
         let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
             let _guard = execution_span.enter();
@@ -264,14 +282,8 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                 .build()
                 .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
-            // create callback registry to execute callback requests over the same ws which
-            // initiated the request
-            rt.block_on(async {
-                code_mode_clone
-                    .execute(&code_clone, Some(callback_registry))
-                    .await
-                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-            })
+            rt.block_on(execute_fn(code_mode_clone, callback_registry))
+                .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
         })
         .await;
 
@@ -313,7 +325,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                 code_mode_session_id,
                 execution_id,
                 code_mode,
-                ExecuteInput { code: params.code },
+                ExecuteInput { code: input_code },
                 execution_res,
             )
             .await
@@ -321,11 +333,32 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
             error!("Failed to post_execution hook: {e}");
         }
         if let Err(e) = sender.send(msg) {
-            error!("Failed to send execute_code response: {e}");
+            error!("Failed to send response: {e}");
         }
     });
 
     Ok(())
+}
+
+/// Handle an `execute_code` (TypeScript) request from the client
+async fn handle_execute_code_request<B: PctxSessionBackend>(
+    req_id: RequestId,
+    params: ExecuteCodeParams,
+    ws_session: Uuid,
+    state: AppState<B>,
+) -> Result<(), String> {
+    let code = params.code.clone();
+    handle_execution_inner(
+        req_id,
+        ws_session,
+        state,
+        code.clone(),
+        true, // needs callbacks
+        move |code_mode, callback_registry| {
+            Box::pin(async move { code_mode.execute_typescript(&code, callback_registry).await })
+        },
+    )
+    .await
 }
 
 /// Handle a single WebSocket message
@@ -345,7 +378,7 @@ async fn handle_message<B: PctxSessionBackend>(
             match jrpc_msg {
                 JsonRpcMessage::Request(req) => match req.request {
                     PctxJsonRpcRequest::ExecuteCode { params } => {
-                        debug!("Executing code...");
+                        debug!("Executing TypeScript code...");
                         handle_execute_code_request(req.id, params, ws_session, state.clone()).await
                     }
                     PctxJsonRpcRequest::ExecuteTool { .. } => {
