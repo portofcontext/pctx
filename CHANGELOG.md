@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.5.0] - 2026-02-14
+
+### Added
+
 - CORS layer added to pctx session server. Add custom allowed origins via the `--allow-origin` flag
 - Added more of typescript `.d.ts` files for more comprehensive type checking.
 
@@ -21,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - When removing a websocket session, graceful cancel of all pending client tool executions
 
 - JS runtime race condition by moving the V8 mutex to be held for the entire typecheck/execute process. This previously caused a panic: `../../../../third_party/libc++/src/include/__vector/vector.h:416: libc++ Hardening assertion __n < size() failed: vector[] index out of bounds`
-
 ## [v0.4.3] - 2026-01-27
 
 ### Added
