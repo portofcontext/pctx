@@ -1,6 +1,6 @@
 [project]
 name = "pctx-client"
-version = "0.2.2"
+version = "0.3.0b1"
 description = "Python client for using Code Mode via PCTX"
 readme = "README.md"
 authors = [
