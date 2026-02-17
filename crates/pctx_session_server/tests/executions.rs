@@ -460,7 +460,7 @@ async fn test_explore_virtual_fs_with_bash() {
         "Should have header: {readme}"
     );
     assert!(
-        readme.contains("**TestMath**"),
+        readme.contains("## TestMath"),
         "Should have TestMath namespace: {readme}"
     );
     assert!(readme.contains("add"), "Should list add function: {readme}");
@@ -586,7 +586,7 @@ async fn test_bash_exploration_then_typescript_execution() {
 
     assert_eq!(readme_response["success"], true);
     let readme = readme_response["stdout"].as_str().unwrap();
-    assert!(readme.contains("**TestMath**"));
+    assert!(readme.contains("## TestMath"));
 
     // Search for math functions
     let grep_response: serde_json::Value = server
