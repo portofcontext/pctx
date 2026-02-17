@@ -285,24 +285,12 @@ impl CodeMode {
     pub fn load_tools_into_bashable_filesystem(&self) -> Result<HashMap<String, String>> {
         let mut files = HashMap::new();
 
-        // Create token-efficient README
+        // Token-efficient README. Shell-doc style: one .d.ts path per line under each
+        // namespace section. Each .d.ts contains: InputType, OutputType, async fn signature.
         let mut readme = String::from(
-            r#"# TypeScript SDK
-
-Functions organized by namespace. Call as `Namespace.functionName({ params })`.
-
-Example:
-```typescript
-async function run() {
-  return await Tools.addNumbers({ a: 5, b: 3 });
-}
-```
-
-Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>.d.ts` (types).
-
-## Functions
-
-"#,
+            "# TypeScript SDK\n\
+             Usage: `Namespace.fn({ params })` — each .d.ts has the InputType, OutputType, and fn signature.\n\
+             `cat <path>.d.ts` before calling — param names cannot be inferred.\n\n",
         );
 
         for tool_set in &self.tool_sets {
@@ -310,10 +298,11 @@ Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>
                 continue;
             }
 
-            // Namespace header
-            readme.push_str(&format!("**{}**\n", tool_set.namespace));
+            // e.g. "## Tools"
+            readme.push_str(&format!("## {}\n", tool_set.namespace));
 
-            // Build inline function list
+            // One line per function: "Namespace/fn.d.ts  # description"
+            // `cat` omitted since it's stated once in the header above.
             let func_list: Vec<String> = tool_set
                 .tools
                 .iter()
@@ -335,14 +324,14 @@ Explore: `ls` (namespaces), `ls <Namespace>/` (functions), `cat <Namespace>/<fn>
                     files.insert(tool_file_path, formatted);
 
                     if desc.is_empty() {
-                        tool.fn_name.clone()
+                        format!("{}/{}.d.ts", tool_set.namespace, tool.fn_name)
                     } else {
-                        format!("{} ({})", tool.fn_name, desc)
+                        format!("{}/{}.d.ts  # {}", tool_set.namespace, tool.fn_name, desc)
                     }
                 })
                 .collect();
 
-            readme.push_str(&format!("{}\n\n", func_list.join(", ")));
+            readme.push_str(&format!("{}\n\n", func_list.join("\n")));
         }
 
         files.insert("/sdk/README.md".to_string(), readme);
