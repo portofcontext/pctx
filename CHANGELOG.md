@@ -13,6 +13,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.6.0-beta.2] - 2026-02-17
+
+### Added
+
+- Update the fs-mode generated readme to provide clarity on using cat to read about type definitions. Avoids parameter hallucinations.
+
+### Changed
+
+### Fixed
+
 ## [v0.6.0-beta.1] - 2026-02-14
 
 ### Added
