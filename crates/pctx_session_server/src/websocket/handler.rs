@@ -355,7 +355,11 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
         code.clone(),
         true, // needs callbacks
         move |code_mode, callback_registry| {
-            Box::pin(async move { code_mode.execute_typescript(&code, callback_registry).await })
+            Box::pin(async move {
+                code_mode
+                    .execute_typescript_simple(&code, callback_registry)
+                    .await
+            })
         },
     )
     .await

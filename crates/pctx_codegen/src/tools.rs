@@ -209,6 +209,20 @@ impl Tool {
             }
         }
     }
+
+    pub fn invoke_tool_fn_override(&self, toolset_name: &str) -> String {
+        let args = match &self.input_type {
+            Some(i) if i.all_optional => format!("arguments: {} = {{}}", &i.type_signature),
+            Some(i) => format!("arguments: {}", &i.type_signature),
+            None => String::default(),
+        };
+
+        format!(
+            "async function invoke(call: {{name: {name}, {args} }}): Promise<{output_sig}>;",
+            name = json!(format!("{toolset_name}.{}", &self.name)),
+            output_sig = self.output_signature()
+        )
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

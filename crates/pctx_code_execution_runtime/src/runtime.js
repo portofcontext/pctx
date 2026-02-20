@@ -104,7 +104,20 @@ export async function invokeCallback(call) {
   return await ops.op_invoke_callback(call.id, call.arguments);
 }
 
+/**
+ * Generic make tool call function
+ * @template T
+ * @param {Object} call - Tool call configuration
+ * @param {string} call.name - Name of the tool
+ * @param {Object?} [call.arguments] - Arguments to pass to the tool
+ * @returns {Promise<T>} The tool's response
+ */
+export async function invokeToolInternal(call) {
+  return await ops.op_invoke_callback(call.name, call.arguments);
+}
+
 // Make APIs available globally for convenience (matching original behavior)
 globalThis.callMCPTool = callMCPTool;
 globalThis.invokeCallback = invokeCallback;
+globalThis.invokeToolInternal = invokeToolInternal;
 globalThis.justBash = Bash; // lowercase to avoid any clashes with namespaces

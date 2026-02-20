@@ -652,6 +652,98 @@ export default await run();
         })
     }
 
+    pub async fn execute_typescript_simple(
+        &self,
+        code: &str,
+        callback_registry: Option<CallbackRegistry>,
+    ) -> Result<ExecuteOutput> {
+        let registry = callback_registry.unwrap_or_default();
+        // Format for logging only
+        let formatted_code = pctx_codegen::format::format_ts(code);
+
+        debug!(
+            code_from_llm = %code,
+            formatted_code = %formatted_code,
+            code_length = code.len(),
+            callbacks =? registry.ids(),
+            "Received TypeScript code to execute"
+        );
+
+        // confirm all configured callbacks in the CodeMode interface have
+        // registered callback functions
+        let missing_ids: Vec<String> = self
+            .callbacks
+            .iter()
+            .filter_map(|c| {
+                if registry.has(&c.id()) {
+                    None
+                } else {
+                    Some(c.id())
+                }
+            })
+            .collect();
+        if !missing_ids.is_empty() {
+            return Err(Error::Message(format!(
+                "Missing configured callbacks in registry with ids: {missing_ids:?}"
+            )));
+        }
+
+        // generate the full script to be executed
+        let fn_overrides: Vec<String> = self
+            .tool_sets
+            .iter()
+            .flat_map(|ts| ts.tools.iter().map(|t| t.invoke_tool_fn_override(&ts.name)))
+            .collect();
+        let types: Vec<String> = self
+            .tool_sets
+            .iter()
+            .flat_map(|ts| {
+                ts.tools.iter().filter_map(|t| {
+                    let types = t.types();
+                    if types.is_empty() { None } else { Some(types) }
+                })
+            })
+            .collect();
+
+        let invoke_interface = format!(
+            r#"
+{fn_overrides}
+async function invoke(call: any): Promise<any> {{
+  return await invokeToolInternal(call);
+}}
+
+{types}
+"#,
+            fn_overrides = fn_overrides.join("\n"),
+            types = types.join("\n\n")
+        );
+        let to_execute = format!(
+            "{code}\n\n{invoke_interface}\n\nexport default await run();",
+            invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
+        );
+
+        println!("{to_execute}");
+
+        let options = pctx_executor::ExecuteOptions::new()
+            .with_servers(self.servers.clone())
+            .with_callbacks(registry);
+
+        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+
+        if execution_res.success {
+            debug!("TypeScript execution completed successfully");
+        } else {
+            warn!("TypeScript execution failed: {:?}", execution_res.stderr);
+        }
+
+        Ok(ExecuteOutput {
+            success: execution_res.success,
+            stdout: execution_res.stdout,
+            stderr: execution_res.stderr,
+            output: execution_res.output,
+        })
+    }
+
     /// Main execute function that routes to bash or typescript execution
     /// Defaults to TypeScript for backward compatibility
     #[instrument(skip(self, callback_registry), ret(Display), err)]
