@@ -1,0 +1,26 @@
+[package]
+name = "pctx_python_runtime"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89"
+license = "MIT"
+description = "Python runtime for portofcontext using monty"
+repository = "https://github.com/portofcontext/pctx"
+keywords = ["python", "executor", "pctx", "monty"]
+categories = ["development-tools"]
+
+[dependencies]
+pctx_callback_registry = { path = "../pctx_callback_registry" }
+monty = { git = "https://github.com/pydantic/monty.git" }
+monty-type-checking = { git = "https://github.com/pydantic/monty.git", package = "monty_type_checking" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }
+pctx_codegen = { path = "../pctx_codegen" }
+
+[lints]
+workspace = true

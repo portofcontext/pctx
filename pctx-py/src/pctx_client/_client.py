@@ -387,6 +387,33 @@ class Pctx:
         response.raise_for_status()
         return ExecuteOutput.model_validate(response.json())
 
+    async def execute_python(self, code: str) -> ExecuteOutput:
+        """
+        Execute Python code that calls registered tools as functions.
+
+        Tools registered with this session are available as plain Python functions
+        with typed stubs. Programmatic Tool Calling lets you orchestrate complex
+        multi-tool workflows through code rather than individual API round-trips.
+
+        Args:
+            code: Python code to execute. Call tools directly by function name.
+                  The last expression is returned.
+
+        Returns:
+            ExecuteOutput with success status, stdout, stderr, and optional output
+
+        Raises:
+            SessionError: If not connected to a session
+            TimeoutError: If execution exceeds the configured timeout
+        """
+        if self._session_id is None:
+            raise SessionError(
+                "No code mode session exists, run Pctx(...).connect() before calling"
+            )
+        return await self._ws_client.execute_python(
+            self._session_id, code, timeout=self._execute_timeout
+        )
+
     # ========== Registrations ==========
 
     async def _register_tools(self, configs: list[ToolConfig]):
@@ -406,6 +433,11 @@ class Pctx:
                 for func in functions
             ]
         )
+
+    def _get_tool_description(self, tool_name: str, toolset) -> str:
+        if toolset.descriptions and tool_name in toolset.descriptions:
+            return toolset.descriptions[tool_name]
+        return CODE_MODE_TOOL_DESCRIPTIONS[tool_name]
 
     def langchain_tools(
         self,
@@ -455,12 +487,6 @@ class Pctx:
         else:
             toolset = mode
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
-
         tools = []
 
         # Build tools based on toolset configuration using registry
@@ -479,7 +505,7 @@ class Pctx:
 
             # Create framework-specific tool
             tool = self._create_langchain_tool(
-                tool_name, get_desc(tool_name), langchain_tool
+                tool_name, self._get_tool_description(tool_name, toolset), langchain_tool
             )
             tools.append(tool)
 
@@ -542,6 +568,14 @@ class Pctx:
 
             return execute
 
+        elif tool_name == "execute_python":
+
+            @langchain_tool(description=description)
+            async def execute_python(code: str) -> str:
+                return (await self.execute_python(code)).markdown()
+
+            return execute_python
+
         else:
             raise ValueError(f"Unsupported LangChain tool: {tool_name}")
 
@@ -593,12 +627,6 @@ class Pctx:
         else:
             toolset = mode
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
-
         tools = []
         import asyncio
 
@@ -624,7 +652,7 @@ class Pctx:
 
             # Create framework-specific tool
             tool = self._create_crewai_tool(
-                tool_name, get_desc(tool_name), CrewAiBaseTool, main_loop
+                tool_name, self._get_tool_description(tool_name, toolset), CrewAiBaseTool, main_loop
             )
             tools.append(tool)
 
@@ -751,6 +779,24 @@ class Pctx:
 
             return ExecuteTool()
 
+        elif tool_name == "execute_python":
+
+            class ExecutePythonTool(CrewAiBaseTool):
+                name: str = "execute_python"
+                description: str = desc
+                args_schema: type[BaseModel] = ExecuteInput
+
+                def _run(_self, code: str) -> str:
+                    if main_loop is not None:
+                        future = asyncio.run_coroutine_threadsafe(
+                            self.execute_python(code=code), main_loop
+                        )
+                        return future.result(timeout=self._execute_timeout).markdown()
+                    else:
+                        return asyncio.run(self.execute_python(code=code)).markdown()
+
+            return ExecutePythonTool()
+
         else:
             raise ValueError(f"Unsupported CrewAI tool: {tool_name}")
 
@@ -805,12 +851,6 @@ class Pctx:
         else:
             toolset = mode
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
-
         tools = []
 
         # Build tools based on toolset configuration using registry
@@ -829,7 +869,7 @@ class Pctx:
 
             # Create framework-specific tool
             tool = self._create_openai_agents_tool(
-                tool_name, get_desc(tool_name), function_tool
+                tool_name, self._get_tool_description(tool_name, toolset), function_tool
             )
             tools.append(tool)
 
@@ -910,6 +950,18 @@ Args:
 
             return function_tool(name_override="execute")(execute_wrapper)
 
+        elif tool_name == "execute_python":
+
+            async def execute_python_wrapper(code: str) -> str:
+                return (await self.execute_python(code)).markdown()
+
+            execute_python_wrapper.__doc__ = f"""{description}
+
+Args:
+    code: Python code to execute"""
+
+            return function_tool(name_override="execute_python")(execute_python_wrapper)
+
         else:
             raise ValueError(f"Unsupported OpenAI Agents tool: {tool_name}")
 
@@ -961,12 +1013,6 @@ Args:
         else:
             toolset = mode
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
-
         tools = []
 
         # Build tools based on toolset configuration using registry
@@ -985,7 +1031,7 @@ Args:
 
             # Create framework-specific tool
             tool = self._create_pydantic_ai_tool(
-                tool_name, get_desc(tool_name), PydanticAITool
+                tool_name, self._get_tool_description(tool_name, toolset), PydanticAITool
             )
             tools.append(tool)
 
@@ -1059,6 +1105,17 @@ Args:
             return PydanticAITool(
                 execute_wrapper,
                 name="execute",
+                description=description,
+            )
+
+        elif tool_name == "execute_python":
+
+            async def execute_python_wrapper(code: str) -> str:
+                return (await self.execute_python(code)).markdown()
+
+            return PydanticAITool(
+                execute_python_wrapper,
+                name="execute_python",
                 description=description,
             )
 

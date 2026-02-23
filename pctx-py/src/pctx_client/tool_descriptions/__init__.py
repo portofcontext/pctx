@@ -13,6 +13,7 @@ PRESCRIPTIVE_DESCRIPTIONS = {
     "execute": prescriptive.execute.DESCRIPTION,
     "execute_bash": prescriptive.execute_bash.DESCRIPTION,
     "execute_typescript": prescriptive.execute_typescript.DESCRIPTION,
+    "execute_python": prescriptive.execute_python.DESCRIPTION,
 }
 
 TERMINAL_STYLE_DESCRIPTIONS = {
@@ -22,6 +23,7 @@ TERMINAL_STYLE_DESCRIPTIONS = {
     "execute": terminal.execute.DESCRIPTION,
     "execute_bash": terminal.execute_bash.DESCRIPTION,
     "execute_typescript": terminal.execute_typescript.DESCRIPTION,
+    "execute_python": terminal.execute_python.DESCRIPTION,
 }
 
 __all__ = [

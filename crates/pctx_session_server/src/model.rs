@@ -132,6 +132,8 @@ pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, Pctx
 pub enum PctxJsonRpcRequest {
     #[serde(rename = "execute_code")]
     ExecuteCode { params: ExecuteCodeParams },
+    #[serde(rename = "execute_python")]
+    ExecutePython { params: ExecuteCodeParams },
     #[serde(rename = "execute_tool")]
     ExecuteTool { params: ExecuteToolParams },
 }

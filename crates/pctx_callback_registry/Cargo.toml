@@ -1,0 +1,17 @@
+[package]
+name = "pctx_callback_registry"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Shared callback registry for pctx runtimes"
+keywords = ["pctx", "callback", "registry"]
+categories = ["development-tools"]
+
+[dependencies]
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+[lints]
+workspace = true

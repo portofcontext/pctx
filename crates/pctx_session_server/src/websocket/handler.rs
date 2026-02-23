@@ -361,6 +361,27 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
     .await
 }
 
+/// Handle an `execute_python` request from the client
+async fn handle_execute_python_request<B: PctxSessionBackend>(
+    req_id: RequestId,
+    params: ExecuteCodeParams,
+    ws_session: Uuid,
+    state: AppState<B>,
+) -> Result<(), String> {
+    let code = params.code.clone();
+    handle_execution_inner(
+        req_id,
+        ws_session,
+        state,
+        code.clone(),
+        true, // needs callbacks
+        move |code_mode, callback_registry| {
+            Box::pin(async move { code_mode.execute_python(&code, callback_registry).await })
+        },
+    )
+    .await
+}
+
 /// Handle a single WebSocket message
 /// Messages coming from a client, needs to be routed to the correct `WsSession` for handling.
 async fn handle_message<B: PctxSessionBackend>(
@@ -380,6 +401,11 @@ async fn handle_message<B: PctxSessionBackend>(
                     PctxJsonRpcRequest::ExecuteCode { params } => {
                         debug!("Executing TypeScript code...");
                         handle_execute_code_request(req.id, params, ws_session, state.clone()).await
+                    }
+                    PctxJsonRpcRequest::ExecutePython { params } => {
+                        debug!("Executing Python code...");
+                        handle_execute_python_request(req.id, params, ws_session, state.clone())
+                            .await
                     }
                     PctxJsonRpcRequest::ExecuteTool { .. } => {
                         // the server is only responsible for servicing execute_code requests, execute_tool

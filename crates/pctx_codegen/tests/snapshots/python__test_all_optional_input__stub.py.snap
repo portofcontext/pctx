@@ -1,0 +1,9 @@
+---
+source: crates/pctx_codegen/tests/python.rs
+expression: stub
+---
+from typing import Any, Literal
+
+def search_logs(query: str | None = None, level: Literal["debug", "info", "warn", "error"] | None = None, limit: int | None = None, start_date: str | None = None) -> dict[str, Any]:
+    """Search application logs with optional filters"""
+    ...

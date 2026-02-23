@@ -22,6 +22,7 @@ from pctx_client.models import (
     ExecuteCodeRequest,
     ExecuteCodeResponse,
     ExecuteOutput,
+    ExecutePythonRequest,
     ExecuteToolRequest,
     ExecuteToolResponse,
     ExecuteToolResult,
@@ -32,6 +33,7 @@ from .exceptions import ConnectionError
 
 WebSocketMessage = Union[
     ExecuteCodeRequest,
+    ExecutePythonRequest,
     ExecuteCodeResponse,
     ExecuteToolRequest,
     ExecuteToolResponse,
@@ -147,6 +149,46 @@ class WebSocketClient:
         except asyncio.TimeoutError:
             self._pending_executions.pop(request_id, None)
             raise TimeoutError(f"Code execution timed out after {timeout}s")
+        finally:
+            self._pending_executions.pop(request_id, None)
+            await self._disconnect()
+
+    async def execute_python(
+        self, code_mode_session: str, code: str, timeout: float = 30.0
+    ) -> ExecuteOutput:
+        """
+        Execute Python code via WebSocket.
+
+        Args:
+            code_mode_session: CodeMode session to run execution in
+            code: Python code to execute
+            timeout: Timeout in seconds (default 30)
+
+        Returns:
+            ExecuteOutput with success, stdout, stderr, and output
+
+        Raises:
+            TimeoutError: If execution times out
+            Exception: If execution fails
+        """
+        if self.ws is None:
+            await self._connect(code_mode_session)
+
+        request_id = str(uuid.uuid4())
+        future: asyncio.Future[dict[str, Any]] = asyncio.Future()
+        self._pending_executions[request_id] = future
+
+        request = ExecutePythonRequest(
+            id=request_id, method="execute_python", params=ExecuteCodeParams(code=code)
+        )
+
+        try:
+            await self._send(request)
+            result = await asyncio.wait_for(future, timeout=timeout)
+            return ExecuteOutput.model_validate(result)
+        except asyncio.TimeoutError:
+            self._pending_executions.pop(request_id, None)
+            raise TimeoutError(f"Python execution timed out after {timeout}s")
         finally:
             self._pending_executions.pop(request_id, None)
             await self._disconnect()

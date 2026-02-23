@@ -98,7 +98,7 @@ impl Tool {
         let fn_name = Case::Camel.sanitize(name);
         debug!(
             variant =? variant,
-            "Generating Typescript interface for tool: '{name}' -> function {fn_name}",
+            "Generating interface for tool: '{name}' -> function {fn_name}",
         );
 
         let input_type = if let Some(i) = &input {

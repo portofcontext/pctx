@@ -3,6 +3,7 @@
 from . import (
     execute,
     execute_bash,
+    execute_python,
     execute_typescript,
     get_function_details,
     list_functions,
@@ -12,6 +13,7 @@ from . import (
 __all__ = [
     "execute",
     "execute_bash",
+    "execute_python",
     "execute_typescript",
     "get_function_details",
     "list_functions",

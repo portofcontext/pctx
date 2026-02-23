@@ -112,10 +112,15 @@ class ExecuteOutput(BaseModel):
     def markdown(self) -> str:
         # For bash commands, output is None - just show stdout/stderr directly
         if self.output is None:
-            if self.stderr:
-                return f"ERROR:\n{self.stderr}"
+            parts = []
             if self.stdout:
-                return self.stdout
+                parts.append(f"# Output before error:\n{self.stdout}")
+            if self.stderr:
+                parts.append(f"ERROR:\n{self.stderr}")
+            if parts:
+                return "\n\n".join(parts)
+            if not self.success:
+                return "ERROR: execution failed with no additional detail."
             return "Command executed successfully (no output)"
 
         # For TypeScript execution, show everything including return value
@@ -165,6 +170,11 @@ class ExecuteCodeParams(BaseModel):
 
 class ExecuteCodeRequest(JsonRpcBase):
     method: Literal["execute_code"]
+    params: ExecuteCodeParams
+
+
+class ExecutePythonRequest(JsonRpcBase):
+    method: Literal["execute_python"]
     params: ExecuteCodeParams
 
 

@@ -14,6 +14,7 @@ ToolName = Literal[
     "execute",
     "execute_bash",
     "execute_typescript",
+    "execute_python",
 ]
 
 
@@ -79,8 +80,17 @@ def fs_mode(descriptions: dict[ToolName, str] | None = None) -> ToolConfig:
     )
 
 
+def python_mode(descriptions: dict[ToolName, str] | None = None) -> ToolConfig:
+    """Python mode: execute_python.
+
+    This mode exposes a single Python execution environment where all registered
+    callback tools are available as plain Python functions with typed stubs.
+    """
+    return ToolConfig(tools=["execute_python"], descriptions=descriptions)
+
+
 # Type for mode strings
-ModeString = Literal["list_get_execute", "fs"]
+ModeString = Literal["list_get_execute", "fs", "python"]
 
 
 def get_toolset_from_mode(
@@ -89,7 +99,7 @@ def get_toolset_from_mode(
     """Convert a mode string to a ToolConfig configuration.
 
     Args:
-        mode: Mode name ("list_get_execute" or "fs")
+        mode: Mode name ("list_get_execute", "fs", or "python")
         descriptions: Optional custom descriptions to override defaults
 
     Returns:
@@ -102,5 +112,9 @@ def get_toolset_from_mode(
         return list_get_execute_mode(descriptions)
     elif mode == "fs":
         return fs_mode(descriptions)
+    elif mode == "python":
+        return python_mode(descriptions)
     else:
-        raise ValueError(f"Unknown mode: {mode}. Valid modes: 'list_get_execute', 'fs'")
+        raise ValueError(
+            f"Unknown mode: {mode}. Valid modes: 'list_get_execute', 'fs', 'python'"
+        )

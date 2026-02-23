@@ -1,0 +1,9 @@
+---
+source: crates/pctx_codegen/tests/python.rs
+expression: stub
+---
+from typing import Any, Literal
+
+def process_data(from_: str, type: Literal["json", "csv", "xml"], import_: str | None = None, id: int | None = None, format: str | None = None) -> dict[str, Any]:
+    """Process data with reserved word parameter names"""
+    ...

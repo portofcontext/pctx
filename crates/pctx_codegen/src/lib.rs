@@ -1,5 +1,6 @@
 pub mod case;
 pub mod format;
+pub mod python;
 pub mod schema_type;
 pub mod tools;
 pub mod typegen;
@@ -12,6 +13,7 @@ use thiserror::Error;
 // re-export RootSchema
 pub use schemars::schema::RootSchema;
 
+pub use python::PythonToolMapping;
 pub use tools::{Tool, ToolSet, ToolVariant};
 
 pub type SchemaDefinitions = IndexMap<String, Schema>;

@@ -22,6 +22,7 @@ TOOL_REGISTRY: set[ToolName] = {
     "execute",
     "execute_bash",
     "execute_typescript",
+    "execute_python",
 }
 
 

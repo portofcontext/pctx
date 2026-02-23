@@ -1,0 +1,28 @@
+name: process_data
+description: "Process data with reserved word parameter names"
+
+input_schema:
+  type: object
+  required:
+    - from
+    - type
+  properties:
+    from:
+      type: string
+    type:
+      type: string
+      enum: ["json", "csv", "xml"]
+    import:
+      type: string
+    id:
+      type: integer
+    format:
+      type: string
+
+output_schema:
+  type: object
+  required:
+    - result
+  properties:
+    result:
+      type: string

@@ -21,5 +21,8 @@ pub(crate) async fn op_invoke_callback(
         borrowed.borrow::<CallbackRegistry>().clone()
     };
 
-    registry.invoke(&id, arguments).await
+    registry
+        .invoke(&id, arguments)
+        .await
+        .map_err(McpError::ExecutionError)
 }

@@ -1,9 +1,10 @@
 use std::{
     collections::{HashMap, HashSet},
+    sync::Arc,
     time::Duration,
 };
 
-use pctx_code_execution_runtime::CallbackRegistry;
+use pctx_code_execution_runtime::{CallbackFn, CallbackRegistry};
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
@@ -662,5 +663,106 @@ export default await run();
     ) -> Result<ExecuteOutput> {
         // Default to TypeScript execution for backward compatibility
         self.execute_typescript(code, callback_registry).await
+    }
+
+    // ── Python execution ──────────────────────────────────────────────────────
+
+    /// Returns the Python stub string and the name mappings for all callback-variant tools.
+    ///
+    /// The stubs are `.pyi`-style function signatures ready for
+    /// `pctx_python_runtime::ExecuteOptions::with_stubs()`. The mappings
+    /// let the caller remap a TypeScript-keyed `CallbackRegistry`
+    /// (keys `"namespace.toolName"`) to a Python-keyed one (keys = Python function names).
+    pub fn python_tool_mappings(
+        &self,
+    ) -> pctx_codegen::CodegenResult<(String, Vec<pctx_codegen::PythonToolMapping>)> {
+        pctx_codegen::python::generate_stubs_for_toolsets(&self.tool_sets)
+    }
+
+    /// Execute Python code in the monty sandbox with access to registered callback tools.
+    ///
+    /// Accepts the TypeScript-keyed `CallbackRegistry` (keys `"Namespace.toolName"`)
+    /// and internally remaps it to Python function names before handing it to the
+    /// Python runtime.  MCP-variant tools are silently skipped — they cannot be
+    /// called from the Python sandbox in this version.
+    #[instrument(skip(self, ts_registry), ret(Display), err)]
+    pub async fn execute_python(
+        &self,
+        code: &str,
+        ts_registry: Option<CallbackRegistry>,
+    ) -> Result<ExecuteOutput> {
+        let ts_registry = ts_registry.unwrap_or_default();
+        let (stubs, mappings) = self.python_tool_mappings()?;
+
+        // Remap callbacks to Python function names, wrapping each callback with a
+        // param-rename reversal so the underlying tool receives the original JSON
+        // Schema property names (e.g. `phoneNumber`) even though the Python stub
+        // and LLM-generated code use the sanitized names (e.g. `phone_number`).
+        let py_registry = CallbackRegistry::default();
+        for mapping in &mappings {
+            if let Some(callback) = ts_registry.get(&mapping.callback_id) {
+                let callback: CallbackFn = if mapping.param_renames.is_empty() {
+                    callback
+                } else {
+                    let renames = mapping.param_renames.clone();
+                    Arc::new(move |args: Option<serde_json::Value>| {
+                        let renames = renames.clone();
+                        let cb = callback.clone();
+                        Box::pin(
+                            async move { cb(args.map(|v| reverse_map_kwargs(v, &renames))).await },
+                        )
+                    })
+                };
+                py_registry
+                    .add(&mapping.py_name, callback)
+                    .map_err(Error::Message)?;
+            }
+        }
+
+        debug!(
+            code = %code,
+            callbacks = ?py_registry.ids(),
+            "Executing Python in sandbox"
+        );
+
+        let options = pctx_python_runtime::ExecuteOptions::new()
+            .with_callbacks(py_registry)
+            .with_stubs(stubs);
+
+        let result = pctx_python_runtime::execute(code, options)
+            .await
+            .map_err(|e| Error::Message(e.to_string()))?;
+
+        if result.success {
+            debug!("Python execution completed successfully");
+        } else {
+            warn!("Python execution failed: {:?}", result.stderr);
+        }
+
+        Ok(ExecuteOutput {
+            success: result.success,
+            stdout: result.stdout,
+            stderr: result.stderr,
+            output: result.output,
+        })
+    }
+}
+
+/// Reverse-map kwargs from Python-sanitized names back to original JSON Schema property names.
+///
+/// `renames` maps `python_name → original_schema_name` for any property that was
+/// transformed by `sanitize_python_param` (snake_case conversion, keyword suffix, etc.).
+/// Keys not present in `renames` are passed through unchanged.
+fn reverse_map_kwargs(
+    v: serde_json::Value,
+    renames: &HashMap<String, String>,
+) -> serde_json::Value {
+    match v {
+        serde_json::Value::Object(map) => serde_json::Value::Object(
+            map.into_iter()
+                .map(|(k, v)| (renames.get(&k).cloned().unwrap_or(k), v))
+                .collect(),
+        ),
+        other => other,
     }
 }
