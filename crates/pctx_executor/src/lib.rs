@@ -4,7 +4,7 @@ use deno_core::RuntimeOptions;
 use deno_core::anyhow;
 use deno_core::error::CoreError;
 use futures::lock::Mutex;
-use pctx_code_execution_runtime::CallbackRegistry;
+use pctx_registry::CallbackRegistry;
 pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error};
 use pctx_type_check_runtime::{init_v8_platform, type_check};
 use serde::{Deserialize, Serialize};
@@ -67,7 +67,7 @@ impl ExecuteOptions {
     #[must_use]
     pub fn with_callbacks(
         mut self,
-        registry: pctx_code_execution_runtime::CallbackRegistry,
+        registry: pctx_registry::CallbackRegistry,
     ) -> Self {
         self.callback_registry = registry;
         self

@@ -22,7 +22,7 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use pctx_code_execution_runtime::{CallbackFn, CallbackRegistry};
+use pctx_registry::{CallbackFn, CallbackRegistry};
 use pctx_code_mode::model::ExecuteInput;
 use rmcp::{
     ErrorData,

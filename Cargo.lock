@@ -4088,6 +4088,7 @@ dependencies = [
  "deno_core",
  "deno_error",
  "pctx_config",
+ "pctx_registry",
  "rmcp",
  "rustls",
  "serde",
@@ -4185,6 +4186,7 @@ dependencies = [
  "pctx_code_execution_runtime",
  "pctx_config",
  "pctx_deno_transpiler",
+ "pctx_registry",
  "pctx_type_check_runtime",
  "regex",
  "rustls",
@@ -4225,6 +4227,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "pctx_registry"
+version = "0.1.0"
+dependencies = [
+ "deno_error",
+ "pctx_config",
+ "rmcp",
+ "serde_json",
+ "thiserror 2.0.17",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "pctx_session_server"
 version = "0.1.0"
 dependencies = [
@@ -4236,10 +4251,10 @@ dependencies = [
  "futures",
  "http-body-util",
  "opentelemetry",
- "pctx_code_execution_runtime",
  "pctx_code_mode",
  "pctx_codegen",
  "pctx_config",
+ "pctx_registry",
  "rmcp",
  "serde",
  "serde_json",

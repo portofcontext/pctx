@@ -1,4 +1,4 @@
-use crate::error::McpError;
+use crate::error::RegistryError;
 use pctx_config::server::ServerConfig;
 use rmcp::model::{CallToolRequestParams, JsonObject, RawContent};
 use serde_json::json;
@@ -26,11 +26,11 @@ impl MCPRegistry {
     /// # Errors
     ///
     /// Panics if the internal lock is poisoned (i.e., a thread panicked while holding the lock)
-    pub fn add(&self, cfg: ServerConfig) -> Result<(), McpError> {
+    pub fn add(&self, cfg: ServerConfig) -> Result<(), RegistryError> {
         let mut configs = self.configs.write().unwrap();
 
         if configs.contains_key(&cfg.name) {
-            return Err(McpError::Config(format!(
+            return Err(RegistryError::Config(format!(
                 "MCP Server with name \"{}\" is already registered, you cannot register two MCP servers with the same name",
                 cfg.name
             )));
@@ -95,15 +95,15 @@ impl Default for MCPRegistry {
     ret(Display),
     err
 )]
-pub(crate) async fn call_mcp_tool(
+pub async fn call_mcp_tool(
     registry: &MCPRegistry,
     server_name: &str,
     tool_name: &str,
     args: Option<JsonObject>,
-) -> Result<serde_json::Value, McpError> {
+) -> Result<serde_json::Value, RegistryError> {
     // Get the server config from registry
     let mcp_cfg = registry.get(server_name).ok_or_else(|| {
-        McpError::ToolCall(format!(
+        RegistryError::ToolCall(format!(
             "MCP Server with name \"{server_name}\" does not exist"
         ))
     })?;
@@ -116,7 +116,7 @@ pub(crate) async fn call_mcp_tool(
                 error = %err,
                 "Could not connect to MCP: initialization failure"
             );
-            return Err(McpError::Connection(err.to_string()));
+            return Err(RegistryError::Connection(err.to_string()));
         }
     };
     let tool_result = client
@@ -128,7 +128,7 @@ pub(crate) async fn call_mcp_tool(
         })
         .await
         .map_err(|e| {
-            McpError::ToolCall(format!(
+            RegistryError::ToolCall(format!(
                 "Tool call \"{server_name}.{tool_name}\" failed: {e}"
             ))
         })?;
@@ -136,7 +136,7 @@ pub(crate) async fn call_mcp_tool(
 
     // Check if the tool call resulted in an error
     if tool_result.is_error.unwrap_or(false) {
-        return Err(McpError::ToolCall(format!(
+        return Err(RegistryError::ToolCall(format!(
             "Tool call \"{server_name}.{tool_name}\" failed"
         )));
     }
@@ -150,7 +150,7 @@ pub(crate) async fn call_mcp_tool(
         serde_json::from_str(&text_content.text)
             .or_else(|_| Ok(serde_json::Value::String(text_content.text.clone())))
             .map_err(|e: serde_json::Error| {
-                McpError::ToolCall(format!("Failed to parse content: {e}"))
+                RegistryError::ToolCall(format!("Failed to parse content: {e}"))
             })?
     } else {
         // Return the whole content array as JSON

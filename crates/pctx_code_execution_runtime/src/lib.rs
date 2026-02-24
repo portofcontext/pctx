@@ -58,15 +58,10 @@
 //! - **Operations**: Rust ops provide native performance
 
 mod callback_ops;
-mod callback_registry;
-mod error;
-mod js_error_impl;
 pub mod mcp_ops;
-mod mcp_registry;
 mod timer_ops;
 
-pub use callback_registry::{CallbackFn, CallbackRegistry};
-pub use mcp_registry::MCPRegistry;
+pub use pctx_registry::{CallbackFn, CallbackRegistry, MCPRegistry, RegistryError};
 
 /// Pre-compiled V8 snapshot containing the PCTX runtime
 ///

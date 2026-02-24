@@ -7,7 +7,7 @@ use std::{
 };
 use tracing::instrument;
 
-use crate::error::McpError;
+use crate::error::RegistryError;
 
 pub type CallbackFn = Arc<
     dyn Fn(
@@ -51,15 +51,15 @@ impl CallbackRegistry {
         &self,
         id: &str, // namespace.name
         callback: CallbackFn,
-    ) -> Result<(), McpError> {
+    ) -> Result<(), RegistryError> {
         let mut callbacks = self.callbacks.write().map_err(|e| {
-            McpError::Config(format!(
+            RegistryError::Config(format!(
                 "Failed obtaining write lock on callback registry: {e}"
             ))
         })?;
 
         if callbacks.contains_key(id) {
-            return Err(McpError::Config(format!(
+            return Err(RegistryError::Config(format!(
                 "Callback with id \"{id}\" is already registered"
             )));
         }
@@ -116,13 +116,13 @@ impl CallbackRegistry {
         &self,
         id: &str,
         args: Option<serde_json::Value>,
-    ) -> Result<serde_json::Value, McpError> {
+    ) -> Result<serde_json::Value, RegistryError> {
         let callback = self.get(id).ok_or_else(|| {
-            McpError::ToolCall(format!("Callback with id \"{id}\" does not exist"))
+            RegistryError::ToolCall(format!("Callback with id \"{id}\" does not exist"))
         })?;
 
         callback(args).await.map_err(|e| {
-            McpError::ExecutionError(format!("Failed calling callback with id \"{id}\": {e}",))
+            RegistryError::ExecutionError(format!("Failed calling callback with id \"{id}\": {e}",))
         })
     }
 }
