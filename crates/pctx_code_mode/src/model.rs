@@ -127,6 +127,15 @@ pub struct ExecuteInput {
     pub code: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub enum TypescriptMode {
+    #[default]
+    #[serde(rename = "namespaced")]
+    Namespaced,
+    #[serde(rename = "overloaded")]
+    Overloaded,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
 pub struct ExecuteOutput {
     /// Success of executed code

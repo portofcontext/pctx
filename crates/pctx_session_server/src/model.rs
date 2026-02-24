@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::ExecuteOutput;
+use pctx_code_mode::model::{ExecuteOutput, TypescriptMode};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -130,8 +130,9 @@ pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, Pctx
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "method")]
 pub enum PctxJsonRpcRequest {
-    #[serde(rename = "execute_code")]
-    ExecuteCode { params: ExecuteCodeParams },
+    #[serde(alias = "execute_code")]
+    #[serde(rename = "execute_typescript")]
+    ExecuteTypescript { params: ExecuteTypescriptParams },
     #[serde(rename = "execute_tool")]
     ExecuteTool { params: ExecuteToolParams },
 }
@@ -144,8 +145,10 @@ pub struct ExecuteToolParams {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecuteCodeParams {
+pub struct ExecuteTypescriptParams {
     pub code: String,
+    #[serde(default)]
+    pub mode: TypescriptMode,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

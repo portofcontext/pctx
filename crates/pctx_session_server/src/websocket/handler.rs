@@ -4,7 +4,7 @@ use crate::{
     PctxSessionBackend,
     extractors::CodeModeSession,
     model::{
-        ExecuteCodeParams, ExecuteToolParams, PctxJsonRpcRequest, PctxJsonRpcResponse,
+        ExecuteToolParams, ExecuteTypescriptParams, PctxJsonRpcRequest, PctxJsonRpcResponse,
         WsJsonRpcMessage,
     },
     state::ws_manager::WsSession,
@@ -165,24 +165,12 @@ async fn read_messages<B: PctxSessionBackend>(
     }
 }
 
-/// Common execution handler logic
-async fn handle_execution_inner<B: PctxSessionBackend>(
+/// Handle an `execute_code` (TypeScript) request from the client
+async fn handle_execute_code_request<B: PctxSessionBackend>(
     req_id: RequestId,
+    params: ExecuteTypescriptParams,
     ws_session: Uuid,
     state: AppState<B>,
-    input_code: String,
-    needs_callbacks: bool,
-    execute_fn: impl FnOnce(
-        pctx_code_mode::CodeMode,
-        Option<PctxRegistry>,
-    ) -> std::pin::Pin<
-        Box<
-            dyn std::future::Future<
-                    Output = Result<pctx_code_mode::model::ExecuteOutput, pctx_code_mode::Error>,
-                >,
-        >,
-    > + Send
-    + 'static,
 ) -> Result<(), String> {
     // Save the WebSocket session for later response
     let ws_session_lock = state
@@ -218,7 +206,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
     let execution_id = Uuid::new_v4();
 
     // Setup callbacks if needed
-    let callback_registry = if needs_callbacks {
+    let callback_registry = if !code_mode.callbacks().is_empty() {
         let registry = PctxRegistry::default();
         for callback_cfg in code_mode.callbacks() {
             let ws_session_lock_clone = ws_session_lock.clone();
@@ -274,6 +262,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
 
     tokio::spawn(async move {
         let code_mode_clone = code_mode.clone();
+        let code_to_exec = params.code.clone();
 
         let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
             let _guard = execution_span.enter();
@@ -282,8 +271,12 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
                 .build()
                 .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
-            rt.block_on(execute_fn(code_mode_clone, callback_registry))
-                .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
+            rt.block_on(code_mode_clone.execute_typescript(
+                &code_to_exec,
+                params.mode,
+                callback_registry,
+            ))
+            .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
         })
         .await;
 
@@ -325,7 +318,9 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
                 code_mode_session_id,
                 execution_id,
                 code_mode,
-                ExecuteInput { code: input_code },
+                ExecuteInput {
+                    code: params.code.clone(),
+                },
                 execution_res,
             )
             .await
@@ -338,31 +333,6 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
     });
 
     Ok(())
-}
-
-/// Handle an `execute_code` (TypeScript) request from the client
-async fn handle_execute_code_request<B: PctxSessionBackend>(
-    req_id: RequestId,
-    params: ExecuteCodeParams,
-    ws_session: Uuid,
-    state: AppState<B>,
-) -> Result<(), String> {
-    let code = params.code.clone();
-    handle_execution_inner(
-        req_id,
-        ws_session,
-        state,
-        code.clone(),
-        true, // needs callbacks
-        move |code_mode, callback_registry| {
-            Box::pin(async move {
-                code_mode
-                    .execute_typescript_simple(&code, callback_registry)
-                    .await
-            })
-        },
-    )
-    .await
 }
 
 /// Handle a single WebSocket message
@@ -381,7 +351,7 @@ async fn handle_message<B: PctxSessionBackend>(
 
             match jrpc_msg {
                 JsonRpcMessage::Request(req) => match req.request {
-                    PctxJsonRpcRequest::ExecuteCode { params } => {
+                    PctxJsonRpcRequest::ExecuteTypescript { params } => {
                         debug!("Executing TypeScript code...");
                         handle_execute_code_request(req.id, params, ws_session, state.clone()).await
                     }

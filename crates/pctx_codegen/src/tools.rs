@@ -37,8 +37,7 @@ impl ToolSet {
 
     /// Returns the pascal case of the registered namespace
     /// falling back on `Tools` if not present
-    /// TODO: rename!
-    pub fn namespace_new(&self) -> String {
+    pub fn pascal_namespace(&self) -> String {
         self.name
             .as_ref()
             .map(|n| Case::Pascal.sanitize(n))
@@ -77,7 +76,7 @@ namespace {namespace} {{
   {content}
 }}",
             docstring = ts_generate_docstring(&self.description),
-            namespace = self.namespace_new(),
+            namespace = self.pascal_namespace(),
         )
     }
 }
@@ -229,44 +228,18 @@ impl Tool {
             .as_ref()
             .map(|_| "arguments: input,".to_string())
             .unwrap_or_default();
-        match self.variant {
-            ToolVariant::Mcp => {
-                format!(
-                    "{fn_sig} {{
-  return await callMCPTool<{output}>({{
-    serverName: {name},
-    toolName: {tool},
-    {arguments}
-  }});
+
+        format!(
+            "{fn_sig} {{
+  return await invokeInternal({{ name: {name}, {arguments} }});
 }}",
-                    fn_sig = self.ts_fn_signature(true),
-                    name = json!(toolset_name),
-                    tool = json!(&self.name),
-                    output = &self.output_signature(),
-                )
-            }
-            ToolVariant::Callback => {
-                format!(
-                    "{fn_sig} {{
-  return await invokeCallback<{output}>({{
-     id: {id},
-     {arguments}
-  }});
-}}",
-                    fn_sig = self.ts_fn_signature(true),
-                    id = json!(format!(
-                        "{}.{}",
-                        toolset_name.unwrap_or_default(),
-                        &self.name
-                    )),
-                    output = &self.output_signature(),
-                )
-            }
-        }
+            fn_sig = self.ts_fn_signature(true),
+            name = json!(self.id(toolset_name))
+        )
     }
 
     // TODO:
-    pub fn invoke_tool_fn_override(&self, toolset_name: Option<&str>) -> String {
+    pub fn ts_invoke_tool_override(&self, toolset_name: Option<&str>) -> String {
         let args = match &self.input_type {
             Some(i) if i.all_optional => format!("arguments: {} = {{}}", &i.type_signature),
             Some(i) => format!("arguments: {}", &i.type_signature),

@@ -3,6 +3,7 @@ mod utils;
 use crate::utils::{callback_tools, connect_websocket, create_test_server_with_session};
 use pctx_code_mode::model::CallbackConfig;
 use pctx_session_server::{CODE_MODE_SESSION_HEADER, model::WsJsonRpcMessage};
+use rstest::rstest;
 use serde_json::json;
 use serial_test::serial;
 use similar_asserts::assert_serde_eq;
@@ -124,10 +125,10 @@ async fn test_exec_code_syntax_err() {
     assert_eq!(response["result"]["success"], false);
     let stderr = response["result"]["stderr"].as_str().unwrap();
 
-    // Should show line 15 where the error is (after bashFs prepend)
+    // Should show line 3 where the error is
     assert!(
-        stderr.contains("15:19"),
-        "Should show exact error location (line 15, col 19): {stderr}"
+        stderr.contains("3:19"),
+        "Should show exact error location (line 3, col 19): {stderr}"
     );
 
     // Should show the error message
@@ -137,9 +138,38 @@ async fn test_exec_code_syntax_err() {
     );
 }
 
-#[test_log::test(tokio::test)]
+const CODE_OVERLOADED_SYNTAX: &str = "
+    async function run() {
+        let value = await invoke({ name:\"test_math__add\", arguments: {a: 8, b: 2}});
+        console.log(`after add: ${value}`);
+        value = await invoke({ name:\"test_math__subtract\", arguments: {a: value, b: 5}});
+        console.log(`after subtract: ${value}`);
+        value = await invoke({ name:\"test_math__multiply\", arguments: {a: value, b: 10}});
+        console.log(`after multiply: ${value}`);
+        value = await invoke({ name:\"test_math__divide\", arguments: {a: value, b: 2}});
+        console.log(`after divide: ${value}`);
+        return value;
+    }";
+
+const CODE_NAMESPACED_SYNTAX: &str = "
+    async function run() {
+        let value = await TestMath.add({a: 8, b: 2});
+        console.log(`after add: ${value}`);
+        value = await TestMath.subtract({a: value, b: 5});
+        console.log(`after subtract: ${value}`);
+        value = await TestMath.multiply({a: value, b: 10});
+        console.log(`after multiply: ${value}`);
+        value = await TestMath.divide({a: value, b: 2});
+        console.log(`after divide: ${value}`);
+        return value;
+    }";
+
+#[rstest]
+#[case::overloaded(CODE_OVERLOADED_SYNTAX, "overloaded")]
+#[case::namespaced(CODE_NAMESPACED_SYNTAX, "namespaced")]
 #[serial]
-async fn test_exec_callbacks() {
+#[tokio::test]
+async fn test_exec_callbacks(#[case] code: &str, #[case] mode: &str) {
     let (session_id, server, _) = create_test_server_with_session().await;
 
     // register tools
@@ -159,31 +189,6 @@ async fn test_exec_callbacks() {
         .await
         .into_websocket()
         .await;
-    // let code = "
-    //     async function run() {
-    //         let value = await TestMath.add({a: 8, b: 2});
-    //         console.log(`after add: ${value}`);
-    //         value = await TestMath.subtract({a: value, b: 5});
-    //         console.log(`after subtract: ${value}`);
-    //         value = await TestMath.multiply({a: value, b: 10});
-    //         console.log(`after multiply: ${value}`);
-    //         value = await TestMath.divide({a: value, b: 2});
-    //         console.log(`after divide: ${value}`);
-    //         return value;
-    //     }";
-
-    let code = "
-        async function run() {
-            let value = await invoke({ name:\"test_math__add\", arguments: {a: 8, b: 2}});
-            console.log(`after add: ${value}`);
-            value = await invoke({ name:\"test_math__subtract\", arguments: {a: value, b: 5}});
-            console.log(`after subtract: ${value}`);
-            value = await invoke({ name:\"test_math__multiply\", arguments: {a: value, b: 10}});
-            console.log(`after multiply: ${value}`);
-            value = await invoke({ name:\"test_math__divide\", arguments: {a: value, b: 2}});
-            console.log(`after divide: ${value}`);
-            return value;
-        }";
 
     // Send execute_code request via WebSocket
     ws.send_json(&json!({
@@ -191,7 +196,8 @@ async fn test_exec_callbacks() {
         "id": "test-4",
         "method": "execute_code",
         "params": {
-            "code": code
+            "code": code,
+            "mode": mode
         }
     }))
     .await;
@@ -353,8 +359,8 @@ async fn test_exec_type_error_with_rich_diagnostics() {
         .await;
     register_res.assert_status_ok();
 
-    // LLM code with type error - this will have bashFs setup prepended (12 lines)
-    // The error is on line 3 of user code, reported as line 15 in transformed code
+    // LLM code with type error
+    // The error is on line 3 of user code
     let code = r#"
         async function run() {
             let value = await TestMath.add({a: "wrong", b: 2});  // Type error: 'a' should be number
@@ -384,14 +390,13 @@ async fn test_exec_type_error_with_rich_diagnostics() {
     assert_eq!(response["result"]["success"], false);
 
     // Verify the diagnostic points to the exact error location and has all the information
-    // Error is at line 15 (where "wrong" is passed), column 45 (the "wrong" string literal)
-    // Line 15 is after the 12-line bashFs prepend (user code line 3 + 12 = 15)
+    // Error is at line 3 (where "wrong" is passed), column 45 (the "wrong" string literal)
     let stderr = response["result"]["stderr"].as_str().unwrap();
 
     // Should show exact location: Line 15, Column 45
     assert!(
-        stderr.contains("Line 15"),
-        "Should show line 15 where error occurs: {stderr}"
+        stderr.contains("Line 3"),
+        "Should show line 3 where error occurs: {stderr}"
     );
     assert!(
         stderr.contains("Column 45"),

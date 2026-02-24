@@ -14,7 +14,7 @@ use crate::{
     Error, Result,
     model::{
         CallbackConfig, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
+        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction, TypescriptMode,
     },
 };
 
@@ -300,7 +300,7 @@ impl CodeMode {
             }
 
             // e.g. "## Tools"
-            readme.push_str(&format!("## {}\n", tool_set.namespace_new()));
+            readme.push_str(&format!("## {}\n", tool_set.pascal_namespace()));
 
             // One line per function: "Namespace/fn.d.ts  # description"
             // `cat` omitted since it's stated once in the header above.
@@ -319,17 +319,17 @@ impl CodeMode {
 
                     // Create file for this function under /sdk/
                     let tool_file_path =
-                        format!("/sdk/{}/{}.d.ts", tool_set.namespace_new(), tool.fn_name);
+                        format!("/sdk/{}/{}.d.ts", tool_set.pascal_namespace(), tool.fn_name);
                     let tool_code = tool.ts_fn_signature(true);
                     let formatted = pctx_codegen::format::format_d_ts(&tool_code);
                     files.insert(tool_file_path, formatted);
 
                     if desc.is_empty() {
-                        format!("{}/{}.d.ts", tool_set.namespace_new(), tool.fn_name)
+                        format!("{}/{}.d.ts", tool_set.pascal_namespace(), tool.fn_name)
                     } else {
                         format!(
                             "{}/{}.d.ts  # {}",
-                            tool_set.namespace_new(),
+                            tool_set.pascal_namespace(),
                             tool.fn_name,
                             desc
                         )
@@ -401,7 +401,7 @@ impl CodeMode {
             namespaces.push(tool_set.ts_namespace_declaration(false));
 
             functions.extend(tool_set.tools.iter().map(|t| ListedFunction {
-                namespace: tool_set.namespace_new(),
+                namespace: tool_set.pascal_namespace(),
                 name: t.fn_name.clone(),
                 description: t.description.clone(),
             }));
@@ -428,7 +428,7 @@ impl CodeMode {
         let mut functions = vec![];
 
         for tool_set in &self.tool_sets {
-            if let Some(fn_names) = by_mod.get(&tool_set.namespace_new()) {
+            if let Some(fn_names) = by_mod.get(&tool_set.pascal_namespace()) {
                 // filter tools based on requested fn names
                 let tools: Vec<&pctx_codegen::Tool> = tool_set
                     .tools
@@ -445,7 +445,7 @@ impl CodeMode {
                     // struct output
                     functions.extend(tools.iter().map(|t| FunctionDetails {
                         listed: ListedFunction {
-                            namespace: tool_set.namespace_new(),
+                            namespace: tool_set.pascal_namespace(),
                             name: t.fn_name.clone(),
                             description: t.description.clone(),
                         },
@@ -550,6 +550,7 @@ export default result;"#,
     pub async fn execute_typescript(
         &self,
         code: &str,
+        mode: TypescriptMode,
         registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
         let mut registry = registry.unwrap_or_default();
@@ -563,6 +564,7 @@ export default result;"#,
             formatted_code = %formatted_code,
             code_length = code.len(),
             callbacks =? registry.ids(),
+            mode =? mode,
             "Received TypeScript code to execute"
         );
 
@@ -585,112 +587,49 @@ export default result;"#,
             )));
         }
 
-        // generate the full script to be executed
-        let namespaces: Vec<String> = self
-            .tool_sets
-            .iter()
-            .filter_map(|s| {
-                if s.tools.is_empty() {
-                    None
-                } else {
-                    Some(s.ts_namespace_impl())
-                }
-            })
-            .collect();
-
-        // Initialize bashFs with tool definitions, then user code, then namespaces
-        let to_execute = format!(
-            r#"{code}
-
-{namespaces}
-
-export default await run();
-"#,
-            namespaces = namespaces.join("\n\n"),
-        );
-
-        debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
-
-        let execution_res = pctx_executor::execute(
-            &to_execute,
-            pctx_executor::ExecuteOptions::new().with_registry(registry),
-        )
-        .await?;
-
-        if execution_res.success {
-            debug!("TypeScript execution completed successfully");
-        } else {
-            warn!("TypeScript execution failed: {:?}", execution_res.stderr);
-        }
-
-        Ok(ExecuteOutput {
-            success: execution_res.success,
-            stdout: execution_res.stdout,
-            stderr: execution_res.stderr,
-            output: execution_res.output,
-        })
-    }
-
-    pub async fn execute_typescript_simple(
-        &self,
-        code: &str,
-        registry: Option<PctxRegistry>,
-    ) -> Result<ExecuteOutput> {
-        let mut registry = registry.unwrap_or_default();
-        self.add_mcp_servers_to_registry(&mut registry)?;
-
-        println!("REGISTRY: {:?}", registry.ids());
-
-        debug!(
-            code_from_llm = %code,
-            formatted_code = %pctx_codegen::format::format_ts(code),
-            code_length = code.len(),
-            callbacks =? registry.ids(),
-            "Received TypeScript code to execute"
-        );
-
-        // confirm all configured tool IDs the CodeMode interface have
-        // registered actions
-        let all_ids: Vec<String> = self.tool_sets.iter().flat_map(|ts| ts.tool_ids()).collect();
-        let missing_ids: Vec<String> = all_ids
-            .iter()
-            .filter_map(|c| {
-                if registry.has(c) {
-                    None
-                } else {
-                    Some(c.clone())
-                }
-            })
-            .collect();
-        if !missing_ids.is_empty() {
-            return Err(Error::Message(format!(
-                "Registry missing ids: {missing_ids:?}"
-            )));
-        }
-
-        // generate the full script to be executed
-        let fn_overrides: Vec<String> = self
-            .tool_sets
-            .iter()
-            .flat_map(|ts| {
-                ts.tools
+        let to_execute = match mode {
+            TypescriptMode::Namespaced => {
+                // generate the full script to be executed
+                let namespaces: Vec<String> = self
+                    .tool_sets
                     .iter()
-                    .map(|t| t.invoke_tool_fn_override(ts.name.as_deref()))
-            })
-            .collect();
-        let types: Vec<String> = self
-            .tool_sets
-            .iter()
-            .flat_map(|ts| {
-                ts.tools.iter().filter_map(|t| {
-                    let types = t.types();
-                    if types.is_empty() { None } else { Some(types) }
-                })
-            })
-            .collect();
+                    .filter_map(|s| {
+                        if s.tools.is_empty() {
+                            None
+                        } else {
+                            Some(s.ts_namespace_impl())
+                        }
+                    })
+                    .collect();
 
-        let invoke_interface = format!(
-            r#"
+                format!(
+                    "{code}\n\n{namespaces}\n\nexport default await run();",
+                    namespaces = pctx_codegen::format::format_ts(&namespaces.join("\n\n")),
+                )
+            }
+            TypescriptMode::Overloaded => {
+                let fn_overrides: Vec<String> = self
+                    .tool_sets
+                    .iter()
+                    .flat_map(|ts| {
+                        ts.tools
+                            .iter()
+                            .map(|t| t.ts_invoke_tool_override(ts.name.as_deref()))
+                    })
+                    .collect();
+                let types: Vec<String> = self
+                    .tool_sets
+                    .iter()
+                    .flat_map(|ts| {
+                        ts.tools.iter().filter_map(|t| {
+                            let types = t.types();
+                            if types.is_empty() { None } else { Some(types) }
+                        })
+                    })
+                    .collect();
+
+                let invoke_interface = format!(
+                    r#"
 {fn_overrides}
 async function invoke(call: any): Promise<any> {{
   return await invokeInternal(call);
@@ -698,15 +637,17 @@ async function invoke(call: any): Promise<any> {{
 
 {types}
 "#,
-            fn_overrides = fn_overrides.join("\n"),
-            types = types.join("\n\n")
-        );
-        let to_execute = format!(
-            "{code}\n\n{invoke_interface}\n\nexport default await run();",
-            invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
-        );
+                    fn_overrides = fn_overrides.join("\n"),
+                    types = types.join("\n\n")
+                );
+                format!(
+                    "{code}\n\n{invoke_interface}\n\nexport default await run();",
+                    invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
+                )
+            }
+        };
 
-        println!("{to_execute}");
+        debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
 
         let execution_res = pctx_executor::execute(
             &to_execute,
