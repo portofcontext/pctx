@@ -10,7 +10,7 @@ pub enum RegistryError {
     #[error("MCP connection error: {0}")]
     Connection(String),
     /// Tool call error (HTTP, parsing, etc.)
-    #[error("MCP tool call error: {0}")]
+    #[error("Tool call error: {0}")]
     ToolCall(String),
     /// Callback execution error
     #[error("Callback execution error: {0}")]
@@ -34,8 +34,7 @@ impl deno_error::JsErrorClass for RegistryError {
 
     fn get_additional_properties(
         &self,
-    ) -> Box<dyn Iterator<Item = (std::borrow::Cow<'static, str>, deno_error::PropertyValue)>>
-    {
+    ) -> Box<dyn Iterator<Item = (std::borrow::Cow<'static, str>, deno_error::PropertyValue)>> {
         Box::new(std::iter::empty())
     }
 

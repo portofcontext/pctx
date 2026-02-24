@@ -4184,7 +4184,6 @@ dependencies = [
  "futures",
  "node_resolver",
  "pctx_code_execution_runtime",
- "pctx_config",
  "pctx_deno_transpiler",
  "pctx_registry",
  "pctx_type_check_runtime",

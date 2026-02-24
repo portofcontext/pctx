@@ -3,7 +3,7 @@ use std::{
     time::Duration,
 };
 
-use pctx_code_execution_runtime::CallbackRegistry;
+use pctx_code_execution_runtime::PctxRegistry;
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
@@ -206,11 +206,11 @@ impl CodeMode {
         let idx = self
             .tool_sets
             .iter()
-            .position(|s| s.name == Some(callback.namespace.clone()))
+            .position(|s| s.name == callback.namespace)
             .unwrap_or_else(|| {
                 let idx = self.tool_sets.len();
                 self.tool_sets
-                    .push(ToolSet::new(Some(callback.namespace.clone()), "", vec![]));
+                    .push(ToolSet::new(callback.namespace.clone(), "", vec![]));
                 idx
             });
         let tool_set = &mut self.tool_sets[idx];
@@ -368,25 +368,21 @@ impl CodeMode {
         &self.virtual_fs
     }
 
-    pub fn allowed_hosts(&self) -> HashSet<String> {
-        self.servers
-            .iter()
-            .filter_map(|s| {
-                let http_cfg = s.http()?;
-                let host = http_cfg.url.host()?;
-                let allowed = if let Some(port) = http_cfg.url.port() {
-                    format!("{host}:{port}")
-                } else {
-                    let default_port = if http_cfg.url.scheme() == "https" {
-                        443
-                    } else {
-                        80
-                    };
-                    format!("{host}:{default_port}")
-                };
-                Some(allowed)
-            })
-            .collect()
+    // --------------- Utilities ---------------
+    pub fn add_mcp_servers_to_registry(&self, registry: &mut PctxRegistry) -> Result<()> {
+        for cfg in &self.servers {
+            // find the associated toolset
+            if let Some(ts) = self
+                .tool_sets
+                .iter()
+                .find(|ts| ts.name.as_ref() == Some(&cfg.name))
+            {
+                let tool_names: Vec<String> = ts.tools.iter().map(|t| t.name.clone()).collect();
+                registry.add_mcp(&tool_names, cfg.clone())?;
+            }
+        }
+
+        Ok(())
     }
 
     // --------------- Code-Mode Tools ---------------
@@ -475,10 +471,6 @@ impl CodeMode {
     pub async fn execute_bash(&self, command: &str) -> Result<ExecuteOutput> {
         debug!(command = %command, "Executing bash command");
 
-        // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json =
-            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
-
         // Wrap bash command in async IIFE and export the result
         // The result from bashFs.exec() contains: { stdout: string, stderr: string, exitCode: number }
         let to_execute = format!(
@@ -494,17 +486,14 @@ const result = await (async () => {{
 }})();
 
 export default result;"#,
-            virtual_fs_json = virtual_fs_json,
-            command = serde_json::to_string(command).unwrap_or_else(|_| "\"\"".to_string()),
+            virtual_fs_json = json!(self.virtual_fs),
+            command = json!(command),
         );
 
         debug!(to_execute = %to_execute, "Executing bash in sandbox");
 
-        let options = pctx_executor::ExecuteOptions::new()
-            .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
-            .with_servers(self.servers.clone());
-
-        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+        let execution_res =
+            pctx_executor::execute(&to_execute, pctx_executor::ExecuteOptions::new()).await?;
 
         // Extract stdout and stderr from the bash result object
         // The output field contains the result object: { stdout, stderr, exitCode }
@@ -557,13 +546,15 @@ export default result;"#,
     }
 
     /// Execute TypeScript code with access to registered tools and virtual filesystem
-    #[instrument(skip(self, callback_registry), ret(Display), err)]
+    #[instrument(skip(self, registry), ret(Display), err)]
     pub async fn execute_typescript(
         &self,
         code: &str,
-        callback_registry: Option<CallbackRegistry>,
+        registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
-        let registry = callback_registry.unwrap_or_default();
+        let mut registry = registry.unwrap_or_default();
+        self.add_mcp_servers_to_registry(&mut registry)?;
+
         // Format for logging only
         let formatted_code = pctx_codegen::format::format_ts(code);
 
@@ -575,22 +566,22 @@ export default result;"#,
             "Received TypeScript code to execute"
         );
 
-        // confirm all configured callbacks in the CodeMode interface have
-        // registered callback functions
-        let missing_ids: Vec<String> = self
-            .callbacks
+        // confirm all configured tool IDs the CodeMode interface have
+        // registered actions
+        let all_ids: Vec<String> = self.tool_sets.iter().flat_map(|ts| ts.tool_ids()).collect();
+        let missing_ids: Vec<String> = all_ids
             .iter()
             .filter_map(|c| {
-                if registry.has(&c.id()) {
+                if registry.has(c) {
                     None
                 } else {
-                    Some(c.id())
+                    Some(c.clone())
                 }
             })
             .collect();
         if !missing_ids.is_empty() {
             return Err(Error::Message(format!(
-                "Missing configured callbacks in registry with ids: {missing_ids:?}"
+                "Registry missing ids: {missing_ids:?}"
             )));
         }
 
@@ -607,42 +598,24 @@ export default result;"#,
             })
             .collect();
 
-        // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json =
-            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
-
         // Initialize bashFs with tool definitions, then user code, then namespaces
         let to_execute = format!(
-            r#"// TypeScript declaration for bashFs
-declare global {{
-    var bashFs: InstanceType<typeof justBash>;
-}}
-
-// Initialize bash filesystem with tool definitions
-const bashFs = new justBash({{
-    files: {virtual_fs_json},
-    cwd: "/sdk",
-}});
-globalThis.bashFs = bashFs;
-d
-{code}
+            r#"{code}
 
 {namespaces}
 
 export default await run();
 "#,
-            virtual_fs_json = virtual_fs_json,
             namespaces = namespaces.join("\n\n"),
         );
 
         debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
 
-        let options = pctx_executor::ExecuteOptions::new()
-            .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
-            .with_servers(self.servers.clone())
-            .with_callbacks(registry);
-
-        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+        let execution_res = pctx_executor::execute(
+            &to_execute,
+            pctx_executor::ExecuteOptions::new().with_registry(registry),
+        )
+        .await?;
 
         if execution_res.success {
             debug!("TypeScript execution completed successfully");
@@ -661,36 +634,37 @@ export default await run();
     pub async fn execute_typescript_simple(
         &self,
         code: &str,
-        callback_registry: Option<CallbackRegistry>,
+        registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
-        let registry = callback_registry.unwrap_or_default();
-        // Format for logging only
-        let formatted_code = pctx_codegen::format::format_ts(code);
+        let mut registry = registry.unwrap_or_default();
+        self.add_mcp_servers_to_registry(&mut registry)?;
+
+        println!("REGISTRY: {:?}", registry.ids());
 
         debug!(
             code_from_llm = %code,
-            formatted_code = %formatted_code,
+            formatted_code = %pctx_codegen::format::format_ts(code),
             code_length = code.len(),
             callbacks =? registry.ids(),
             "Received TypeScript code to execute"
         );
 
-        // confirm all configured callbacks in the CodeMode interface have
-        // registered callback functions
-        let missing_names: Vec<String> = self
-            .callbacks
+        // confirm all configured tool IDs the CodeMode interface have
+        // registered actions
+        let all_ids: Vec<String> = self.tool_sets.iter().flat_map(|ts| ts.tool_ids()).collect();
+        let missing_ids: Vec<String> = all_ids
             .iter()
             .filter_map(|c| {
-                if registry.has(&c.name) {
+                if registry.has(c) {
                     None
                 } else {
-                    Some(c.id())
+                    Some(c.clone())
                 }
             })
             .collect();
-        if !missing_names.is_empty() {
+        if !missing_ids.is_empty() {
             return Err(Error::Message(format!(
-                "Missing configured callbacks in registry with ids: {missing_names:?}"
+                "Registry missing ids: {missing_ids:?}"
             )));
         }
 
@@ -698,7 +672,11 @@ export default await run();
         let fn_overrides: Vec<String> = self
             .tool_sets
             .iter()
-            .flat_map(|ts| ts.tools.iter().map(|t| t.invoke_tool_fn_override()))
+            .flat_map(|ts| {
+                ts.tools
+                    .iter()
+                    .map(|t| t.invoke_tool_fn_override(ts.name.as_deref()))
+            })
             .collect();
         let types: Vec<String> = self
             .tool_sets
@@ -715,7 +693,7 @@ export default await run();
             r#"
 {fn_overrides}
 async function invoke(call: any): Promise<any> {{
-  return await invokeToolInternal(call);
+  return await invokeInternal(call);
 }}
 
 {types}
@@ -728,11 +706,13 @@ async function invoke(call: any): Promise<any> {{
             invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
         );
 
-        let options = pctx_executor::ExecuteOptions::new()
-            .with_servers(self.servers.clone())
-            .with_callbacks(registry);
+        println!("{to_execute}");
 
-        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+        let execution_res = pctx_executor::execute(
+            &to_execute,
+            pctx_executor::ExecuteOptions::new().with_registry(registry),
+        )
+        .await?;
 
         if execution_res.success {
             debug!("TypeScript execution completed successfully");
@@ -746,17 +726,5 @@ async function invoke(call: any): Promise<any> {{
             stderr: execution_res.stderr,
             output: execution_res.output,
         })
-    }
-
-    /// Main execute function that routes to bash or typescript execution
-    /// Defaults to TypeScript for backward compatibility
-    #[instrument(skip(self, callback_registry), ret(Display), err)]
-    pub async fn execute(
-        &self,
-        code: &str,
-        callback_registry: Option<CallbackRegistry>,
-    ) -> Result<ExecuteOutput> {
-        // Default to TypeScript execution for backward compatibility
-        self.execute_typescript(code, callback_registry).await
     }
 }

@@ -72,52 +72,21 @@ console.debug = (...args) => {
 };
 
 // ============================================================================
-// MCP & Callback Operations
+// Registry Operation
 // ============================================================================
 
 /**
- * Call an MCP tool
+ * Invoke a registered action
  * @template T
- * @param {Object} call - Tool call configuration
- * @param {string} call.serverName - Name of the registered MCP server
- * @param {string} call.toolName - Name of the registered tool to call
- * @param {Object?} [call.arguments] - Arguments to pass to the tool
- * @returns {Promise<T>} The tool's response
+ * @param {Object} call - Action invocation configuration
+ * @param {string} call.name - ID of the action
+ * @param {Object?} [call.arguments] - Arguments to pass to the action
+ * @returns {Promise<T>} The actions's response
  */
-export async function callMCPTool(call) {
-  return await ops.op_call_mcp_tool(
-    call.serverName,
-    call.toolName,
-    call.arguments,
-  );
-}
-
-/**
- * Call an MCP tool
- * @template T
- * @param {Object} call - Tool call configuration
- * @param {string} call.id - ID of the callback
- * @param {Object?} [call.arguments] - Arguments to pass to the callback
- * @returns {Promise<T>} The tool's response
- */
-export async function invokeCallback(call) {
-  return await ops.op_invoke_callback(call.id, call.arguments);
-}
-
-/**
- * Generic make tool call function
- * @template T
- * @param {Object} call - Tool call configuration
- * @param {string} call.name - Name of the tool
- * @param {Object?} [call.arguments] - Arguments to pass to the tool
- * @returns {Promise<T>} The tool's response
- */
-export async function invokeToolInternal(call) {
-  return await ops.op_invoke_callback(call.name, call.arguments);
+export async function invokeInternal(call) {
+  return await ops.op_invoke(call.name, call.arguments);
 }
 
 // Make APIs available globally for convenience (matching original behavior)
-globalThis.callMCPTool = callMCPTool;
-globalThis.invokeCallback = invokeCallback;
-globalThis.invokeToolInternal = invokeToolInternal;
+globalThis.invokeInternal = invokeInternal;
 globalThis.justBash = Bash; // lowercase to avoid any clashes with namespaces

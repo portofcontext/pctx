@@ -105,7 +105,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "add".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Add two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -123,7 +123,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "subtract".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Subtract two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -141,7 +141,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "multiply".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Multiply two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -159,7 +159,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "divide".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Divide two numbers & return result".into()),
                 input_schema: Some(json!({
                     "type": "object",

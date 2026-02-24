@@ -4,7 +4,7 @@ use deno_core::RuntimeOptions;
 use deno_core::anyhow;
 use deno_core::error::CoreError;
 use futures::lock::Mutex;
-use pctx_registry::CallbackRegistry;
+use pctx_registry::PctxRegistry;
 pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error};
 use pctx_type_check_runtime::{init_v8_platform, type_check};
 use serde::{Deserialize, Serialize};
@@ -28,17 +28,13 @@ pub type Result<T> = std::result::Result<T, DenoExecutorError>;
 
 #[derive(Clone, Default)]
 pub struct ExecuteOptions {
-    pub allowed_hosts: Option<Vec<String>>,
-    pub servers: Vec<pctx_config::server::ServerConfig>,
-    pub callback_registry: CallbackRegistry,
+    pub registry: PctxRegistry,
 }
 
 impl std::fmt::Debug for ExecuteOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ExecuteOptions")
-            .field("allowed_hosts", &self.allowed_hosts)
-            .field("servers", &self.servers)
-            .field("callback_registry", &self.callback_registry.ids())
+            .field("registry", &self.registry.ids())
             .finish()
     }
 }
@@ -48,28 +44,12 @@ impl ExecuteOptions {
         Self::default()
     }
 
-    #[must_use]
-    pub fn with_allowed_hosts(mut self, hosts: Vec<String>) -> Self {
-        self.allowed_hosts = Some(hosts);
-        self
-    }
-
-    #[must_use]
-    pub fn with_servers(mut self, servers: Vec<pctx_config::server::ServerConfig>) -> Self {
-        self.servers = servers;
-        self
-    }
-
-    /// Set the unified local callable registry
+    /// Set the unified local registry
     ///
-    /// This registry contains all local tool callbacks regardless of their source language.
-    /// Python, Node.js, and Rust callbacks are all wrapped as Rust closures and stored here.
+    /// This registry contains all local tool callbacks, and mcp server actions
     #[must_use]
-    pub fn with_callbacks(
-        mut self,
-        registry: pctx_registry::CallbackRegistry,
-    ) -> Self {
-        self.callback_registry = registry;
+    pub fn with_registry(mut self, registry: PctxRegistry) -> Self {
+        self.registry = registry;
         self
     }
 }
@@ -109,29 +89,28 @@ pub enum DenoExecutorError {
 /// Execute TypeScript code with type checking and runtime execution
 ///
 /// This function combines type checking and execution:
-/// 1. First runs TypeScript type checking via `check()`
-/// 2. If type checking passes, executes code with Deno runtime
+/// 1. First runs TypeScript type checking via `run_type_check()`
+/// 2. If type checking passes, executes transpiled code with Deno runtime
 /// 3. Returns unified result with diagnostics and runtime output
 ///
 /// # Arguments
 /// * `code` - The TypeScript code to check and execute
-/// * `options` - Execution options (allowed hosts, MCP configs, local tools)
+/// * `options` - Execution options (registry with local tools and MCP server actions)
 ///
 /// # Returns
-/// * `Ok(ExecuteResult)` - Contains type diagnostics, runtime errors, and output
+/// * `Ok(ExecuteResult)` - Contains type diagnostics, runtime errors, stdout/stderr, and default export value
 ///
 /// # Errors
-/// * Returns error only if internal tooling fails (not for type errors or runtime errors)
+/// * Returns `Err` only if internal tooling fails (e.g. type check infrastructure); type errors
+///   and runtime errors are captured in the returned `ExecuteResult`
 ///
 /// # Example
 /// ```rust,no_run
 /// use pctx_executor::{execute, ExecuteOptions};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// let options = ExecuteOptions::new()
-///     .with_allowed_hosts(vec!["api.example.com".to_string()]);
-///
-/// let result = execute("const x = 1 + 1; export default x;", options).await?;
+/// let result = execute("const x = 1 + 1; export default x;", ExecuteOptions::new()).await?;
+/// assert_eq!(result.output, Some(serde_json::json!(2)));
 /// # Ok(())
 /// # }
 /// ```
@@ -316,29 +295,9 @@ async fn execute_code(
         }
     };
 
-    // Create MCP registry and populate it with provided configs
-    let mcp_registry = pctx_code_execution_runtime::MCPRegistry::new();
-
-    for config in options.servers {
-        if let Err(e) = mcp_registry.add(config) {
-            warn!(runtime = "execution", error = %e, "Failed to register MCP server");
-            return Ok(InternalExecuteResult {
-                success: false,
-                output: None,
-                error: Some(ExecutionError {
-                    message: format!("MCP registration failed: {e}"),
-                    stack: None,
-                }),
-                stdout: String::new(),
-                stderr: String::new(),
-            });
-        }
-    }
-
     // Build extensions list
     let extensions = vec![pctx_code_execution_runtime::pctx_runtime_snapshot::init(
-        mcp_registry,
-        options.callback_registry,
+        options.registry,
     )];
 
     // Create JsRuntime from `pctx_runtime` snapshot and extension

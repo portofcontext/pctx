@@ -28,6 +28,13 @@ impl ToolSet {
         }
     }
 
+    pub fn tool_ids(&self) -> Vec<String> {
+        self.tools
+            .iter()
+            .map(|t| t.id(self.name.as_deref()))
+            .collect()
+    }
+
     /// Returns the pascal case of the registered namespace
     /// falling back on `Tools` if not present
     /// TODO: rename!
@@ -145,6 +152,14 @@ impl Tool {
         })
     }
 
+    pub fn id(&self, toolset_name: Option<&str>) -> String {
+        format!(
+            "{}{}",
+            toolset_name.map(|n| format!("{n}__")).unwrap_or_default(),
+            &self.name
+        )
+    }
+
     pub fn input_signature(&self) -> Option<String> {
         // No input schema -> no params for the generated function
         self.input_type.as_ref().map(|i| i.type_signature.clone())
@@ -251,7 +266,7 @@ impl Tool {
     }
 
     // TODO:
-    pub fn invoke_tool_fn_override(&self) -> String {
+    pub fn invoke_tool_fn_override(&self, toolset_name: Option<&str>) -> String {
         let args = match &self.input_type {
             Some(i) if i.all_optional => format!("arguments: {} = {{}}", &i.type_signature),
             Some(i) => format!("arguments: {}", &i.type_signature),
@@ -260,7 +275,7 @@ impl Tool {
 
         format!(
             "async function invoke(call: {{name: {name}, {args} }}): Promise<{output_sig}>;",
-            name = json!(&self.name),
+            name = json!(&self.id(toolset_name)),
             output_sig = self.output_signature()
         )
     }

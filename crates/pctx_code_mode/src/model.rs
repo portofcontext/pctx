@@ -174,13 +174,20 @@ impl Display for ExecuteOutput {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct CallbackConfig {
     pub name: String,
-    pub namespace: String,
+    pub namespace: Option<String>,
     pub description: Option<String>,
     pub input_schema: Option<serde_json::Value>,
     pub output_schema: Option<serde_json::Value>,
 }
 impl CallbackConfig {
     pub fn id(&self) -> String {
-        format!("{}.{}", &self.namespace, &self.name)
+        format!(
+            "{}{}",
+            self.namespace
+                .as_ref()
+                .map(|n| format!("{n}__"))
+                .unwrap_or_default(),
+            &self.name
+        )
     }
 }

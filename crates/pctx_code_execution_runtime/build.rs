@@ -16,25 +16,14 @@ use deno_core::snapshot::create_snapshot;
 
 use rmcp::model::JsonObject;
 
-/// Call an MCP tool (async stub)
+/// invoke a registered action
 #[deno_core::op2(async)]
 #[serde]
 #[allow(clippy::unused_async)]
-async fn op_call_mcp_tool(
+async fn op_invoke(
     #[string] _server_name: String,
     #[string] _tool_name: String,
     #[serde] _args: Option<JsonObject>,
-) -> serde_json::Value {
-    serde_json::Value::Null
-}
-
-/// Invoke callback (stub)
-#[deno_core::op2(async)]
-#[serde]
-#[allow(clippy::unused_async)]
-async fn op_invoke_callback(
-    #[string] _id: String,
-    #[serde] _arguments: Option<serde_json::Value>,
 ) -> serde_json::Value {
     serde_json::Value::Null
 }
@@ -50,8 +39,7 @@ extension!(
     pctx_runtime_snapshot,
     ops = [
         // Op declarations - these will be registered but not executed during snapshot
-        op_call_mcp_tool,
-        op_invoke_callback,
+        op_invoke,
         op_sleep,
     ],
     esm_entry_point = "ext:pctx_runtime_snapshot/runtime.js",

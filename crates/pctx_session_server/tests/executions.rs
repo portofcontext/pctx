@@ -174,13 +174,13 @@ async fn test_exec_callbacks() {
 
     let code = "
         async function run() {
-            let value = await invoke({ name:\"test_math.add\", arguments: {a: 8, b: 2}});
+            let value = await invoke({ name:\"test_math__add\", arguments: {a: 8, b: 2}});
             console.log(`after add: ${value}`);
-            value = await invoke({ name:\"test_math.subtract\", arguments: {a: value, b: 5}});
+            value = await invoke({ name:\"test_math__subtract\", arguments: {a: value, b: 5}});
             console.log(`after subtract: ${value}`);
-            value = await invoke({ name:\"test_math.multiply\", arguments: {a: value, b: 10}});
+            value = await invoke({ name:\"test_math__multiply\", arguments: {a: value, b: 10}});
             console.log(`after multiply: ${value}`);
-            value = await invoke({ name:\"test_math.divide\", arguments: {a: value, b: 2}});
+            value = await invoke({ name:\"test_math__divide\", arguments: {a: value, b: 2}});
             console.log(`after divide: ${value}`);
             return value;
         }";

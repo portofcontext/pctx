@@ -166,7 +166,7 @@ pub use pctx_codegen as codegen;
 pub use pctx_config as config;
 
 // Re-export commonly used types for backwards compatibility
-pub use pctx_code_execution_runtime::{CallbackFn, CallbackRegistry};
+pub use pctx_code_execution_runtime::{CallbackFn, PctxRegistry, RegistryError};
 pub use pctx_codegen::{RootSchema, Tool, ToolSet, case};
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -178,6 +178,8 @@ pub enum Error {
     McpService(#[from] pctx_config::server::ServiceError),
     #[error("Codegen error: {0}")]
     Codegen(#[from] pctx_codegen::CodegenError),
+    #[error("Registry error: {0}")]
+    Registry(#[from] RegistryError),
     #[error("Execution error: {0:?}")]
     Execution(#[from] pctx_executor::DenoExecutorError),
     #[error("Error: {0}")]

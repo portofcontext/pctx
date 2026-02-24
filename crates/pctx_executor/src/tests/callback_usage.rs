@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use pctx_code_execution_runtime::CallbackRegistry;
+use pctx_code_execution_runtime::PctxRegistry;
 use serde::Deserialize;
 use serde_json::json;
 
@@ -10,10 +10,10 @@ use crate::{ExecuteOptions, execute};
 #[serial]
 #[tokio::test]
 async fn test_execute_with_callbacks() {
-    let registry = CallbackRegistry::default();
+    let registry = PctxRegistry::default();
     registry
-        .add(
-            "MyMath.add",
+        .add_callback(
+            "my_math.add",
             Arc::new(move |args: Option<serde_json::Value>| {
                 Box::pin(async move {
                     #[derive(Deserialize)]
@@ -35,7 +35,7 @@ async fn test_execute_with_callbacks() {
     let code = r#"
 async function test() {
     try {
-        const val = await invokeCallback({ id: "MyMath.add", arguments: { a: 12, b: 4 } });
+        const val = await invokeInternal({ name: "my_math.add", arguments: { a: 12, b: 4 } });
         return { error: false, value: val };
     } catch (e) {
         return { error: true, message: e instanceof Error ? e.message : String(e) };
@@ -45,7 +45,7 @@ async function test() {
 export default await test();
 "#;
 
-    let result = execute(code, ExecuteOptions::new().with_callbacks(registry))
+    let result = execute(code, ExecuteOptions::new().with_registry(registry))
         .await
         .expect("execution should succeed");
 
@@ -64,10 +64,10 @@ export default await test();
 #[serial]
 #[tokio::test]
 async fn test_execute_with_async_callbacks() {
-    let registry = CallbackRegistry::default();
+    let registry = PctxRegistry::default();
     registry
-        .add(
-            "MyAsync.wait",
+        .add_callback(
+            "my_async__wait",
             Arc::new(move |args: Option<serde_json::Value>| {
                 Box::pin(async move {
                     #[derive(Deserialize)]
@@ -89,7 +89,7 @@ async fn test_execute_with_async_callbacks() {
     let code = r#"
 async function test() {
     try {
-        const val = await invokeCallback({ id: "MyAsync.wait", arguments: { ms: 50 } });
+        const val = await invokeInternal({ name: "my_async__wait", arguments: { ms: 50 } });
         return { error: false, value: val };
     } catch (e) {
         return { error: true, message: e instanceof Error ? e.message : String(e) };
@@ -99,7 +99,7 @@ async function test() {
 export default await test();
 "#;
 
-    let result = execute(code, ExecuteOptions::new().with_callbacks(registry))
+    let result = execute(code, ExecuteOptions::new().with_registry(registry))
         .await
         .expect("execution should succeed");
 

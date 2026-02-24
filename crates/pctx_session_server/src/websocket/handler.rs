@@ -22,8 +22,8 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use pctx_registry::{CallbackFn, CallbackRegistry};
 use pctx_code_mode::model::ExecuteInput;
+use pctx_registry::{CallbackFn, PctxRegistry};
 use rmcp::{
     ErrorData,
     model::{ErrorCode, JsonRpcMessage, RequestId},
@@ -174,7 +174,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
     needs_callbacks: bool,
     execute_fn: impl FnOnce(
         pctx_code_mode::CodeMode,
-        Option<CallbackRegistry>,
+        Option<PctxRegistry>,
     ) -> std::pin::Pin<
         Box<
             dyn std::future::Future<
@@ -219,7 +219,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
 
     // Setup callbacks if needed
     let callback_registry = if needs_callbacks {
-        let registry = CallbackRegistry::default();
+        let registry = PctxRegistry::default();
         for callback_cfg in code_mode.callbacks() {
             let ws_session_lock_clone = ws_session_lock.clone();
             let cfg = callback_cfg.clone();
@@ -244,7 +244,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
                 })
             });
 
-            if let Err(add_err) = registry.add(&callback_cfg.name, callback) {
+            if let Err(add_err) = registry.add_callback(&callback_cfg.id(), callback) {
                 let err_res = WsJsonRpcMessage::error(
                     ErrorData {
                         code: ErrorCode::INTERNAL_ERROR,

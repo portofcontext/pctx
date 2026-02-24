@@ -138,7 +138,7 @@ pub enum PctxJsonRpcRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteToolParams {
-    pub namespace: String,
+    pub namespace: Option<String>,
     pub name: String,
     pub args: Option<serde_json::Value>,
 }

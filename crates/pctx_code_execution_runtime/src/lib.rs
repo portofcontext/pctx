@@ -3,65 +3,42 @@
 
 //! # PCTX Runtime
 //!
-//! A Deno extension providing MCP (Model Context Protocol) client functionality and console output capturing.
+//! A Deno extension providing registry-backed tool invocation and console output capturing.
 //!
 //! ## Overview
 //!
 //! This crate provides a pre-compiled V8 snapshot containing:
-//! - **MCP Client API**: Register and call MCP tools from JavaScript
-//! - **Network Fetch**: Host-permission-based fetch with security controls
+//! - **Registry Invocation**: Call any registered action (local callbacks, MCP tools, etc.) from JavaScript
 //! - **Console Capturing**: Automatic stdout/stderr capture for testing and logging
+//! - **Bash Execution**: `justBash` global for running shell commands via `just-bash`
+//! - **Timers**: `setTimeout`/`setInterval` support
 //!
-//! The runtime is designed to be embedded in Deno-based JavaScript execution environments,
-//! providing a secure sandbox with controlled access to external services.
+//! The extension is initialized with a `PctxRegistry` that routes `invokeInternal` calls
+//! to the appropriate handler at runtime.
 //!
-//! ## Features
+//! ## JavaScript API
 //!
-//! - **MCP Integration**: Full Model Context Protocol client with server registry
-//! - **Permission System**: Host-based network access controls for fetch operations
-//! - **Output Capturing**: Automatic console.log/error capture to buffers
-//! - **V8 Snapshot**: Pre-compiled runtime for instant startup
-//! - **Type Safety**: Full TypeScript type definitions included
+//! The runtime exposes the following globals:
 //!
-//!
-//! ## MCP API
-//!
-//! The runtime exposes the following global functions to JavaScript:
-//!
-//! - `registerMCP(config)` - Register an MCP server
-//! - `callMCPTool(call)` - Call a tool on a registered server
-//! - `REGISTRY.has(name)` - Check if a server is registered
-//! - `REGISTRY.get(name)` - Get server configuration
-//! - `REGISTRY.delete(name)` - Remove a server
-//! - `REGISTRY.clear()` - Remove all servers
-//! - `fetch(url, options)` - Fetch with host permission checks
+//! - `invokeInternal({ name, arguments })` - Invoke a registered action by ID
+//! - `justBash` - Shell execution via the `just-bash` library
 //!
 //! ## Console Capturing
 //!
-//! All `console.log()` and `console.error()` calls are automatically captured:
+//! All console methods are overridden and captured to arrays:
 //!
 //! ```javascript
-//! console.log("Hello", "World");  // Captured to globalThis.__stdout
-//! console.error("Error!");        // Captured to globalThis.__stderr
+//! console.log("hello");   // -> globalThis.__stdout
+//! console.error("oops");  // -> globalThis.__stderr
+//! console.warn("warn");   // -> globalThis.__stderr
+//! console.info("info");   // -> globalThis.__stdout
+//! console.debug("dbg");   // -> globalThis.__stdout
 //! ```
-//!
-//! ## Security
-//!
-//! - Network access is controlled via `AllowedHosts` whitelist
-//! - Each runtime instance has its own isolated MCP registry
-//! - No file system access is provided by default
-//!
-//! ## Performance
-//!
-//! - **Startup**: Instant (V8 snapshot pre-compiled)
-//! - **Memory**: ~2MB base runtime overhead
-//! - **Operations**: Rust ops provide native performance
 
-mod callback_ops;
-pub mod mcp_ops;
+mod invoke_ops;
 mod timer_ops;
 
-pub use pctx_registry::{CallbackFn, CallbackRegistry, MCPRegistry, RegistryError};
+pub use pctx_registry::{CallbackFn, PctxRegistry, RegistryError};
 
 /// Pre-compiled V8 snapshot containing the PCTX runtime
 ///
@@ -82,8 +59,7 @@ pub static RUNTIME_SNAPSHOT: &[u8] =
 deno_core::extension!(
     pctx_runtime_snapshot,
     ops = [
-        mcp_ops::op_call_mcp_tool,
-        callback_ops::op_invoke_callback,
+        invoke_ops::op_invoke,
         timer_ops::op_sleep,
     ],
     esm_entry_point = "ext:pctx_runtime_snapshot/runtime.js",
@@ -95,11 +71,9 @@ deno_core::extension!(
         "just-bash/node_zlib_stub.js",
     ],
     options = {
-        registry: MCPRegistry,
-        callback_registry: CallbackRegistry,
+        registry: PctxRegistry,
     },
     state = |state, options| {
         state.put(options.registry);
-        state.put(options.callback_registry);
     },
 );
