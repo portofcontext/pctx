@@ -671,20 +671,20 @@ export default await run();
 
         // confirm all configured callbacks in the CodeMode interface have
         // registered callback functions
-        let missing_ids: Vec<String> = self
+        let missing_names: Vec<String> = self
             .callbacks
             .iter()
             .filter_map(|c| {
-                if registry.has(&c.id()) {
+                if registry.has(&c.name) {
                     None
                 } else {
                     Some(c.id())
                 }
             })
             .collect();
-        if !missing_ids.is_empty() {
+        if !missing_names.is_empty() {
             return Err(Error::Message(format!(
-                "Missing configured callbacks in registry with ids: {missing_ids:?}"
+                "Missing configured callbacks in registry with ids: {missing_names:?}"
             )));
         }
 
@@ -692,7 +692,7 @@ export default await run();
         let fn_overrides: Vec<String> = self
             .tool_sets
             .iter()
-            .flat_map(|ts| ts.tools.iter().map(|t| t.invoke_tool_fn_override(&ts.name)))
+            .flat_map(|ts| ts.tools.iter().map(|t| t.invoke_tool_fn_override()))
             .collect();
         let types: Vec<String> = self
             .tool_sets
@@ -721,8 +721,6 @@ async function invoke(call: any): Promise<any> {{
             "{code}\n\n{invoke_interface}\n\nexport default await run();",
             invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
         );
-
-        println!("{to_execute}");
 
         let options = pctx_executor::ExecuteOptions::new()
             .with_servers(self.servers.clone())

@@ -244,7 +244,7 @@ async fn handle_execution_inner<B: PctxSessionBackend>(
                 })
             });
 
-            if let Err(add_err) = registry.add(&callback_cfg.id(), callback) {
+            if let Err(add_err) = registry.add(&callback_cfg.name, callback) {
                 let err_res = WsJsonRpcMessage::error(
                     ErrorData {
                         code: ErrorCode::INTERNAL_ERROR,
