@@ -267,7 +267,7 @@ impl PctxMcpServer {
             let tool_record = |s: &pctx_codegen::ToolSet| {
                 format!(
                     "{} - {} tool{}",
-                    fmt_cyan(&s.name),
+                    fmt_cyan(s.name.as_deref().unwrap_or_default()),
                     s.tools.len(),
                     if s.tools.len() > 1 { "s" } else { "" }
                 )

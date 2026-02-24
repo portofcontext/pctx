@@ -177,7 +177,7 @@ impl ServerHandler for PctxMcpService {
             self.code_mode
                 .tool_sets()
                 .iter()
-                .map(|s| s.name.clone())
+                .map(|s| s.namespace_new())
                 .collect::<Vec<String>>()
                 .join(", ")
         );

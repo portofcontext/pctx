@@ -3,8 +3,9 @@ use schemars::schema::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    CodegenResult, SchemaDefinitions, generate_docstring,
+    CodegenResult, SchemaDefinitions,
     schema_type::{ObjectSchemaType, SchemaType},
+    ts_generate_docstring,
     utils::get_description,
 };
 
@@ -33,7 +34,7 @@ impl ObjectSchemaData {
                 name: prop_name.clone(),
                 sig: prop_st.type_signature(required, defs)?,
                 doc_string: get_description(&prop_schema.clone().into_object(), defs)?
-                    .map(|desc| generate_docstring(&desc)),
+                    .map(|desc| ts_generate_docstring(&desc)),
                 required,
                 nullable: prop_st.is_nullable(),
             };
@@ -54,7 +55,7 @@ impl ObjectSchemaData {
         Ok(Self {
             name: obj_st.type_name.clone(),
             doc_string: get_description(&obj_st.schema_obj, defs)?
-                .map(|desc| generate_docstring(&desc)),
+                .map(|desc| ts_generate_docstring(&desc)),
             properties,
             additional_props_sig,
         })

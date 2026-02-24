@@ -52,7 +52,8 @@ macro_rules! tool_test {
             let fixture = load_fixture($fixture);
             let tool = fixture.$variant();
 
-            let impl_code = pctx_codegen::format::format_ts(&tool.fn_impl("test_server"));
+            let impl_code =
+                pctx_codegen::format::format_ts(&tool.ts_fn_impl(Some("test_server".into())));
             let check_res = type_check(&impl_code).expect("failed typecheck");
 
             assert!(
@@ -79,13 +80,13 @@ fn test_toolset_namespace() {
     let notif = load_fixture(NESTED_TYPES_TOOL);
 
     let toolset = ToolSet::new(
-        "my_tools",
+        Some("my_tools".into()),
         "A collection of utility tools",
         vec![basic.to_mcp_tool(), notif.to_callback_tool()],
     );
 
     insta::assert_snapshot!(
         "toolset__namespace_interface.ts",
-        toolset.namespace_interface(true)
+        toolset.ts_namespace_declaration(true)
     );
 }

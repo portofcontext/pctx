@@ -26,7 +26,8 @@ pub enum CodegenError {
     TypeGen(String),
 }
 
-pub fn generate_docstring(content: &str) -> String {
+/// Generates a code-safe docstring for the given string in Typescript
+pub fn ts_generate_docstring(content: &str) -> String {
     let mut lines = vec!["/**".to_string()];
 
     let replace_pat = regex::Regex::new(r"\*\/").expect("invalid docstring replace_pat");

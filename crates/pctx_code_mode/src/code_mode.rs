@@ -177,7 +177,7 @@ impl CodeMode {
             .and_then(|p| p.server_info.title.clone())
             .unwrap_or(format!("MCP server at {}", server.display_target()));
 
-        let tool_set = ToolSet::new(&server.name, &description, tools);
+        let tool_set = ToolSet::new(Some(server.name.clone()), &description, tools);
 
         info!(
             "Successfully initialized MCP server '{}' with {} tools",
@@ -206,11 +206,11 @@ impl CodeMode {
         let idx = self
             .tool_sets
             .iter()
-            .position(|s| s.name == callback.namespace)
+            .position(|s| s.name == Some(callback.namespace.clone()))
             .unwrap_or_else(|| {
                 let idx = self.tool_sets.len();
                 self.tool_sets
-                    .push(ToolSet::new(&callback.namespace, "", vec![]));
+                    .push(ToolSet::new(Some(callback.namespace.clone()), "", vec![]));
                 idx
             });
         let tool_set = &mut self.tool_sets[idx];
@@ -218,7 +218,8 @@ impl CodeMode {
         if tool_set.tools.iter().any(|t| t.name == callback.name) {
             return Err(Error::Message(format!(
                 "ToolSet `{}` already has a tool with name `{}`. Tool names must be unique within tool sets",
-                &tool_set.name, &callback.name
+                tool_set.name.as_deref().unwrap_or_default(),
+                &callback.name
             )));
         }
 
@@ -263,7 +264,7 @@ impl CodeMode {
         if self.tool_sets.iter().any(|t| t.name == tool_set.name) {
             return Err(Error::Message(format!(
                 "CodeMode already has ToolSet with name: {}",
-                tool_set.name
+                tool_set.name.unwrap_or_default()
             )));
         }
 
@@ -299,7 +300,7 @@ impl CodeMode {
             }
 
             // e.g. "## Tools"
-            readme.push_str(&format!("## {}\n", tool_set.namespace));
+            readme.push_str(&format!("## {}\n", tool_set.namespace_new()));
 
             // One line per function: "Namespace/fn.d.ts  # description"
             // `cat` omitted since it's stated once in the header above.
@@ -318,15 +319,20 @@ impl CodeMode {
 
                     // Create file for this function under /sdk/
                     let tool_file_path =
-                        format!("/sdk/{}/{}.d.ts", tool_set.namespace, tool.fn_name);
-                    let tool_code = tool.fn_signature(true);
+                        format!("/sdk/{}/{}.d.ts", tool_set.namespace_new(), tool.fn_name);
+                    let tool_code = tool.ts_fn_signature(true);
                     let formatted = pctx_codegen::format::format_d_ts(&tool_code);
                     files.insert(tool_file_path, formatted);
 
                     if desc.is_empty() {
-                        format!("{}/{}.d.ts", tool_set.namespace, tool.fn_name)
+                        format!("{}/{}.d.ts", tool_set.namespace_new(), tool.fn_name)
                     } else {
-                        format!("{}/{}.d.ts  # {}", tool_set.namespace, tool.fn_name, desc)
+                        format!(
+                            "{}/{}.d.ts  # {}",
+                            tool_set.namespace_new(),
+                            tool.fn_name,
+                            desc
+                        )
                     }
                 })
                 .collect();
@@ -396,10 +402,10 @@ impl CodeMode {
                 continue;
             }
 
-            namespaces.push(tool_set.namespace_interface(false));
+            namespaces.push(tool_set.ts_namespace_declaration(false));
 
             functions.extend(tool_set.tools.iter().map(|t| ListedFunction {
-                namespace: tool_set.namespace.clone(),
+                namespace: tool_set.namespace_new(),
                 name: t.fn_name.clone(),
                 description: t.description.clone(),
             }));
@@ -426,7 +432,7 @@ impl CodeMode {
         let mut functions = vec![];
 
         for tool_set in &self.tool_sets {
-            if let Some(fn_names) = by_mod.get(&tool_set.namespace) {
+            if let Some(fn_names) = by_mod.get(&tool_set.namespace_new()) {
                 // filter tools based on requested fn names
                 let tools: Vec<&pctx_codegen::Tool> = tool_set
                     .tools
@@ -437,13 +443,13 @@ impl CodeMode {
                 if !tools.is_empty() {
                     // code definition
                     let fn_details: Vec<String> =
-                        tools.iter().map(|t| t.fn_signature(true)).collect();
-                    namespaces.push(tool_set.wrap_with_namespace(&fn_details.join("\n\n")));
+                        tools.iter().map(|t| t.ts_fn_signature(true)).collect();
+                    namespaces.push(tool_set.ts_wrap_with_namespace(&fn_details.join("\n\n")));
 
                     // struct output
                     functions.extend(tools.iter().map(|t| FunctionDetails {
                         listed: ListedFunction {
-                            namespace: tool_set.namespace.clone(),
+                            namespace: tool_set.namespace_new(),
                             name: t.fn_name.clone(),
                             description: t.description.clone(),
                         },
@@ -596,7 +602,7 @@ export default result;"#,
                 if s.tools.is_empty() {
                     None
                 } else {
-                    Some(s.namespace())
+                    Some(s.ts_namespace_impl())
                 }
             })
             .collect();
@@ -618,7 +624,7 @@ const bashFs = new justBash({{
     cwd: "/sdk",
 }});
 globalThis.bashFs = bashFs;
-
+d
 {code}
 
 {namespaces}
