@@ -12,7 +12,7 @@ use thiserror::Error;
 // re-export RootSchema
 pub use schemars::schema::RootSchema;
 
-pub use tools::{Tool, ToolSet, ToolVariant};
+pub use tools::{Tool, ToolSet};
 
 pub type SchemaDefinitions = IndexMap<String, Schema>;
 pub type CodegenResult<T> = Result<T, CodegenError>;

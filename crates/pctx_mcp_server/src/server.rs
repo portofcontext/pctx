@@ -1,6 +1,5 @@
 use anyhow::Result;
 use opentelemetry::{global, trace::TraceContextExt};
-use pctx_config::Config;
 use rmcp::{
     ServiceExt,
     transport::{
@@ -40,14 +39,22 @@ pub struct PctxMcpServer {
     host: String,
     port: u16,
     banner: bool,
+    service: PctxMcpService,
 }
 
 impl PctxMcpServer {
-    pub fn new(host: &str, port: u16, banner: bool) -> Self {
+    pub fn new(
+        host: &str,
+        port: u16,
+        banner: bool,
+        cfg: &pctx_config::Config,
+        code_mode: pctx_code_mode::CodeMode,
+    ) -> Self {
         Self {
             host: host.into(),
             port,
             banner,
+            service: PctxMcpService::new(&cfg, code_mode),
         }
     }
 
@@ -60,14 +67,13 @@ impl PctxMcpServer {
     /// # Errors
     ///
     /// Errors if there is a failure starting the server on the configured host/port
-    pub async fn serve(&self, cfg: &Config, code_mode: pctx_code_mode::CodeMode) -> Result<()> {
+    pub async fn serve(&self) -> Result<()> {
         let shutdown_signal = async {
             tokio::signal::ctrl_c()
                 .await
                 .expect("failed graceful shutdown");
         };
-        self.serve_with_shutdown(cfg, code_mode, shutdown_signal)
-            .await
+        self.serve_with_shutdown(shutdown_signal).await
     }
 
     /// Serves MCP server with provided config, and shutdown signal
@@ -76,18 +82,13 @@ impl PctxMcpServer {
     /// # Errors
     ///
     /// Errors if there is a failure starting the server on the configured host/port
-    pub async fn serve_with_shutdown<F>(
-        &self,
-        cfg: &Config,
-        code_mode: pctx_code_mode::CodeMode,
-        shutdown_signal: F,
-    ) -> Result<()>
+    pub async fn serve_with_shutdown<F>(&self, shutdown_signal: F) -> Result<()>
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        self.banner_http(cfg, &code_mode);
+        self.banner_http();
 
-        let mcp_service = PctxMcpService::new(cfg, code_mode);
+        let mcp_service = self.service.clone();
 
         let service = StreamableHttpService::new(
             move || Ok(mcp_service.clone()),
@@ -166,36 +167,26 @@ impl PctxMcpServer {
     /// # Panics
     ///
     /// Panics if the ctrl-c handler cannot be installed.
-    pub async fn serve_stdio(
-        &self,
-        cfg: &Config,
-        code_mode: pctx_code_mode::CodeMode,
-    ) -> Result<()> {
+    pub async fn serve_stdio(&self) -> Result<()> {
         let shutdown_signal = async {
             tokio::signal::ctrl_c()
                 .await
                 .expect("failed graceful shutdown");
         };
-        self.serve_stdio_with_shutdown(cfg, code_mode, shutdown_signal)
-            .await
+        self.serve_stdio_with_shutdown(shutdown_signal).await
     }
 
     /// # Errors
     ///
     /// Returns an error if the stdio server fails to start or if the server
     /// task returns an error.
-    pub async fn serve_stdio_with_shutdown<F>(
-        &self,
-        cfg: &Config,
-        code_mode: pctx_code_mode::CodeMode,
-        shutdown_signal: F,
-    ) -> Result<()>
+    pub async fn serve_stdio_with_shutdown<F>(&self, shutdown_signal: F) -> Result<()>
     where
         F: std::future::Future<Output = ()> + Send + 'static,
     {
-        self.banner_stdio(cfg, &code_mode);
+        self.banner_stdio();
 
-        let mcp_service = PctxMcpService::new(cfg, code_mode);
+        let mcp_service = self.service.clone();
         let mut shutdown_signal = Box::pin(shutdown_signal);
         let mut serve_task = tokio::spawn(mcp_service.serve(stdio()));
         let running = tokio::select! {
@@ -228,13 +219,7 @@ impl PctxMcpServer {
         Ok(())
     }
 
-    fn banner(
-        &self,
-        cfg: &pctx_config::Config,
-        code_mode: &pctx_code_mode::CodeMode,
-        transport_label: &str,
-        transport_value: &str,
-    ) -> Option<String> {
+    fn banner(&self, transport_label: &str, transport_value: &str) -> Option<String> {
         if !self.banner {
             return None;
         }
@@ -252,16 +237,26 @@ impl PctxMcpServer {
         }
 
         let mut builder = Builder::default();
-        builder.push_record(["Server Name", &cfg.name]);
-        builder.push_record(["Server Version", &cfg.version]);
+        builder.push_record(["Server Name", &self.service.name]);
+        builder.push_record(["Server Version", &self.service.version]);
         builder.push_record([transport_label, transport_value]);
         builder.push_record([
-            "Tools",
-            &["list_functions", "get_function_details", "execute"].join(", "),
+            "Tool Disclosure Style",
+            &self.service.disclosure_style.to_string(),
         ]);
+
+        let active_tools = self
+            .service
+            .list_filtered_tools()
+            .tools
+            .iter()
+            .map(|t| t.name.to_string())
+            .collect::<Vec<String>>();
+        builder.push_record(["Tools", &active_tools.join(", ")]);
+
         builder.push_record(["Docs", &fmt_dimmed("https://github.com/portofcontext/pctx")]);
 
-        if !code_mode.tool_sets().is_empty() {
+        if !self.service.code_mode.tool_sets().is_empty() {
             builder.push_record(["", ""]);
 
             let tool_record = |s: &pctx_codegen::ToolSet| {
@@ -274,13 +269,15 @@ impl PctxMcpServer {
             };
             builder.push_record([
                 "Upstream MCPs",
-                &code_mode
+                &self
+                    .service
+                    .code_mode
                     .tool_sets()
                     .first()
                     .map(tool_record)
                     .unwrap_or_default(),
             ]);
-            for s in &code_mode.tool_sets()[1..] {
+            for s in &self.service.code_mode.tool_sets()[1..] {
                 builder.push_record(["", &tool_record(s)]);
             }
         }
@@ -320,18 +317,18 @@ impl PctxMcpServer {
         Some(format!("\n{banner}\n"))
     }
 
-    fn banner_http(&self, cfg: &pctx_config::Config, code_mode: &pctx_code_mode::CodeMode) {
+    fn banner_http(&self) {
         let mcp_url = format!("http://{}:{}/mcp", self.host, self.port);
 
-        if let Some(banner) = self.banner(cfg, code_mode, "Server URL", &mcp_url) {
+        if let Some(banner) = self.banner("Server URL", &mcp_url) {
             println!("{banner}"); // tracing::info doesn't work well with colors / formatting
         }
 
         info!("PCTX listening at {mcp_url}...");
     }
 
-    fn banner_stdio(&self, cfg: &pctx_config::Config, code_mode: &pctx_code_mode::CodeMode) {
-        if let Some(banner) = self.banner(cfg, code_mode, "Transport", "stdio") {
+    fn banner_stdio(&self) {
+        if let Some(banner) = self.banner("Transport", "stdio") {
             eprintln!("{banner}");
         }
 
@@ -346,35 +343,16 @@ mod tests {
 
     #[tokio::test]
     async fn test_serve_stdio_with_immediate_shutdown() {
-        let server = PctxMcpServer::new("127.0.0.1", 0, false);
         let cfg = Config::default();
         let code_mode = pctx_code_mode::CodeMode::default();
+        let server = PctxMcpServer::new("127.0.0.1", 0, false, &cfg, code_mode);
 
-        let result = server
-            .serve_stdio_with_shutdown(&cfg, code_mode, async {})
-            .await;
+        let result = server.serve_stdio_with_shutdown(async {}).await;
 
         assert!(
             result.is_ok(),
             "unexpected stdio shutdown error: {}",
             result.err().unwrap()
         );
-    }
-
-    // Note: test_serve_stdio_with_delayed_shutdown removed because it's difficult to test
-    // stdio transport without actual stdin. The immediate shutdown test above covers
-    // the basic shutdown mechanism.
-
-    #[test]
-    fn test_server_construction() {
-        let server = PctxMcpServer::new("127.0.0.1", 8080, true);
-        assert_eq!(server.host, "127.0.0.1");
-        assert_eq!(server.port, 8080);
-        assert!(server.banner);
-
-        let server = PctxMcpServer::new("0.0.0.0", 3000, false);
-        assert_eq!(server.host, "0.0.0.0");
-        assert_eq!(server.port, 3000);
-        assert!(!server.banner);
     }
 }

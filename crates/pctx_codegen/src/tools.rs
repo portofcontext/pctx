@@ -86,7 +86,6 @@ pub struct Tool {
     pub name: String,
     pub fn_name: String,
     pub description: Option<String>,
-    pub variant: ToolVariant,
 
     pub input_schema: Option<RootSchema>,
     pub output_schema: Option<RootSchema>,
@@ -96,36 +95,14 @@ pub struct Tool {
 }
 
 impl Tool {
-    pub fn new_mcp(
+    pub fn new(
         name: &str,
         description: Option<String>,
         input: Option<RootSchema>,
         output: Option<RootSchema>,
-    ) -> CodegenResult<Self> {
-        Self::_new(name, description, input, output, ToolVariant::Mcp)
-    }
-
-    pub fn new_callback(
-        name: &str,
-        description: Option<String>,
-        input: Option<RootSchema>,
-        output: Option<RootSchema>,
-    ) -> CodegenResult<Self> {
-        Self::_new(name, description, input, output, ToolVariant::Callback)
-    }
-
-    fn _new(
-        name: &str,
-        description: Option<String>,
-        input: Option<RootSchema>,
-        output: Option<RootSchema>,
-        variant: ToolVariant,
     ) -> CodegenResult<Self> {
         let fn_name = Case::Camel.sanitize(name);
-        debug!(
-            variant =? variant,
-            "Generating Typescript interface for tool: '{name}' -> function {fn_name}",
-        );
+        debug!("Generating Typescript interface for tool: '{name}' -> function {fn_name}",);
 
         let input_type = if let Some(i) = &input {
             Some(generate_types(i.clone(), &format!("{fn_name}Input"))?)
@@ -147,7 +124,6 @@ impl Tool {
             fn_name,
             input_type,
             output_type,
-            variant,
         })
     }
 
@@ -252,11 +228,4 @@ impl Tool {
             output_sig = self.output_signature()
         )
     }
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum ToolVariant {
-    Mcp,
-    Callback,
 }

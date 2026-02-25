@@ -1,13 +1,12 @@
-use std::{
-    collections::{HashMap, HashSet},
-    time::Duration,
-};
-
 use pctx_code_execution_runtime::PctxRegistry;
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::server::ServerConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::{
+    collections::{HashMap, HashSet},
+    time::Duration,
+};
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
@@ -75,9 +74,7 @@ impl CodeMode {
     ) -> Result<()> {
         let timeout = Duration::from_secs(timeout_secs);
         let mut tasks = vec![];
-        let mut servers_to_add = vec![];
         for server in servers {
-            servers_to_add.push(server.clone());
             let server = server.clone();
             let task = tokio::spawn(async move {
                 let result = tokio::time::timeout(timeout, Self::server_to_toolset(&server)).await;
@@ -98,26 +95,24 @@ impl CodeMode {
         }
 
         // join and unpack results
-        let results = futures::future::join_all(tasks).await;
-        let mut tool_sets = vec![];
-        for result in results {
-            tool_sets.push(result.map_err(|e| {
+        let joined_results = futures::future::join_all(tasks).await;
+        let mut results = vec![];
+        for result in joined_results {
+            results.push(result.map_err(|e| {
                 Error::Message(format!("Failed joining parallel MCP registration: {e:?}"))
             })??);
         }
 
         // check for ToolSet conflicts & add to self
-        for tool_set in tool_sets {
+        for (tool_set, server_cfg) in results {
             self.add_tool_set(tool_set)?;
+            self.servers.push(server_cfg)
         }
-
-        // add server configs
-        self.servers.extend(servers_to_add);
 
         Ok(())
     }
 
-    async fn server_to_toolset(server: &ServerConfig) -> Result<ToolSet> {
+    async fn server_to_toolset(server: &ServerConfig) -> Result<(ToolSet, ServerConfig)> {
         // Connect to the MCP server (this is the slow operation)
         debug!(
             "Connecting to MCP server '{}'({})...",
@@ -137,7 +132,7 @@ impl CodeMode {
 
         // Convert MCP tools to pctx tools
         let mut tools = vec![];
-        for mcp_tool in listed_tools {
+        for mcp_tool in &listed_tools {
             let input_schema =
                 serde_json::from_value::<pctx_codegen::RootSchema>(json!(mcp_tool.input_schema))
                     .map_err(|e| {
@@ -160,9 +155,9 @@ impl CodeMode {
             };
 
             tools.push(
-                Tool::new_mcp(
+                Tool::new(
                     &mcp_tool.name,
-                    mcp_tool.description.map(String::from),
+                    mcp_tool.description.clone().map(String::from),
                     Some(input_schema),
                     output_schema,
                 )
@@ -185,7 +180,7 @@ impl CodeMode {
             tool_set.tools.len()
         );
 
-        Ok(tool_set)
+        Ok((tool_set, server.clone()))
     }
 
     pub fn add_callbacks<'a>(
@@ -245,7 +240,7 @@ impl CodeMode {
         } else {
             None
         };
-        let tool = Tool::new_callback(
+        let tool = Tool::new(
             &callback.name,
             callback.description.clone(),
             input_schema,
@@ -352,6 +347,29 @@ impl CodeMode {
         &self.tool_sets
     }
 
+    /// Returns an immutable reference to the registered ToolSets
+    /// representing upstream servers
+    pub fn server_tool_sets(&self) -> Vec<(&ServerConfig, &pctx_codegen::ToolSet)> {
+        // let server_names: Vec<&str> = self.servers.iter().map(|s| s.0.name.as_str()).collect();
+        self.tool_sets
+            .iter()
+            .filter_map(|ts| {
+                if let Some(server_cfg) = self
+                    .servers
+                    .iter()
+                    .find(|s| Some(s.name.as_str()) == ts.name.as_deref())
+                {
+                    Some((server_cfg, ts))
+                } else {
+                    None
+                }
+                // ts.name
+                //     .as_deref()
+                //     .is_some_and(|n| server_names.contains(&n))
+            })
+            .collect()
+    }
+
     /// Returns an immutable reference to the registered server configurations
     pub fn servers(&self) -> &[ServerConfig] {
         &self.servers
@@ -370,16 +388,9 @@ impl CodeMode {
 
     // --------------- Utilities ---------------
     pub fn add_mcp_servers_to_registry(&self, registry: &mut PctxRegistry) -> Result<()> {
-        for cfg in &self.servers {
-            // find the associated toolset
-            if let Some(ts) = self
-                .tool_sets
-                .iter()
-                .find(|ts| ts.name.as_ref() == Some(&cfg.name))
-            {
-                let tool_names: Vec<String> = ts.tools.iter().map(|t| t.name.clone()).collect();
-                registry.add_mcp(&tool_names, cfg.clone())?;
-            }
+        for (cfg, tool_set) in self.server_tool_sets() {
+            let tool_names: Vec<String> = tool_set.tools.iter().map(|t| t.name.clone()).collect();
+            registry.add_mcp(&tool_names, cfg.clone())?;
         }
 
         Ok(())

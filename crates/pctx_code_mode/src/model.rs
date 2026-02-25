@@ -127,7 +127,7 @@ pub struct ExecuteInput {
     ///
     /// REQUIRED FORMAT:
     /// async function ``run()`` {
-    ///   // YOUR CODE GOES HERE e.g. const result await ``Namespace.method();``
+    ///   // YOUR CODE GOES HERE
     ///   // ALWAYS RETURN THE RESULT e.g. return result;
     /// }
     ///
@@ -157,6 +157,12 @@ impl DisclosureStyle {
             DisclosureStyle::Filesystem => tool_descriptions::EXECUTE_TYPESCRIPT_FILESYSTEM.into(),
             DisclosureStyle::Sidecar => tool_descriptions::EXECUTE_TYPESCRIPT_SIDECAR.into(),
         }
+    }
+}
+impl Display for DisclosureStyle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let val = json!(self).to_string().replace("\"", "");
+        write!(f, "{}", val)
     }
 }
 

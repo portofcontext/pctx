@@ -27,12 +27,12 @@ type McpResult<T> = Result<T, rmcp::ErrorData>;
 
 #[derive(Clone)]
 pub(crate) struct PctxMcpService {
-    name: String,
-    version: String,
-    description: Option<String>,
-    code_mode: CodeMode,
-    disclosure_style: DisclosureStyle,
-    tool_router: ToolRouter<PctxMcpService>,
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) description: Option<String>,
+    pub(crate) code_mode: CodeMode,
+    pub(crate) disclosure_style: DisclosureStyle,
+    pub(crate) tool_router: ToolRouter<PctxMcpService>,
 }
 
 #[tool_router]
@@ -43,9 +43,52 @@ impl PctxMcpService {
             version: cfg.version.clone(),
             description: cfg.description.clone(),
             code_mode,
-            disclosure_style: DisclosureStyle::Sidecar,
+            disclosure_style: DisclosureStyle::Filesystem, // TODO: from cfg
             tool_router: Self::tool_router(),
         }
+    }
+
+    pub(crate) fn list_filtered_tools(&self) -> ListToolsResult {
+        let original_list_tools = ListToolsResult::with_all_items(self.tool_router.list_all());
+        let mut filtered = original_list_tools.clone();
+        filtered.tools.clear();
+
+        if matches!(self.disclosure_style, DisclosureStyle::Sidecar) {
+            // add upstream tools to list of tools
+            for (_, tool_set) in self.code_mode.server_tool_sets() {
+                filtered.tools.extend(tool_set.tools.iter().map(|t| {
+                    let input_schema =
+                        serde_json::from_value(json!(t.input_schema.clone())).unwrap();
+                    let output_schema =
+                        serde_json::from_value(json!(t.output_schema.clone())).unwrap();
+                    rmcp::model::Tool {
+                        name: t.id(tool_set.name.as_deref()).into(),
+                        description: t.description.clone().map(|d| d.into()),
+                        input_schema,
+                        output_schema,
+                        title: None,
+                        annotations: None,
+                        icons: None,
+                        meta: None,
+                    }
+                }));
+            }
+        }
+
+        // dynamically add descriptions based on style
+        let overrides = ToolOverride::for_style(self.disclosure_style);
+        for mut tool in original_list_tools.tools {
+            if let Some(o) = overrides.get(&tool.name.to_string()) {
+                if !o.enabled {
+                    continue;
+                }
+                tool.description = Some(o.description.clone().into());
+            }
+
+            filtered.tools.push(tool)
+        }
+
+        filtered
     }
 
     #[tool(
@@ -201,34 +244,17 @@ impl ServerHandler for PctxMcpService {
         ctx: RequestContext<RoleServer>,
     ) -> McpResult<ListToolsResult> {
         let start = std::time::Instant::now();
-        let original_list_tools = ListToolsResult::with_all_items(self.tool_router.list_all());
-        let mut list_tools_res = original_list_tools.clone();
-        list_tools_res.tools.clear();
-
-        // dynamically add descriptions based on style
-        let overrides = ToolOverride::for_style(self.disclosure_style);
-        for mut tool in original_list_tools.tools {
-            if let Some(o) = overrides.get(&tool.name.to_string()) {
-                if !o.enabled {
-                    continue;
-                }
-                tool.description = Some(o.description.clone().into());
-            }
-
-            list_tools_res.tools.push(tool)
-        }
-
-        // TODO: add tools for sidecar
+        let filtered_tools = self.list_filtered_tools();
 
         let latency = start.elapsed();
         info!(
-            tools.length = list_tools_res.tools.len(),
-            tools.next_cursor = list_tools_res.next_cursor.is_some(),
+            tools.length = filtered_tools.tools.len(),
+            tools.next_cursor = filtered_tools.next_cursor.is_some(),
             latency_ms = latency.as_millis(),
             "tools/list"
         );
 
-        Ok(list_tools_res)
+        Ok(filtered_tools)
     }
 
     #[instrument(skip_all, fields(mcp.method = "tools/call", mcp.id = %ctx.id, mcp.tool.name = %req.name))]
