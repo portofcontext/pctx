@@ -214,19 +214,19 @@ impl Tool {
         )
     }
 
-    /// Returns the typescript function signature for the overloaded `invoke`
-    /// function
-    pub fn ts_invoke_tool_override(&self, toolset_name: Option<&str>) -> String {
+    /// Creates a typescript type map entry for the given tool,
+    /// meant to be wrapped by `type InvokeMap { ...entries } `
+    pub fn ts_invoke_map_entry(&self, toolset_name: Option<&str>) -> String {
         let args = match &self.input_type {
-            Some(i) if i.all_optional => format!("arguments?: {}", &i.type_signature),
-            Some(i) => format!("arguments: {}", &i.type_signature),
-            None => format!("arguments?: any"),
+            Some(i) if i.all_optional => format!("{} | undefined", &i.type_signature),
+            Some(i) => format!("{}", &i.type_signature),
+            None => format!("any | undefined"),
         };
 
         format!(
-            "async function invoke(call: {{name: {name}, {args} }}): Promise<{output_sig}>;",
-            name = json!(&self.id(toolset_name)),
-            output_sig = self.output_signature()
+            "{name}: {{ args: {args}, returns: {returns} }};",
+            name = json!(self.id(toolset_name)),
+            returns = self.output_signature()
         )
     }
 }

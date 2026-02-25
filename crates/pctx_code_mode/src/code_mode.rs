@@ -619,13 +619,13 @@ export default result;"#,
                 )
             }
             DisclosureStyle::Sidecar => {
-                let fn_overrides: Vec<String> = self
+                let invoke_map_entries: Vec<String> = self
                     .tool_sets
                     .iter()
                     .flat_map(|ts| {
                         ts.tools
                             .iter()
-                            .map(|t| t.ts_invoke_tool_override(ts.name.as_deref()))
+                            .map(|t| t.ts_invoke_map_entry(ts.name.as_deref()))
                     })
                     .collect();
                 let types: Vec<String> = self
@@ -641,15 +641,39 @@ export default result;"#,
 
                 let invoke_interface = format!(
                     r#"
-{fn_overrides}
-async function invoke(call: any): Promise<any> {{
+type InvokeMap = {{
+  {invoke_map_entries}
+}};
+
+type InvokeCall<K extends keyof InvokeMap> = 
+  undefined extends InvokeMap[K]["args"]
+    ? {{ name: K; arguments?: InvokeMap[K]["args"] }}
+    : {{ name: K; arguments: InvokeMap[K]["args"] }};
+
+async function invoke<K extends keyof InvokeMap>(call: InvokeCall<K>): Promise<InvokeMap[K]["returns"]> {{
   return await invokeInternal(call);
 }}
 
 {types}
 "#,
-                    fn_overrides = fn_overrides.join("\n"),
+                    invoke_map_entries = invoke_map_entries.join("\n  "),
                     types = types.join("\n\n")
+                );
+
+                println!(
+                    r#"type InvokeMap = {{
+  {invoke_map_entries}
+}};
+
+type InvokeCall<K extends keyof InvokeMap> = 
+  undefined extends InvokeMap[K]["args"]
+    ? {{ name: K; arguments?: InvokeMap[K]["args"] }}
+    : {{ name: K; arguments: InvokeMap[K]["args"] }};
+
+async function invoke<K extends keyof InvokeMap>(call: InvokeCall<K>): Promise<InvokeMap[K]["returns"]> {{
+  return await invokeInternal(call);
+}}"#,
+                    invoke_map_entries = invoke_map_entries.join("\n"),
                 );
                 format!(
                     "{code}\n\n{invoke_interface}\n\nexport default await run();",
