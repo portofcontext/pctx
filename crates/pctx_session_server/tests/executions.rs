@@ -165,11 +165,12 @@ const CODE_NAMESPACED_SYNTAX: &str = "
     }";
 
 #[rstest]
-#[case::overloaded(CODE_OVERLOADED_SYNTAX, "overloaded")]
-#[case::namespaced(CODE_NAMESPACED_SYNTAX, "namespaced")]
+#[case::sidecar(CODE_OVERLOADED_SYNTAX, "sidecar")]
+#[case::catalog(CODE_NAMESPACED_SYNTAX, "catalog")]
+#[case::filesystem(CODE_NAMESPACED_SYNTAX, "filesystem")]
 #[serial]
 #[tokio::test]
-async fn test_exec_callbacks(#[case] code: &str, #[case] mode: &str) {
+async fn test_exec_callbacks(#[case] code: &str, #[case] style: &str) {
     let (session_id, server, _) = create_test_server_with_session().await;
 
     // register tools
@@ -197,7 +198,7 @@ async fn test_exec_callbacks(#[case] code: &str, #[case] mode: &str) {
         "method": "execute_code",
         "params": {
             "code": code,
-            "mode": mode
+            "style": style
         }
     }))
     .await;

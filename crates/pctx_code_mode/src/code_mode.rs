@@ -13,8 +13,8 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     Error, Result,
     model::{
-        CallbackConfig, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction, TypescriptMode,
+        CallbackConfig, DisclosureStyle, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
+        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
     },
 };
 
@@ -550,7 +550,7 @@ export default result;"#,
     pub async fn execute_typescript(
         &self,
         code: &str,
-        mode: TypescriptMode,
+        style: DisclosureStyle,
         registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
         let mut registry = registry.unwrap_or_default();
@@ -564,7 +564,7 @@ export default result;"#,
             formatted_code = %formatted_code,
             code_length = code.len(),
             callbacks =? registry.ids(),
-            mode =? mode,
+            style =? style,
             "Received TypeScript code to execute"
         );
 
@@ -587,8 +587,8 @@ export default result;"#,
             )));
         }
 
-        let to_execute = match mode {
-            TypescriptMode::Namespaced => {
+        let to_execute = match style {
+            DisclosureStyle::Catalog | DisclosureStyle::Filesystem => {
                 // generate the full script to be executed
                 let namespaces: Vec<String> = self
                     .tool_sets
@@ -607,7 +607,7 @@ export default result;"#,
                     namespaces = pctx_codegen::format::format_ts(&namespaces.join("\n\n")),
                 )
             }
-            TypescriptMode::Overloaded => {
+            DisclosureStyle::Sidecar => {
                 let fn_overrides: Vec<String> = self
                     .tool_sets
                     .iter()

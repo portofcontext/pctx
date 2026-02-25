@@ -1,0 +1,7 @@
+Get detailed TypeScript definitions for specific functions.
+
+Provide function names in 'namespace.functionName' format (e.g., 'Notion.apiPostSearch').
+Returns full type signatures, parameter schemas, and return types.
+
+Note: Functions showing Promise<any> return type have no schema - the actual runtime
+value is a parsed JavaScript object (never a JSON string).

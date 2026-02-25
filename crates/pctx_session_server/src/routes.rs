@@ -4,7 +4,8 @@ use axum::{Json, extract::State, http::StatusCode};
 use pctx_code_mode::{
     CodeMode,
     model::{
-        CallbackConfig, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
+        CallbackConfig, ExecuteBashInput, ExecuteOutput, GetFunctionDetailsInput,
+        GetFunctionDetailsOutput, ListFunctionsOutput,
     },
 };
 use tracing::{error, info};
@@ -13,8 +14,8 @@ use uuid::Uuid;
 use crate::extractors::CodeModeSession;
 use crate::model::{
     ApiError, ApiResult, CloseSessionResponse, CreateSessionResponse, ErrorCode, ErrorData,
-    ExecuteBashRequest, ExecuteBashResponse, HealthResponse, RegisterMcpServersRequest,
-    RegisterMcpServersResponse, RegisterToolsRequest, RegisterToolsResponse,
+    HealthResponse, RegisterMcpServersRequest, RegisterMcpServersResponse, RegisterToolsRequest,
+    RegisterToolsResponse,
 };
 use crate::state::{AppState, backend::PctxSessionBackend};
 
@@ -327,9 +328,9 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
     params(
         ("x-code-mode-session" = String, Header, description = "Current code mode session")
     ),
-    request_body = ExecuteBashRequest,
+    request_body = ExecuteBashInput,
     responses(
-        (status = 200, description = "Bash command executed successfully", body = ExecuteBashResponse),
+        (status = 200, description = "Bash command executed successfully", body = ExecuteOutput),
         (status = 404, description = "Session not found", body = ErrorData),
         (status = 500, description = "Internal server error", body = ErrorData)
     )
@@ -337,8 +338,8 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
 pub(crate) async fn execute_bash<B: PctxSessionBackend>(
     State(state): State<AppState<B>>,
     CodeModeSession(session_id): CodeModeSession,
-    Json(request): Json<ExecuteBashRequest>,
-) -> ApiResult<Json<ExecuteBashResponse>> {
+    Json(request): Json<ExecuteBashInput>,
+) -> ApiResult<Json<ExecuteOutput>> {
     info!(
         session_id =? session_id,
         command =? request.command,
@@ -417,7 +418,5 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
         error!("Failed to post_execution hook: {e}");
     }
 
-    Ok(Json(ExecuteBashResponse {
-        output: exec_output,
-    }))
+    Ok(Json(exec_output))
 }

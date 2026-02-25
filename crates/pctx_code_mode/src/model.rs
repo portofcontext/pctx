@@ -5,6 +5,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use utoipa::ToSchema;
 
+use crate::tool_descriptions;
+
 // -------------- List Functions --------------
 #[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ListFunctionsOutput {
@@ -112,6 +114,14 @@ pub struct FunctionDetails {
 #[allow(clippy::doc_markdown)]
 #[derive(Debug, Default, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
 #[serde(default)]
+pub struct ExecuteBashInput {
+    /// Bash command to execute
+    pub command: String,
+}
+
+#[allow(clippy::doc_markdown)]
+#[derive(Debug, Default, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
+#[serde(default)]
 pub struct ExecuteInput {
     /// Typescript code to execute.
     ///
@@ -127,13 +137,27 @@ pub struct ExecuteInput {
     pub code: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub enum TypescriptMode {
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, Default)]
+pub enum DisclosureStyle {
+    /// list_tools -> get_tool_details -> execute_typescript
     #[default]
-    #[serde(rename = "namespaced")]
-    Namespaced,
-    #[serde(rename = "overloaded")]
-    Overloaded,
+    #[serde(rename = "catalog")]
+    Catalog,
+    /// execute_bash -> execute_typescript
+    #[serde(rename = "filesystem")]
+    Filesystem,
+    /// original tool descriptions -> execute_typescript
+    #[serde(rename = "sidecar")]
+    Sidecar,
+}
+impl DisclosureStyle {
+    pub fn execute_description(&self) -> String {
+        match self {
+            DisclosureStyle::Catalog => tool_descriptions::EXECUTE_TYPESCRIPT_CATALOG.into(),
+            DisclosureStyle::Filesystem => tool_descriptions::EXECUTE_TYPESCRIPT_FILESYSTEM.into(),
+            DisclosureStyle::Sidecar => tool_descriptions::EXECUTE_TYPESCRIPT_SIDECAR.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]

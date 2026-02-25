@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::{ExecuteOutput, TypescriptMode};
+use pctx_code_mode::model::{DisclosureStyle, ExecuteOutput};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -110,19 +110,6 @@ pub struct CloseSessionResponse {
     pub success: bool,
 }
 
-/// Request to execute a bash command
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteBashRequest {
-    pub command: String,
-}
-
-/// Response after executing a bash command
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteBashResponse {
-    #[serde(flatten)]
-    pub output: ExecuteOutput,
-}
-
 // ----------- Websocket JRPC Message structs -----------
 
 pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, PctxJsonRpcResponse>;
@@ -148,7 +135,7 @@ pub struct ExecuteToolParams {
 pub struct ExecuteTypescriptParams {
     pub code: String,
     #[serde(default)]
-    pub mode: TypescriptMode,
+    pub style: DisclosureStyle,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
