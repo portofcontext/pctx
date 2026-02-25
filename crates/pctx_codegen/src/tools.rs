@@ -214,10 +214,11 @@ impl Tool {
         )
     }
 
-    // TODO:
+    /// Returns the typescript function signature for the overloaded `invoke`
+    /// function
     pub fn ts_invoke_tool_override(&self, toolset_name: Option<&str>) -> String {
         let args = match &self.input_type {
-            Some(i) if i.all_optional => format!("arguments: {} = {{}}", &i.type_signature),
+            Some(i) if i.all_optional => format!("arguments?: {}", &i.type_signature),
             Some(i) => format!("arguments: {}", &i.type_signature),
             None => format!("arguments?: any"),
         };

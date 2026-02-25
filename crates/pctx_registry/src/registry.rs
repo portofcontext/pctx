@@ -20,8 +20,8 @@ pub type CallbackFn = Arc<
 
 #[derive(Clone)]
 pub struct McpToolId {
-    sever_name: String,
-    tool_name: String,
+    pub sever_name: String,
+    pub tool_name: String,
 }
 impl McpToolId {
     pub fn id(&self) -> String {
@@ -187,17 +187,20 @@ impl PctxRegistry {
             }
 
             RegistryAction::Mcp(mcp_id) => {
-                let servers = self.servers.read().map_err(|e| {
-                    RegistryError::Config(format!(
-                        "Failed obtaining read lock on MCP server registry: {e}"
-                    ))
-                })?;
-                let server = servers
-                    .get(&mcp_id.sever_name)
-                    .ok_or(RegistryError::ToolCall(format!(
-                        "MCP server with name \"{}\" does not exist",
-                        &mcp_id.sever_name
-                    )))?;
+                let server = {
+                    let servers = self.servers.read().map_err(|e| {
+                        RegistryError::Config(format!(
+                            "Failed obtaining read lock on MCP server registry: {e}"
+                        ))
+                    })?;
+                    servers
+                        .get(&mcp_id.sever_name)
+                        .ok_or(RegistryError::ToolCall(format!(
+                            "MCP server with name \"{}\" does not exist",
+                            &mcp_id.sever_name
+                        )))?
+                        .clone()
+                };
 
                 let client = match server.connect().await {
                     Ok(client) => client,

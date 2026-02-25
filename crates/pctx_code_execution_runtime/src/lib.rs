@@ -38,7 +38,7 @@
 mod invoke_ops;
 mod timer_ops;
 
-pub use pctx_registry::{CallbackFn, PctxRegistry, RegistryError};
+pub use pctx_registry::*;
 
 /// Pre-compiled V8 snapshot containing the PCTX runtime
 ///

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use pctx_code_mode::{
-    CodeMode,
+    CodeMode, PctxRegistry, RegistryAction,
     model::{
         DisclosureStyle, ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
         GetFunctionDetailsOutput, ListFunctionsOutput,
@@ -9,7 +9,7 @@ use pctx_code_mode::{
     tool_descriptions,
 };
 use rmcp::{
-    RoleServer, ServerHandler,
+    RoleServer, ServerHandler, ServiceError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
         CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
@@ -19,7 +19,7 @@ use rmcp::{
     tool, tool_router,
 };
 use serde_json::json;
-use tracing::{error, info, instrument};
+use tracing::{debug, error, info, instrument};
 
 // Metrics removed - will be added via telemetry support later
 
@@ -43,7 +43,7 @@ impl PctxMcpService {
             version: cfg.version.clone(),
             description: cfg.description.clone(),
             code_mode,
-            disclosure_style: DisclosureStyle::Filesystem, // TODO: from cfg
+            disclosure_style: DisclosureStyle::Sidecar, // TODO: from cfg
             tool_router: Self::tool_router(),
         }
     }
@@ -91,8 +91,46 @@ impl PctxMcpService {
         filtered
     }
 
+    pub(crate) async fn handle_direct_tool_call(
+        &self,
+        mut req: CallToolRequestParams,
+    ) -> McpResult<CallToolResult> {
+        let mut registry = PctxRegistry::default();
+        self.code_mode
+            .add_mcp_servers_to_registry(&mut registry)
+            .map_err(|e| {
+                rmcp::ErrorData::internal_error(
+                    format!("failed building internal MCP registry: {e}"),
+                    None,
+                )
+            })?;
+
+        if let Some(RegistryAction::Mcp(mcp_tool_id)) = registry.get(&req.name) {
+            let server = self
+                .code_mode
+                .servers()
+                .iter()
+                .find(|s| s.name == mcp_tool_id.sever_name)
+                .ok_or(rmcp::ErrorData::invalid_params("tool not found", None))?;
+            let client = server.connect().await.map_err(|e| {
+                rmcp::ErrorData::invalid_request(
+                    format!(
+                        "failed connecting to upstream MCP at `{}`: {e}",
+                        server.display_target()
+                    ),
+                    None,
+                )
+            })?;
+            req.name = mcp_tool_id.tool_name.into();
+
+            client.call_tool(req).await.map_err(service_error_to_mcp)
+        } else {
+            Err(rmcp::ErrorData::invalid_params("tool not found", None))
+        }
+    }
+
     #[tool(
-        title = "List Functions",
+                                    title = "List Functions",
         output_schema = rmcp::handler::server::tool::schema_for_type::<ListFunctionsOutput>()
     )]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
@@ -266,8 +304,17 @@ impl ServerHandler for PctxMcpService {
         let start = std::time::Instant::now();
         let tool_name = req.name.clone();
 
-        let tcc = ToolCallContext::new(self, req, ctx);
-        let res = self.tool_router.call(tcc).await;
+        let res: Result<CallToolResult, rmcp::ErrorData> =
+            if matches!(self.disclosure_style, DisclosureStyle::Sidecar)
+                && tool_name != "execute_typescript"
+            {
+                // call tool directly
+                debug!("Calling tool directly in sidecar style");
+                self.handle_direct_tool_call(req).await
+            } else {
+                let tcc = ToolCallContext::new(self, req, ctx);
+                self.tool_router.call(tcc).await
+            };
 
         let latency = start.elapsed();
         let is_error = res
@@ -342,4 +389,22 @@ fn success_with_structure<V: serde::Serialize>(text: &str, structured: V) -> Cal
     res.structured_content = Some(json!(structured));
 
     res
+}
+
+fn service_error_to_mcp(e: ServiceError) -> rmcp::ErrorData {
+    match e {
+        ServiceError::McpError(mcp_err) => mcp_err,
+        ServiceError::TransportClosed => rmcp::ErrorData::internal_error("transport closed", None),
+        ServiceError::TransportSend(err) => rmcp::ErrorData::internal_error(err.to_string(), None),
+        ServiceError::UnexpectedResponse => {
+            rmcp::ErrorData::internal_error("unexpected response type", None)
+        }
+        ServiceError::Cancelled { reason } => {
+            rmcp::ErrorData::internal_error(reason.unwrap_or_else(|| "cancelled".to_string()), None)
+        }
+        ServiceError::Timeout { timeout } => {
+            rmcp::ErrorData::internal_error(format!("request timeout after {timeout:?}"), None)
+        }
+        _ => rmcp::ErrorData::internal_error(e.to_string(), None),
+    }
 }

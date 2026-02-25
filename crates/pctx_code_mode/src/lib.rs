@@ -167,7 +167,9 @@ pub use pctx_codegen as codegen;
 pub use pctx_config as config;
 
 // Re-export commonly used types for backwards compatibility
-pub use pctx_code_execution_runtime::{CallbackFn, PctxRegistry, RegistryError};
+pub use pctx_code_execution_runtime::{
+    CallbackFn, McpToolId, PctxRegistry, RegistryAction, RegistryError,
+};
 pub use pctx_codegen::{RootSchema, Tool, ToolSet, case};
 
 pub type Result<T> = std::result::Result<T, Error>;
