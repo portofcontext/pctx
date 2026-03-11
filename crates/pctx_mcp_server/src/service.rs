@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use pctx_code_mode::{
     CodeMode, PctxRegistry, RegistryAction,
@@ -58,20 +58,18 @@ impl PctxMcpService {
             // add upstream tools to list of tools
             for (_, tool_set) in self.code_mode.server_tool_sets() {
                 filtered.tools.extend(tool_set.tools.iter().map(|t| {
-                    let input_schema =
+                    let input_schema: Option<rmcp::model::JsonObject> =
                         serde_json::from_value(json!(t.input_schema.clone())).unwrap();
-                    let output_schema =
+                    let output_schema: Option<Arc<rmcp::model::JsonObject>> =
                         serde_json::from_value(json!(t.output_schema.clone())).unwrap();
-                    rmcp::model::Tool {
-                        name: t.id(tool_set.name.as_deref()).into(),
-                        description: t.description.clone().map(|d| d.into()),
-                        input_schema,
-                        output_schema,
-                        title: None,
-                        annotations: None,
-                        icons: None,
-                        meta: None,
-                    }
+
+                    let mut tool = rmcp::model::Tool::new(
+                        t.id(tool_set.name.as_deref()),
+                        t.description.clone().unwrap_or_default(),
+                        input_schema.unwrap_or_default(),
+                    );
+                    tool.output_schema = output_schema;
+                    tool
                 }));
             }
         }

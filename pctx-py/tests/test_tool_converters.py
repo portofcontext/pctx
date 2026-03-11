@@ -48,7 +48,12 @@ class TestLangChainConverter:
     def test_langchain_tool_names(self, pctx_client):
         """Test that LangChain tools have the correct names"""
         names = {tool.name for tool in pctx_client.langchain_tools()}
-        assert names == {"list_functions", "search_functions", "get_function_details", "execute_typescript"}
+        assert names == {
+            "list_functions",
+            "search_functions",
+            "get_function_details",
+            "execute_typescript",
+        }
 
     def test_langchain_tool_descriptions(self, pctx_client):
         """Test that LangChain tools have descriptions"""
@@ -89,7 +94,12 @@ class TestCrewAIConverter:
     def test_crewai_tool_names(self, pctx_client):
         """Test that CrewAI tools have correct names"""
         names = {tool.name for tool in pctx_client.crewai_tools()}
-        assert names == {"list_functions", "search_functions", "get_function_details", "execute_typescript"}
+        assert names == {
+            "list_functions",
+            "search_functions",
+            "get_function_details",
+            "execute_typescript",
+        }
 
     def test_crewai_tool_descriptions(self, pctx_client):
         """Test that CrewAI tools have descriptions"""
@@ -153,7 +163,12 @@ class TestOpenAIAgentsConverter:
     def test_openai_agents_function_names(self, pctx_client):
         """Test that OpenAI Agents functions have correct names"""
         names = {tool.name for tool in pctx_client.openai_agents_tools()}
-        assert names == {"list_functions", "search_functions", "get_function_details", "execute_typescript"}
+        assert names == {
+            "list_functions",
+            "search_functions",
+            "get_function_details",
+            "execute_typescript",
+        }
 
     def test_openai_agents_function_descriptions(self, pctx_client):
         """Test that OpenAI Agents functions have descriptions"""
@@ -224,7 +239,12 @@ class TestPydanticAIConverter:
     def test_pydantic_ai_tool_names(self, pctx_client):
         """Test that Pydantic AI tools have correct names"""
         names = {tool.name for tool in pctx_client.pydantic_ai_tools()}
-        assert names == {"list_functions", "search_functions", "get_function_details", "execute_typescript"}
+        assert names == {
+            "list_functions",
+            "search_functions",
+            "get_function_details",
+            "execute_typescript",
+        }
 
     def test_pydantic_ai_tool_descriptions(self, pctx_client):
         """Test that Pydantic AI tools have descriptions"""
@@ -419,19 +439,27 @@ class TestFilesystemMode:
         expected_names = {"execute_bash", "execute_typescript"}
 
         # LangChain
-        langchain_names = {tool.name for tool in pctx_client.langchain_tools(ToolDisclosure.FS)}
+        langchain_names = {
+            tool.name for tool in pctx_client.langchain_tools(ToolDisclosure.FS)
+        }
         assert langchain_names == expected_names
 
         # CrewAI
-        crewai_names = {tool.name for tool in pctx_client.crewai_tools(ToolDisclosure.FS)}
+        crewai_names = {
+            tool.name for tool in pctx_client.crewai_tools(ToolDisclosure.FS)
+        }
         assert crewai_names == expected_names
 
         # OpenAI Agents
-        openai_names = {tool.name for tool in pctx_client.openai_agents_tools(ToolDisclosure.FS)}
+        openai_names = {
+            tool.name for tool in pctx_client.openai_agents_tools(ToolDisclosure.FS)
+        }
         assert openai_names == expected_names
 
         # Pydantic AI
-        pydantic_names = {tool.name for tool in pctx_client.pydantic_ai_tools(ToolDisclosure.FS)}
+        pydantic_names = {
+            tool.name for tool in pctx_client.pydantic_ai_tools(ToolDisclosure.FS)
+        }
         assert pydantic_names == expected_names
 
     def test_fs_mode_false_returns_standard_tools(self, pctx_client):
@@ -517,7 +545,9 @@ class TestCustomToolDescriptions:
             "execute_typescript": "Custom typescript description",
         }
 
-        tools = pctx_client.langchain_tools(ToolDisclosure.FS, descriptions=custom_descriptions)
+        tools = pctx_client.langchain_tools(
+            ToolDisclosure.FS, descriptions=custom_descriptions
+        )
 
         # Check both tools have custom descriptions
         bash_tool = next(t for t in tools if t.name == "execute_bash")
