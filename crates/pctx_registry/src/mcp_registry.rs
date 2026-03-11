@@ -120,11 +120,12 @@ pub async fn call_mcp_tool(
         }
     };
     let tool_result = client
-        .call_tool(CallToolRequestParams {
-            name: tool_name.to_string().into(),
-            arguments: args,
-            task: None,
-            meta: None,
+        .call_tool({
+            let mut params = CallToolRequestParams::new(tool_name.to_string());
+            if let Some(args) = args {
+                params = params.with_arguments(args);
+            }
+            params
         })
         .await
         .map_err(|e| {
