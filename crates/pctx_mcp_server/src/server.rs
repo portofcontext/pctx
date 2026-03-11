@@ -240,10 +240,7 @@ impl PctxMcpServer {
         builder.push_record(["Server Name", &self.service.name]);
         builder.push_record(["Server Version", &self.service.version]);
         builder.push_record([transport_label, transport_value]);
-        builder.push_record([
-            "Tool Disclosure Style",
-            &self.service.disclosure_style.to_string(),
-        ]);
+        builder.push_record(["Tool Disclosure", &self.service.disclosure.to_string()]);
 
         let active_tools = self
             .service

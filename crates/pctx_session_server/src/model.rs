@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::{DisclosureStyle, ExecuteOutput};
+use pctx_code_mode::model::{ExecuteOutput, ToolDisclosure};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -135,7 +135,7 @@ pub struct ExecuteToolParams {
 pub struct ExecuteTypescriptParams {
     pub code: String,
     #[serde(default)]
-    pub style: DisclosureStyle,
+    pub disclosure: ToolDisclosure,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

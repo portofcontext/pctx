@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use pctx_code_mode::{
     CodeMode, PctxRegistry, RegistryAction,
     model::{
-        DisclosureStyle, ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput,
+        ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
+        GetFunctionDetailsOutput, ListFunctionsOutput, ToolDisclosure,
     },
     tool_descriptions,
 };
@@ -31,7 +31,7 @@ pub(crate) struct PctxMcpService {
     pub(crate) version: String,
     pub(crate) description: Option<String>,
     pub(crate) code_mode: CodeMode,
-    pub(crate) disclosure_style: DisclosureStyle,
+    pub(crate) disclosure: ToolDisclosure,
     pub(crate) tool_router: ToolRouter<PctxMcpService>,
 }
 
@@ -43,7 +43,7 @@ impl PctxMcpService {
             version: cfg.version.clone(),
             description: cfg.description.clone(),
             code_mode,
-            disclosure_style: DisclosureStyle::Sidecar, // TODO: from cfg
+            disclosure: ToolDisclosure::Sidecar, // TODO: from cfg
             tool_router: Self::tool_router(),
         }
     }
@@ -53,7 +53,7 @@ impl PctxMcpService {
         let mut filtered = original_list_tools.clone();
         filtered.tools.clear();
 
-        if matches!(self.disclosure_style, DisclosureStyle::Sidecar) {
+        if matches!(self.disclosure, ToolDisclosure::Sidecar) {
             // add upstream tools to list of tools
             for (_, tool_set) in self.code_mode.server_tool_sets() {
                 filtered.tools.extend(tool_set.tools.iter().map(|t| {
@@ -75,8 +75,8 @@ impl PctxMcpService {
             }
         }
 
-        // dynamically add descriptions based on style
-        let overrides = ToolOverride::for_style(self.disclosure_style);
+        // dynamically add descriptions based on tool disclosure
+        let overrides = ToolOverride::for_disclosure(self.disclosure);
         for mut tool in original_list_tools.tools {
             if let Some(o) = overrides.get(&tool.name.to_string()) {
                 if !o.enabled {
@@ -214,7 +214,7 @@ impl PctxMcpService {
 
         let code_mode = self.code_mode.clone();
         let code = input.code;
-        let style = self.disclosure_style;
+        let style = self.disclosure;
 
         let execution_output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
             // Enter the captured span context in the new thread
@@ -305,7 +305,7 @@ impl ServerHandler for PctxMcpService {
         let tool_name = req.name.clone();
 
         let res: Result<CallToolResult, rmcp::ErrorData> =
-            if matches!(self.disclosure_style, DisclosureStyle::Sidecar)
+            if matches!(self.disclosure, ToolDisclosure::Sidecar)
                 && tool_name != "execute_typescript"
             {
                 // call tool directly
@@ -343,21 +343,21 @@ struct ToolOverride {
     description: String,
 }
 impl ToolOverride {
-    fn for_style(style: DisclosureStyle) -> HashMap<String, Self> {
+    fn for_disclosure(style: ToolDisclosure) -> HashMap<String, Self> {
         let mut overrides = HashMap::new();
 
         // catalog only
         overrides.insert(
             "list_functions".into(),
             Self {
-                enabled: matches!(style, DisclosureStyle::Catalog),
+                enabled: matches!(style, ToolDisclosure::Catalog),
                 description: tool_descriptions::LIST_FUNCTIONS.into(),
             },
         );
         overrides.insert(
             "get_function_details".into(),
             Self {
-                enabled: matches!(style, DisclosureStyle::Catalog),
+                enabled: matches!(style, ToolDisclosure::Catalog),
                 description: tool_descriptions::GET_FUNCTION_DETAILS.into(),
             },
         );
@@ -366,7 +366,7 @@ impl ToolOverride {
         overrides.insert(
             "execute_bash".into(),
             Self {
-                enabled: matches!(style, DisclosureStyle::Filesystem),
+                enabled: matches!(style, ToolDisclosure::Filesystem),
                 description: tool_descriptions::EXECUTE_BASH.into(),
             },
         );

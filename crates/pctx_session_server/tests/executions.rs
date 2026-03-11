@@ -170,7 +170,7 @@ const CODE_NAMESPACED_SYNTAX: &str = "
 #[case::filesystem(CODE_NAMESPACED_SYNTAX, "filesystem")]
 #[serial]
 #[tokio::test]
-async fn test_exec_callbacks(#[case] code: &str, #[case] style: &str) {
+async fn test_exec_callbacks(#[case] code: &str, #[case] disclosure: &str) {
     let (session_id, server, _) = create_test_server_with_session().await;
 
     // register tools
@@ -198,7 +198,7 @@ async fn test_exec_callbacks(#[case] code: &str, #[case] style: &str) {
         "method": "execute_code",
         "params": {
             "code": code,
-            "style": style
+            "disclosure": disclosure
         }
     }))
     .await;

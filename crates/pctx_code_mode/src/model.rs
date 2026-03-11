@@ -138,7 +138,7 @@ pub struct ExecuteInput {
 }
 
 #[derive(Copy, Debug, Clone, Serialize, Deserialize, Default)]
-pub enum DisclosureStyle {
+pub enum ToolDisclosure {
     /// list_tools -> get_tool_details -> execute_typescript
     #[default]
     #[serde(rename = "catalog")]
@@ -150,16 +150,16 @@ pub enum DisclosureStyle {
     #[serde(rename = "sidecar")]
     Sidecar,
 }
-impl DisclosureStyle {
+impl ToolDisclosure {
     pub fn execute_description(&self) -> String {
         match self {
-            DisclosureStyle::Catalog => tool_descriptions::EXECUTE_TYPESCRIPT_CATALOG.into(),
-            DisclosureStyle::Filesystem => tool_descriptions::EXECUTE_TYPESCRIPT_FILESYSTEM.into(),
-            DisclosureStyle::Sidecar => tool_descriptions::EXECUTE_TYPESCRIPT_SIDECAR.into(),
+            Self::Catalog => tool_descriptions::EXECUTE_TYPESCRIPT_CATALOG.into(),
+            Self::Filesystem => tool_descriptions::EXECUTE_TYPESCRIPT_FILESYSTEM.into(),
+            Self::Sidecar => tool_descriptions::EXECUTE_TYPESCRIPT_SIDECAR.into(),
         }
     }
 }
-impl Display for DisclosureStyle {
+impl Display for ToolDisclosure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let val = json!(self).to_string().replace("\"", "");
         write!(f, "{}", val)

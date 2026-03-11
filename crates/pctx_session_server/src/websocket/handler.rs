@@ -273,7 +273,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
 
             rt.block_on(code_mode_clone.execute_typescript(
                 &code_to_exec,
-                params.style,
+                params.disclosure,
                 callback_registry,
             ))
             .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
