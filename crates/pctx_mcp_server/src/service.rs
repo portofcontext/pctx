@@ -182,17 +182,13 @@ impl ServerHandler for PctxMcpService {
                 .join(", ")
         );
 
-        ServerInfo {
-            protocol_version: ProtocolVersion::V_2024_11_05,
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
-            server_info: Implementation {
-                name: self.name.clone(),
-                title: Some(self.name.clone()),
-                version: self.version.clone(),
-                ..Default::default()
-            },
-            instructions: Some(self.description.clone().unwrap_or(default_description)),
-        }
+        ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
+            .with_protocol_version(ProtocolVersion::V_2024_11_05)
+            .with_server_info(
+                Implementation::new(self.name.clone(), self.version.clone())
+                    .with_title(self.name.clone()),
+            )
+            .with_instructions(self.description.clone().unwrap_or(default_description))
     }
 
     #[instrument(skip_all, fields(mcp.method = "tools/list", mcp.id = %ctx.id))]

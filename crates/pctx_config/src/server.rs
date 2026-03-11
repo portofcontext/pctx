@@ -1,9 +1,7 @@
 use http::{HeaderMap, HeaderName, HeaderValue};
 use rmcp::{
     RoleClient, ServiceExt,
-    model::{
-        ClientCapabilities, ClientInfo, Implementation, InitializeRequestParams, ProtocolVersion,
-    },
+    model::{ClientCapabilities, ClientInfo, Implementation, InitializeRequestParams},
     service::{ClientInitializeError, RunningService},
     transport::{
         StreamableHttpClientTransport,
@@ -121,18 +119,13 @@ impl ServerConfig {
     pub async fn connect(
         &self,
     ) -> Result<RunningService<RoleClient, InitializeRequestParams>, McpConnectionError> {
-        let init_request = ClientInfo {
-            protocol_version: ProtocolVersion::default(),
-            capabilities: ClientCapabilities::default(),
-            client_info: Implementation {
-                name: "pctx-client".to_string(),
-                version: option_env!("CARGO_PKG_VERSION")
-                    .unwrap_or("0.1.0")
-                    .to_string(),
-                ..Default::default()
-            },
-            meta: None,
-        };
+        let init_request = ClientInfo::new(
+            ClientCapabilities::default(),
+            Implementation::new(
+                "pctx-client",
+                option_env!("CARGO_PKG_VERSION").unwrap_or("0.1.0"),
+            ),
+        );
 
         match &self.transport {
             ServerTransport::Http(http_cfg) => {
