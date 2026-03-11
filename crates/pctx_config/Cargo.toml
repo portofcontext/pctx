@@ -31,7 +31,7 @@ rmcp = { workspace = true, features = [
     "transport-child-process",
 ] }
 reqwest = { workspace = true, features = [
-    "rustls-tls-native-roots",
+    "rustls",
     "json",
     "cookies",
     "gzip",
