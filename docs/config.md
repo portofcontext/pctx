@@ -26,14 +26,33 @@ This creates a basic `pctx.json` and prompts you to add upstream MCP servers.
 
 ### Root Fields
 
-| Field         | Type                  | Required | Description                                            |
-| ------------- | --------------------- | -------- | ------------------------------------------------------ |
-| `name`        | `string`              | Yes      | Name of your MCP server instance                       |
-| `version`     | `string`              | Yes      | Version of your MCP server                             |
-| `description` | `string`              | No       | Optional description of your MCP server                |
-| `servers`     | `array[ServerConfig]` | Yes      | List of upstream MCP server configurations (see below) |
-| `logger`      | `LoggerConfig`        | No       | Logger configuration (see below)                       |
-| `telemetry`   | `TelemetryConfig`     | No       | OpenTelemetry configuration (see below)                |
+| Field         | Type                  | Required | Default     | Description                                            |
+| ------------- | --------------------- | -------- | ----------- | ------------------------------------------------------ |
+| `name`        | `string`              | Yes      | -           | Name of your MCP server instance                       |
+| `version`     | `string`              | Yes      | `"0.1.0"`   | Version of your MCP server                             |
+| `description` | `string`              | No       | -           | Optional description of your MCP server                |
+| `disclosure`  | `ToolDisclosure`      | No       | `"catalog"` | Tool disclosure mode (see below)                       |
+| `servers`     | `array[ServerConfig]` | Yes      | -           | List of upstream MCP server configurations (see below) |
+| `logger`      | `LoggerConfig`        | No       | -           | Logger configuration (see below)                       |
+| `telemetry`   | `TelemetryConfig`     | No       | -           | OpenTelemetry configuration (see below)                |
+
+### Tool Disclosure
+
+The `disclosure` field controls which set of code-mode tools are exposed to the AI agent. It determines how the agent discovers and invokes upstream tools.
+
+| Value          | Default | Description                                                                                       |
+| -------------- | ------- | ------------------------------------------------------------------------------------------------- |
+| `"catalog"`    | Yes     | Agent uses `list_tools` → `get_tool_details` → `execute_typescript` to discover and call tools    |
+| `"filesystem"` | No      | Agent uses `execute_bash` → `execute_typescript`; tool details are read from the filesystem       |
+| `"sidecar"`    | No      | Upstream tool descriptions are surfaced directly; agent calls `execute_typescript` to invoke them |
+
+**Example:**
+
+```json
+{
+  "disclosure": "filesystem"
+}
+```
 
 ### Server Configuration
 
@@ -49,16 +68,17 @@ Each server in the `servers` array is either an HTTP server or a stdio server.
 
 **Stdio server fields:**
 
-| Field     | Type                | Required | Description                                                                                             |
-| --------- | ------------------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| `name`    | `string`            | Yes      | Unique identifier used as TypeScript namespace                                                          |
-| `command` | `string`            | Yes      | Command to execute the MCP server. Can be a single command or a full command line with arguments        |
-| `args`    | `array[string]`     | No       | Arguments passed to the command. If omitted and `command` contains spaces, it will be shell-parsed      |
-| `env`     | `map[string]string` | No       | Environment variables for the process                                                                   |
+| Field     | Type                | Required | Description                                                                                        |
+| --------- | ------------------- | -------- | -------------------------------------------------------------------------------------------------- |
+| `name`    | `string`            | Yes      | Unique identifier used as TypeScript namespace                                                     |
+| `command` | `string`            | Yes      | Command to execute the MCP server. Can be a single command or a full command line with arguments   |
+| `args`    | `array[string]`     | No       | Arguments passed to the command. If omitted and `command` contains spaces, it will be shell-parsed |
+| `env`     | `map[string]string` | No       | Environment variables for the process                                                              |
 
 **Examples (stdio):**
 
 With explicit args array:
+
 ```json
 {
   "name": "local_tools",
@@ -71,6 +91,7 @@ With explicit args array:
 ```
 
 With command-line string (auto-parsed):
+
 ```json
 {
   "name": "memory",
@@ -707,6 +728,7 @@ aws sts get-caller-identity
 When configuring stdio servers, you have two options:
 
 **Option 1: Shell-style command string (auto-parsed)**
+
 ```json
 {
   "name": "memory",
@@ -717,6 +739,7 @@ When configuring stdio servers, you have two options:
 The command is automatically parsed into executable and arguments using shell-style parsing.
 
 **Option 2: Explicit command and args**
+
 ```json
 {
   "name": "memory",
@@ -726,6 +749,7 @@ The command is automatically parsed into executable and arguments using shell-st
 ```
 
 Use explicit args when:
+
 - Your command has complex quoting requirements
 - You want to be explicit about argument boundaries
 - You're programmatically generating the configuration

@@ -50,13 +50,11 @@ impl Cli {
     }
 
     fn json_l(&self) -> Option<Utf8PathBuf> {
-        todo!("fix `mcp dev` command");
-        None
-        // if let Commands::Mcp(McpCommands::Dev(dev)) = &self.command {
-        //     Some(dev.log_file.clone())
-        // } else {
-        //     None
-        // }
+        if let Commands::Mcp(McpCommands::Dev(dev)) = &self.command {
+            Some(dev.log_file.clone())
+        } else {
+            None
+        }
     }
 
     #[allow(clippy::missing_errors_doc)]
@@ -96,7 +94,7 @@ impl Cli {
             McpCommands::Add(cmd) => cmd.handle(cfg?, true).await?,
             McpCommands::Remove(cmd) => cmd.handle(cfg?)?,
             McpCommands::Start(cmd) => cmd.handle(cfg?).await?,
-            // McpCommands::Dev(cmd) => cmd.handle(cfg?).await?,
+            McpCommands::Dev(cmd) => cmd.handle(cfg?).await?,
         };
 
         Ok(())
@@ -177,9 +175,9 @@ pub enum McpCommands {
     /// Start the PCTX MCP server
     #[command(long_about = "Start the PCTX MCP server (exposes /mcp endpoint).")]
     Start(commands::mcp::StartCmd),
-    // /// Start the PCTX MCP server with terminal UI
-    // #[command(
-    //     long_about = "Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging."
-    // )]
-    // Dev(commands::mcp::DevCmd),
+    /// Start the PCTX MCP server with terminal UI
+    #[command(
+        long_about = "Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging."
+    )]
+    Dev(commands::mcp::DevCmd),
 }

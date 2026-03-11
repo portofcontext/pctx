@@ -9,7 +9,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use chrono::{DateTime, Utc};
 use pctx_codegen::{Tool, ToolSet};
-use pctx_config::logger::LogLevel;
+use pctx_config::{Config, logger::LogLevel};
 use ratatui::{layout::Rect, widgets::ListState};
 
 use super::log_entry::LogEntry;
@@ -20,7 +20,7 @@ use pctx_code_mode::CodeMode;
 #[derive(Clone)]
 pub(super) enum AppMessage {
     ServerStarting,
-    ServerReady(CodeMode),
+    ServerReady(Config, CodeMode),
     ServerFailed(String),
     ServerStopped,
     ConfigChanged,
@@ -47,7 +47,8 @@ pub(super) struct ToolUsage {
 
 pub(super) struct App {
     pub(super) logs: Vec<LogEntry>,
-    pub(super) tools: CodeMode,
+    pub(super) code_mode: CodeMode,
+    pub(super) config: Config,
     pub(super) server_ready: bool,
     pub(super) host: String,
     pub(super) port: u16,
@@ -80,7 +81,8 @@ impl App {
     pub(super) fn new(host: String, port: u16, log_file_path: Utf8PathBuf) -> Self {
         Self {
             logs: Vec::new(),
-            tools: CodeMode::default(),
+            code_mode: CodeMode::default(), // set on first ServerReady event
+            config: Config::default(),      // set on first ServerReady event
             server_ready: false,
             host,
             port,
@@ -170,29 +172,32 @@ impl App {
             tracing::trace!(
                 "Found code_from_llm field (length={}), checking for tool usage. Servers available: {}",
                 code_from_llm.len(),
-                self.tools.tool_sets().len()
+                self.code_mode.tool_sets().len()
             );
+
+            // TODO: depends on tool disclosure!
 
             // Parse the code to find upstream tool calls like "Banking.getAccountBalance"
             // Pattern: namespace.methodName(
-            for tool_set in self.tools.tool_sets() {
-                let namespace_pattern = format!("{}.", &tool_set.namespace);
+            for tool_set in self.code_mode.tool_sets() {
+                let namespace_pattern = format!("{}.", &tool_set.pascal_namespace());
                 tracing::trace!(
-                    "Checking for server '{}' with namespace pattern '{namespace_pattern}' in code",
+                    "Checking for server '{:?}' with namespace pattern '{namespace_pattern}' in code",
                     &tool_set.name
                 );
 
                 if code_from_llm.contains(&namespace_pattern) {
                     tracing::trace!(
-                        "✓ Found {} namespace in code_from_llm, checking {} tools",
-                        &tool_set.namespace,
+                        "✓ Found {:?} namespace in code_from_llm, checking {} tools",
+                        &tool_set.name,
                         tool_set.tools.len()
                     );
 
                     // Find all method calls for this server
                     for tool in &tool_set.tools {
                         // Check if this function is called in the code
-                        let method_pattern = format!("{}.{}(", &tool_set.namespace, &tool.fn_name);
+                        let method_pattern =
+                            format!("{}.{}(", tool_set.pascal_namespace(), &tool.fn_name);
                         tracing::trace!(
                             "Checking for method pattern '{}' for tool '{}'",
                             method_pattern,
@@ -202,7 +207,7 @@ impl App {
                         if code_from_llm.contains(&method_pattern) {
                             tracing::trace!(
                                 "✓ Found tool usage: {}.{} (tool_name={})",
-                                &tool_set.namespace,
+                                tool_set.pascal_namespace(),
                                 &tool.fn_name,
                                 &tool.name
                             );
@@ -219,7 +224,7 @@ impl App {
                                     .trim()
                                     .to_string();
 
-                                let key = format!("{}::{}", tool_set.name, tool.name);
+                                let key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
 
                                 self.tool_usage
                                     .entry(key.clone())
@@ -234,7 +239,7 @@ impl App {
                                     })
                                     .or_insert_with(|| ToolUsage {
                                         tool_name: tool.name.clone(),
-                                        server_name: tool_set.name.clone(),
+                                        server_name: tool_set.name.clone().unwrap_or_default(),
                                         count: 1,
                                         last_used: entry.timestamp,
                                         code_snippets: if code_snippet.is_empty() {
@@ -290,15 +295,16 @@ impl App {
 
     pub(super) fn handle_message(&mut self, msg: AppMessage) {
         match msg {
-            AppMessage::ServerReady(tools) => {
+            AppMessage::ServerReady(cfg, code_mode) => {
                 self.server_ready = true;
                 self.error = None;
-                self.tools = tools;
+                self.code_mode = code_mode;
+                self.config = cfg;
 
                 // Re-process all existing logs now that we have server metadata
                 tracing::info!(
                     "ServerConnected: {} servers available. Re-processing existing logs for tool usage tracking.",
-                    self.tools.tool_sets().len()
+                    self.code_mode.tool_sets().len()
                 );
                 self.reprocess_logs_for_tool_usage();
             }
@@ -317,7 +323,7 @@ impl App {
             AppMessage::ConfigChanged => {
                 tracing::info!("Configuration file changed, reloading servers...");
                 // Clear existing servers - they will be repopulated when reconnection completes
-                self.tools = CodeMode::default();
+                self.code_mode = CodeMode::default();
                 self.selected_tool_index = None;
                 self.selected_namespace_index = 0;
             }
@@ -397,7 +403,7 @@ impl App {
 
     pub(super) fn scroll_tools_down(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -433,7 +439,7 @@ impl App {
 
     pub(super) fn scroll_tools_up(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -462,12 +468,12 @@ impl App {
     }
 
     pub(super) fn move_to_next_namespace(&mut self) {
-        if self.tools.tool_sets().is_empty() {
+        if self.code_mode.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -483,12 +489,12 @@ impl App {
     }
 
     pub(super) fn move_to_prev_namespace(&mut self) {
-        if self.tools.tool_sets().is_empty() {
+        if self.code_mode.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -509,7 +515,7 @@ impl App {
 
     pub(super) fn select_first_tool_in_current_namespace(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if self.selected_namespace_index >= sorted.len() {
@@ -538,7 +544,7 @@ impl App {
         let mut counter = 0;
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         for tool_set in sorted {
@@ -547,7 +553,7 @@ impl App {
                 .tools
                 .iter()
                 .map(|tool| {
-                    let usage_key = format!("{}::{}", tool_set.name, tool.name);
+                    let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
                     let usage_count = self.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                     (tool.clone(), usage_count)
                 })

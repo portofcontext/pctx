@@ -5,8 +5,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
 use utoipa::ToSchema;
 
-use crate::tool_descriptions;
-
 // -------------- List Functions --------------
 #[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
 pub struct ListFunctionsOutput {
@@ -135,35 +133,6 @@ pub struct ExecuteInput {
     /// The sandbox automatically calls run() and exports the result.
     ///
     pub code: String,
-}
-
-#[derive(Copy, Debug, Clone, Serialize, Deserialize, Default)]
-pub enum ToolDisclosure {
-    /// list_tools -> get_tool_details -> execute_typescript
-    #[default]
-    #[serde(rename = "catalog")]
-    Catalog,
-    /// execute_bash -> execute_typescript
-    #[serde(rename = "filesystem")]
-    Filesystem,
-    /// original tool descriptions -> execute_typescript
-    #[serde(rename = "sidecar")]
-    Sidecar,
-}
-impl ToolDisclosure {
-    pub fn execute_description(&self) -> String {
-        match self {
-            Self::Catalog => tool_descriptions::EXECUTE_TYPESCRIPT_CATALOG.into(),
-            Self::Filesystem => tool_descriptions::EXECUTE_TYPESCRIPT_FILESYSTEM.into(),
-            Self::Sidecar => tool_descriptions::EXECUTE_TYPESCRIPT_SIDECAR.into(),
-        }
-    }
-}
-impl Display for ToolDisclosure {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let val = json!(self).to_string().replace("\"", "");
-        write!(f, "{}", val)
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]

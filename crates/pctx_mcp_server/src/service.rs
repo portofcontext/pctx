@@ -4,10 +4,11 @@ use pctx_code_mode::{
     CodeMode, PctxRegistry, RegistryAction,
     model::{
         ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput, ToolDisclosure,
+        GetFunctionDetailsOutput, ListFunctionsOutput,
     },
     tool_descriptions,
 };
+use pctx_config::ToolDisclosure;
 use rmcp::{
     RoleServer, ServerHandler, ServiceError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
@@ -43,7 +44,7 @@ impl PctxMcpService {
             version: cfg.version.clone(),
             description: cfg.description.clone(),
             code_mode,
-            disclosure: ToolDisclosure::Sidecar, // TODO: from cfg
+            disclosure: cfg.disclosure,
             tool_router: Self::tool_router(),
         }
     }
@@ -343,21 +344,21 @@ struct ToolOverride {
     description: String,
 }
 impl ToolOverride {
-    fn for_disclosure(style: ToolDisclosure) -> HashMap<String, Self> {
+    fn for_disclosure(disclosure: ToolDisclosure) -> HashMap<String, Self> {
         let mut overrides = HashMap::new();
 
         // catalog only
         overrides.insert(
             "list_functions".into(),
             Self {
-                enabled: matches!(style, ToolDisclosure::Catalog),
+                enabled: matches!(disclosure, ToolDisclosure::Catalog),
                 description: tool_descriptions::LIST_FUNCTIONS.into(),
             },
         );
         overrides.insert(
             "get_function_details".into(),
             Self {
-                enabled: matches!(style, ToolDisclosure::Catalog),
+                enabled: matches!(disclosure, ToolDisclosure::Catalog),
                 description: tool_descriptions::GET_FUNCTION_DETAILS.into(),
             },
         );
@@ -366,7 +367,7 @@ impl ToolOverride {
         overrides.insert(
             "execute_bash".into(),
             Self {
-                enabled: matches!(style, ToolDisclosure::Filesystem),
+                enabled: matches!(disclosure, ToolDisclosure::Filesystem),
                 description: tool_descriptions::EXECUTE_BASH.into(),
             },
         );
@@ -376,7 +377,7 @@ impl ToolOverride {
             "execute_typescript".into(),
             Self {
                 enabled: true,
-                description: style.execute_description(),
+                description: tool_descriptions::disclosure_execute_description(disclosure),
             },
         );
 

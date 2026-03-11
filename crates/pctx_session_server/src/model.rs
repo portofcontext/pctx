@@ -1,5 +1,6 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::{ExecuteOutput, ToolDisclosure};
+use pctx_code_mode::model::ExecuteOutput;
+use pctx_config::ToolDisclosure;
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;

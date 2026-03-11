@@ -1,6 +1,6 @@
 use pctx_code_execution_runtime::PctxRegistry;
 use pctx_codegen::{Tool, ToolSet};
-use pctx_config::server::ServerConfig;
+use pctx_config::{ToolDisclosure, server::ServerConfig};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
@@ -13,7 +13,7 @@ use crate::{
     Error, Result,
     model::{
         CallbackConfig, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction, ToolDisclosure,
+        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
     },
 };
 

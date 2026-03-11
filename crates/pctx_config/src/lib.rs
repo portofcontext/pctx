@@ -2,7 +2,7 @@ use anyhow::{Context, Result};
 use camino::Utf8PathBuf;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::fs;
+use std::{fmt::Display, fs};
 use tracing::debug;
 
 use crate::{logger::LoggerConfig, server::ServerConfig, telemetry::TelemetryConfig};
@@ -28,6 +28,11 @@ pub struct Config {
     /// Description of the pctx mcp server
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+
+    /// Tool disclosure mode, determines which set of
+    /// code mode tools will be made available.
+    #[serde(default)]
+    pub disclosure: ToolDisclosure,
 
     /// Upstream MCP server configurations
     #[serde(default)]
@@ -137,5 +142,26 @@ impl Config {
 
     pub fn get_server_mut(&mut self, name: &str) -> Option<&mut ServerConfig> {
         self.servers.iter_mut().find(|s| s.name == name)
+    }
+}
+
+#[derive(Copy, Debug, Clone, Serialize, Deserialize, Default)]
+pub enum ToolDisclosure {
+    /// list_tools -> get_tool_details -> execute_typescript
+    #[default]
+    #[serde(rename = "catalog")]
+    Catalog,
+    /// execute_bash -> execute_typescript
+    #[serde(rename = "filesystem")]
+    #[serde(alias = "fs")]
+    Filesystem,
+    /// original tool descriptions -> execute_typescript
+    #[serde(rename = "sidecar")]
+    Sidecar,
+}
+impl Display for ToolDisclosure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let val = json!(self).to_string().replace("\"", "");
+        write!(f, "{}", val)
     }
 }

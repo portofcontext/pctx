@@ -473,7 +473,7 @@ fn spawn_server_task(
     let handle = tokio::spawn(async move {
         tx.send(AppMessage::ServerStarting).ok();
 
-        let tools = match load_code_mode_for_dev(&cfg).await {
+        let code_mode = match load_code_mode_for_dev(&cfg).await {
             Ok(loaded) => loaded,
             Err(err) => {
                 tx.send(AppMessage::ServerFailed(format!(
@@ -485,12 +485,12 @@ fn spawn_server_task(
         };
 
         // Run server with shutdown signal
-        let pctx_mcp = PctxMcpServer::new(&host, port, false);
+        let pctx_mcp = PctxMcpServer::new(&host, port, false, &cfg, code_mode.clone());
 
-        tx.send(AppMessage::ServerReady(tools.clone())).ok();
+        tx.send(AppMessage::ServerReady(cfg, code_mode)).ok();
 
         if let Err(e) = pctx_mcp
-            .serve_with_shutdown(&cfg, tools, async move {
+            .serve_with_shutdown(async move {
                 let _ = shutdown_rx.await;
             })
             .await
@@ -525,7 +525,7 @@ mod tests {
     use pctx_config::logger::LogLevel;
     use serde_json::json;
 
-    fn create_pctx_tools() -> CodeMode {
+    fn create_test_code_mode() -> CodeMode {
         let account_schema = json!({
             "type": "object",
             "required": ["account_id", "opened_at", "balance", "status"],
@@ -537,7 +537,7 @@ mod tests {
             }
         });
         let tools = vec![
-            Tool::new_mcp(
+            Tool::new(
                 "get_account_balance",
                 Some("Retrieves the balance for an account".into()),
                 serde_json::from_value(json!({
@@ -551,7 +551,7 @@ mod tests {
                 Some(serde_json::from_value(account_schema.clone()).unwrap()),
             )
             .unwrap(),
-            Tool::new_mcp(
+            Tool::new(
                 "freeze_account",
                 Some("Freezes an account".into()),
                 serde_json::from_value(json!({
@@ -568,8 +568,12 @@ mod tests {
         ];
 
         let mut cm = CodeMode::default();
-        cm.add_tool_set(ToolSet::new("banking", "Banking MCP Server", tools))
-            .unwrap();
+        cm.add_tool_set(ToolSet::new(
+            Some("banking".into()),
+            "Banking MCP Server",
+            tools,
+        ))
+        .unwrap();
 
         cm
     }
@@ -582,7 +586,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // Create a log entry with code_from_llm field containing Banking.getAccountBalance
         let log_entry = LogEntry {
@@ -627,7 +631,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // Create a log entry with Banking.freezeAccount
         let log_entry = LogEntry {
@@ -669,7 +673,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // First call
         let log_entry1 = LogEntry {

@@ -172,11 +172,16 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
         return;
     }
 
-    let total_tools: usize = app.tools.tool_sets().iter().map(|s| s.tools.len()).sum();
+    let total_tools: usize = app
+        .code_mode
+        .tool_sets()
+        .iter()
+        .map(|s| s.tools.len())
+        .sum();
     let title = format!("MCP Tools [{total_tools} total]");
 
     // Sort servers alphabetically by name
-    let mut sorted: Vec<ToolSet> = app.tools.tool_sets().iter().cloned().collect();
+    let mut sorted: Vec<ToolSet> = app.code_mode.tool_sets().iter().cloned().collect();
     sorted.sort_by_key(|s| s.name.clone());
 
     if sorted.is_empty() {
@@ -286,7 +291,7 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
         items.push(ListItem::new(Line::from(vec![
             Span::styled(format!("{status} "), Style::default().fg(TERTIARY)),
             Span::styled(
-                &tool_set.name,
+                tool_set.pascal_namespace(),
                 Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
             ),
         ])));
@@ -296,7 +301,7 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             .tools
             .iter()
             .map(|tool| {
-                let usage_key = format!("{}::{}", tool_set.name, tool.name);
+                let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
                 let usage_count = app.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                 (tool, usage_count)
             })
@@ -332,7 +337,11 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             global_tool_index += 1;
         }
 
-        let namespace_title = format!("{} ({} tools)", tool_set.name, tool_set.tools.len());
+        let namespace_title = format!(
+            "{} ({} tools)",
+            tool_set.pascal_namespace(),
+            tool_set.tools.len()
+        );
 
         // Check if a tool in this namespace is selected
         let selected_in_this_namespace = app
@@ -411,7 +420,7 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
     if let Some((tool_set, tool)) = app.get_selected_tool() {
-        let usage_key = format!("{}::{}", tool_set.name, tool.name);
+        let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
         let usage = app.tool_usage.get(&usage_key);
 
         let mut lines: Vec<Line> = vec![
@@ -421,7 +430,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
                     "Server: ",
                     Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
                 ),
-                Span::raw(&tool_set.name),
+                Span::raw(tool_set.pascal_namespace()),
             ]),
             Line::from(vec![
                 Span::styled(
