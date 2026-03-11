@@ -1,5 +1,4 @@
 import asyncio
-import pprint
 from datetime import datetime
 from os import getenv
 
@@ -83,8 +82,8 @@ async function run() {
     return { multval, now };
 }
     """
-        output = await p.execute(code)
-        pprint.pprint(output)
+        output = await p.execute_typescript(code)
+        print(output.markdown())
 
         invalid_code = """
 async function run() {
@@ -93,8 +92,8 @@ async function run() {
     return addval;
 }
     """
-        invalid_output = await p.execute(invalid_code)
-        pprint.pprint(invalid_output)
+        invalid_output = await p.execute_typescript(invalid_code)
+        print(invalid_output.markdown())
 
         print(p._session_id)
 

@@ -12,9 +12,11 @@ EXPLORATION WORKFLOW:
 3. Search: `grep 'keyword' README.md` to find specific functions
 4. Read types: `cat {Namespace}/{functionName}.d.ts` for detailed type information
 
-AVAILABLE COMMANDS:
+COMMANDS:
 - ls, cat, grep, find - Explore the filesystem
 - All standard bash utilities for text processing
+- Networking bash commands like `curl`, `ping`, etc. are unavailable.
+Use bash to explore the SDK and write a script.
 
 CURRENT WORKING DIRECTORY: /sdk/
 

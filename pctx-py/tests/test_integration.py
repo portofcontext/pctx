@@ -136,7 +136,7 @@ async def test_execute_simple_code():
             }
             """
 
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             # Verify execution succeeded
             assert output.success, "Execution should succeed"
@@ -170,7 +170,7 @@ async def test_execute_with_error():
             }
             """
 
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             # When code throws an error, success should be False
             assert not output.success, "Execution should report failure"
@@ -198,7 +198,7 @@ async def test_multiple_sequential_executions():
                 return { execution: 1, value: 100 };
             }
             """
-            output1 = await pctx.execute(code1)
+            output1 = await pctx.execute_typescript(code1)
             assert output1.success, "First execution should succeed"
             assert output1.output is not None, "output1 should have output"
             assert output1.output.get("execution") == 1
@@ -209,7 +209,7 @@ async def test_multiple_sequential_executions():
                 return { execution: 2, value: 200 };
             }
             """
-            output2 = await pctx.execute(code2)
+            output2 = await pctx.execute_typescript(code2)
             assert output2.success, "Second execution should succeed"
             assert output2.output is not None, "output2 should have output"
             assert output2.output.get("execution") == 2
@@ -258,7 +258,7 @@ async def test_markdown_output_formatting():
             }
             """
 
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
             markdown = output.markdown()
 
             # Verify markdown output contains expected elements
@@ -342,7 +342,7 @@ async def test_local_python_tool_registration_and_calling():
                 return { sum: result };
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             assert output.success, "Execution should succeed"
             assert output.output is not None, "Should have output"
@@ -355,7 +355,7 @@ async def test_local_python_tool_registration_and_calling():
                 return { greeting: result };
             }
             """
-            output2 = await pctx.execute(code2)
+            output2 = await pctx.execute_typescript(code2)
 
             assert output2.success, "Second execution should succeed"
             assert output2.output is not None, "output2 should have output"
@@ -370,7 +370,7 @@ async def test_local_python_tool_registration_and_calling():
                 return { greeting: result };
             }
             """
-            output3 = await pctx.execute(code3)
+            output3 = await pctx.execute_typescript(code3)
 
             assert output3.success, "Third execution should succeed"
             assert output3.output is not None, "output3 should have output"
@@ -385,7 +385,7 @@ async def test_local_python_tool_registration_and_calling():
                 return { timestamp: result };
             }
             """
-            output4 = await pctx.execute(code4)
+            output4 = await pctx.execute_typescript(code4)
             assert output4.success, "Fourth execution should succeed"
             assert output4.output is not None, "output4 should have output"
             assert isinstance(output4.output.get("timestamp"), float), (
@@ -401,7 +401,7 @@ async def test_local_python_tool_registration_and_calling():
                 return { noInput, empty, filtered };
             }
             """
-            output5 = await pctx.execute(code5)
+            output5 = await pctx.execute_typescript(code5)
 
             assert output5.success, (
                 f"search_logs should succeed. stderr: {output5.stderr}"
@@ -461,7 +461,7 @@ async def test_async_local_python_tool():
                 return result;
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             assert output.success, "Execution should succeed"
             assert output.output is not None, "Should have output"
@@ -524,7 +524,7 @@ async def test_http_mcp_server_registration(http_mcp_server):
                 return { difference: result };
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             assert output.success, f"Execution should succeed. stderr: {output.stderr}"
             assert output.output is not None, "Should have output"
@@ -598,7 +598,7 @@ async def test_stdio_mcp_server_registration():
                 return { sum: result };
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             assert output.success, f"Execution should succeed. stderr: {output.stderr}"
             assert output.output is not None, "Should have output"
@@ -644,9 +644,10 @@ async def test_execute_bash_virtual_filesystem():
 
             # Test 2: Read the README
             output = await pctx.execute_bash("cat README.md")
+            print(output.stdout)
             assert output.success, "cat command should succeed"
             assert "TypeScript SDK" in output.stdout, "README should have header"
-            assert "**Tools**" in output.stdout, "README should list Tools namespace"
+            assert "## Tools" in output.stdout, "README should list Tools namespace"
             assert "addNumbers" in output.stdout, (
                 "README should list addNumbers function"
             )
@@ -727,7 +728,7 @@ async def test_bash_then_typescript_workflow():
                 return { product: result };
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
             assert output.success, "TypeScript execution should succeed"
             assert output.output is not None, "Should have output"
             assert output.output.get("product") == 42, "Expected product to be 42"
@@ -780,7 +781,7 @@ async def test_mixed_tools_and_mcp_servers():
                 return { product, formatted };
             }
             """
-            output = await pctx.execute(code)
+            output = await pctx.execute_typescript(code)
 
             assert output.success, "Execution should succeed"
             assert output.output is not None, "output should have output"

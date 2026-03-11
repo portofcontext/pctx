@@ -26,6 +26,7 @@ from pctx_client.models import (
     ExecuteToolResponse,
     ExecuteToolResult,
     JsonRpcError,
+    ToolDisclosure,
 )
 
 from .exceptions import ConnectionError
@@ -105,8 +106,12 @@ class WebSocketClient:
 
         await self.ws.send(message.model_dump_json())
 
-    async def execute_code(
-        self, code_mode_session: str, code: str, timeout: float = 30.0
+    async def execute_typescript(
+        self,
+        code_mode_session: str,
+        code: str,
+        disclosure: ToolDisclosure = ToolDisclosure.CATALOG,
+        timeout: float = 30.0,
     ) -> ExecuteOutput:
         """
         Execute code via WebSocket instead of REST.
@@ -135,7 +140,9 @@ class WebSocketClient:
 
         # Send request
         request = ExecuteCodeRequest(
-            id=request_id, method="execute_code", params=ExecuteCodeParams(code=code)
+            id=request_id,
+            method="execute_typescript",
+            params=ExecuteCodeParams(code=code, style=disclosure),
         )
 
         try:

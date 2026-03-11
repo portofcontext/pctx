@@ -40,8 +40,7 @@ jobs:
           git push origin "pctx-py-v${{ steps.get_version.outputs.version }}"
 
       - name: Build package
-        working-directory: pctx-py
-        run: uv build
+        run: ./scripts/build-python.sh
       - name: Publish to PyPI
         working-directory: pctx-py
         env:

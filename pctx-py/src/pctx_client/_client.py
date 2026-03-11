@@ -4,6 +4,8 @@ PCTX Client
 Main client for executing code with both MCP tools and local Python tools.
 """
 
+import asyncio
+import warnings
 from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
@@ -11,7 +13,8 @@ from httpx import AsyncClient
 from pydantic import BaseModel
 
 from pctx_client._tool import AsyncTool, Tool
-from pctx_client._utils import to_snake_case
+from pctx_client._tool_descriptions import get_description
+from pctx_client._utils import HAS_SEARCH, to_snake_case
 from pctx_client._websocket_client import WebSocketClient
 from pctx_client.exceptions import ConnectionError, SessionError
 from pctx_client.models import (
@@ -24,9 +27,10 @@ from pctx_client.models import (
     ListFunctionsOutput,
     ServerConfig,
     ToolConfig,
+    ToolDisclosure,
+    ToolDisclosureName,
+    ToolName,
 )
-from pctx_client.tool_descriptions import PRESCRIPTIVE_DESCRIPTIONS
-from pctx_client.tools import ModeString, ToolName, get_toolset_from_mode
 
 if TYPE_CHECKING:
     try:
@@ -42,10 +46,8 @@ if TYPE_CHECKING:
 try:
     from bm25s import BM25, tokenize
     from Stemmer import Stemmer
-
-    HAS_SEARCH = True
 except ImportError:
-    HAS_SEARCH = False
+    pass
 
 
 class Pctx:
@@ -301,7 +303,11 @@ class Pctx:
 
         return GetFunctionDetailsOutput.model_validate(list_res.json())
 
-    async def execute(self, code: str) -> ExecuteOutput:
+    async def execute_typescript(
+        self,
+        code: str,
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
+    ) -> ExecuteOutput:
         """
         Execute TypeScript code that calls namespaced functions.
 
@@ -340,16 +346,33 @@ class Pctx:
             ...         return { temperature: result.temp };
             ...     }
             ...     '''
-            ...     output = await pctx.execute(code)
+            ...     output = await pctx.execute_typescript(code)
             ...     print(output.markdown())  # Formatted results with logs
         """
+
         if self._session_id is None:
             raise SessionError(
                 "No code mode session exists, run Pctx(...).connect() before calling"
             )
-        return await self._ws_client.execute_code(
-            self._session_id, code, timeout=self._execute_timeout
+        return await self._ws_client.execute_typescript(
+            self._session_id,
+            code,
+            disclosure=ToolDisclosure(disclosure),
+            timeout=self._execute_timeout,
         )
+
+    async def execute(
+        self,
+        code: str,
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
+    ) -> ExecuteOutput:
+        """Deprecated alias for execute_typescript."""
+        warnings.warn(
+            "execute() is deprecated, use execute_typescript() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.execute_typescript(code, disclosure=disclosure)
 
     async def execute_bash(self, command: str) -> ExecuteOutput:
         """
@@ -397,6 +420,8 @@ class Pctx:
         res = await self._client.post("/register/servers", json={"servers": configs})
         res.raise_for_status()
 
+    # ========== Utils ==========
+
     def _search_functions_result_to_string(
         self, functions: list[ListedFunction]
     ) -> str:
@@ -407,22 +432,24 @@ class Pctx:
             ]
         )
 
+    # ========== Frameworks ==========
+
     def langchain_tools(
         self,
-        mode: ModeString | ToolConfig = "list_get_execute",
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
         descriptions: dict[ToolName, str] | None = None,
     ) -> "list[LangchainBaseTool]":
         """
         Expose PCTX tools as LangChain tools
 
         Args:
-            mode: Tool mode configuration. Either:
-                  - "list_get_execute" (default): list_functions, search_functions,
-                    get_function_details, execute
-                  - "fs": execute_bash, execute_typescript
-                  - ToolConfig: Custom tool selection
+            disclosure: Controls which tools are exposed and how function context is
+                provided to the model. CATALOG (default) exposes list_functions,
+                get_function_details, and execute_typescript — the agent discovers
+                and retrieves function signatures before executing. FS exposes
+                execute_bash and execute_typescript — the agent browses the virtual
+                filesystem directly.
             descriptions: Optional custom descriptions to override defaults.
-                          Only used when mode is a string.
 
         Requires the 'langchain' extra to be installed:
             pip install pctx[langchain]
@@ -431,17 +458,11 @@ class Pctx:
             ImportError: If langchain is not installed.
 
         Examples:
-            Pre-bundled modes:
-            >>> tools = pctx.langchain_tools()  # default: list_get_execute
-            >>> tools = pctx.langchain_tools("fs")
-
-            Override descriptions:
-            >>> tools = pctx.langchain_tools("list_get_execute", descriptions={"execute": "Custom"})
-
-            Full control:
-            >>> from pctx_client.tools import ToolConfig
-            >>> tools = pctx.langchain_tools(ToolConfig(tools=["execute_bash", "list_functions"]))
+            >>> tools = pctx.langchain_tools()  # default: catalog
+            >>> tools = pctx.langchain_tools(disclosure="filesystem")
+            >>> tools = pctx.langchain_tools(descriptions={"execute_typescript": "Custom"})
         """
+        disclosure = ToolDisclosure(disclosure)
         try:
             from langchain_core.tools import tool as langchain_tool
         except ImportError as e:
@@ -449,118 +470,74 @@ class Pctx:
                 "LangChain is not installed. Install it with: pip install pctx[langchain]"
             ) from e
 
-        # Convert mode string to ToolConfig if needed
-        if isinstance(mode, str):
-            toolset = get_toolset_from_mode(mode, descriptions)
-        else:
-            toolset = mode
+        # build all tools
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
+        @langchain_tool(
+            description=get_description("execute_bash", overrides=descriptions)
+        )
+        async def execute_bash(command: str) -> str:
+            return (await self.execute_bash(command)).markdown()
 
-        tools = []
-
-        # Build tools based on toolset configuration using registry
-        from pctx_client._tool_registry import TOOL_REGISTRY
-
-        for tool_name in toolset.tools:
-            # Validate tool exists in registry
-            if tool_name not in TOOL_REGISTRY:
-                raise ValueError(
-                    f"Unknown tool: {tool_name}. Valid tools: {sorted(TOOL_REGISTRY)}"
-                )
-
-            # Skip search_functions if BM25 not installed
-            if tool_name == "search_functions" and not HAS_SEARCH:
-                continue
-
-            # Create framework-specific tool
-            tool = self._create_langchain_tool(
-                tool_name, get_desc(tool_name), langchain_tool
+        @langchain_tool(
+            description=get_description(
+                "execute_typescript", disclosure=disclosure, overrides=descriptions
             )
-            tools.append(tool)
+        )
+        async def execute_typescript(code: str) -> str:
+            return (
+                await self.execute_typescript(code, disclosure=disclosure)
+            ).markdown()
 
-        return tools
+        @langchain_tool(
+            description=get_description("list_functions", overrides=descriptions)
+        )
+        async def list_functions() -> str:
+            return (await self.list_functions()).code
 
-    def _create_langchain_tool(
-        self, tool_name: ToolName, description: str, langchain_tool
-    ):
-        """Factory method to create a LangChain tool for the given tool name"""
-        if tool_name == "execute_bash":
+        @langchain_tool(
+            description=get_description("search_functions", overrides=descriptions)
+        )
+        async def search_functions(query: str, k: int = 10) -> str:
+            functions = await self.search_functions(query, k)
+            return self._search_functions_result_to_string(functions)
 
-            @langchain_tool(description=description)
-            async def execute_bash(command: str) -> str:
-                return (await self.execute_bash(command)).markdown()
+        @langchain_tool(
+            description=get_description("get_function_details", overrides=descriptions)
+        )
+        async def get_function_details(functions: list[str]) -> str:
+            return (
+                await self.get_function_details(
+                    functions,
+                )
+            ).code
 
-            return execute_bash
+        all_tools = [
+            execute_bash,
+            execute_typescript,
+            list_functions,
+            search_functions,
+            get_function_details,
+        ]
 
-        elif tool_name == "execute_typescript":
-
-            @langchain_tool(description=description)
-            async def execute_typescript(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            return execute_typescript
-
-        elif tool_name == "list_functions":
-
-            @langchain_tool(description=description)
-            async def list_functions() -> str:
-                return (await self.list_functions()).code
-
-            return list_functions
-
-        elif tool_name == "search_functions":
-
-            @langchain_tool(description=description)
-            async def search_functions(query: str, k: int = 10) -> str:
-                functions = await self.search_functions(query, k)
-                return self._search_functions_result_to_string(functions)
-
-            return search_functions
-
-        elif tool_name == "get_function_details":
-
-            @langchain_tool(description=description)
-            async def get_function_details(functions: list[str]) -> str:
-                return (
-                    await self.get_function_details(
-                        functions,
-                    )
-                ).code
-
-            return get_function_details
-
-        elif tool_name == "execute":
-
-            @langchain_tool(description=description)
-            async def execute(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            return execute
-
-        else:
-            raise ValueError(f"Unsupported LangChain tool: {tool_name}")
+        # filter according to disclosure
+        return [t for t in all_tools if disclosure.contains_tool(t.name)]
 
     def crewai_tools(
         self,
-        mode: ModeString | ToolConfig = "list_get_execute",
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
         descriptions: dict[ToolName, str] | None = None,
     ) -> "list[CrewAiBaseTool]":
         """
         Expose PCTX tools as CrewAI tools
 
         Args:
-            mode: Tool mode configuration. Either:
-                  - "list_get_execute" (default): list_functions, search_functions,
-                    get_function_details, execute
-                  - "fs": execute_bash, execute_typescript
-                  - ToolConfig: Custom tool selection
+            disclosure: Controls which tools are exposed and how function context is
+                provided to the model. CATALOG (default) exposes list_functions,
+                get_function_details, and execute_typescript — the agent discovers
+                and retrieves function signatures before executing. FS exposes
+                execute_bash and execute_typescript — the agent browses the virtual
+                filesystem directly.
             descriptions: Optional custom descriptions to override defaults.
-                          Only used when mode is a string.
 
         Requires the 'crewai' extra to be installed:
             pip install pctx[crewai]
@@ -569,17 +546,11 @@ class Pctx:
             ImportError: If crewai is not installed.
 
         Examples:
-            Pre-bundled modes:
-            >>> tools = pctx.crewai_tools()  # default: list_get_execute
-            >>> tools = pctx.crewai_tools("fs")
-
-            Override descriptions:
-            >>> tools = pctx.crewai_tools("list_get_execute", descriptions={"execute": "Custom"})
-
-            Full control:
-            >>> from pctx_client.tools import ToolConfig
-            >>> tools = pctx.crewai_tools(ToolConfig(tools=["execute_bash", "list_functions"]))
+            >>> tools = pctx.crewai_tools()  # default: catalog
+            >>> tools = pctx.crewai_tools(disclosure="filesystem")
+            >>> tools = pctx.crewai_tools(descriptions={"execute_typescript": "Custom"})
         """
+        disclosure = ToolDisclosure(disclosure)
         try:
             from crewai.tools import BaseTool as CrewAiBaseTool
         except ImportError as e:
@@ -587,211 +558,111 @@ class Pctx:
                 "CrewAI is not installed. Install it with: pip install pctx[crewai]"
             ) from e
 
-        # Convert mode string to ToolConfig if needed
-        if isinstance(mode, str):
-            toolset = get_toolset_from_mode(mode, descriptions)
-        else:
-            toolset = mode
-
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
-
-        tools = []
-        import asyncio
-
         # Capture the current event loop for later use from threads
         try:
             main_loop = asyncio.get_running_loop()
         except RuntimeError:
             main_loop = None
 
-        # Build tools based on toolset configuration using registry
-        from pctx_client._tool_registry import TOOL_REGISTRY
+        def run_async(coro, timeout: float = 30.0):
+            if main_loop is not None:
+                return asyncio.run_coroutine_threadsafe(coro, main_loop).result(
+                    timeout=timeout
+                )
+            else:
+                return asyncio.run(coro)
 
-        for tool_name in toolset.tools:
-            # Validate tool exists in registry
-            if tool_name not in TOOL_REGISTRY:
-                raise ValueError(
-                    f"Unknown tool: {tool_name}. Valid tools: {sorted(TOOL_REGISTRY)}"
+        # build all tools
+
+        class ExecuteBashTool(CrewAiBaseTool):
+            name: str = "execute_bash"
+            description: str = get_description("execute_bash", overrides=descriptions)
+            args_schema: type[BaseModel] = ExecuteBashInput
+
+            def _run(_self, command: str) -> str:
+                return run_async(self.execute_bash(command)).markdown()
+
+        class ExecuteTypeScriptTool(CrewAiBaseTool):
+            name: str = "execute_typescript"
+            description: str = get_description(
+                "execute_typescript", disclosure=disclosure, overrides=descriptions
+            )
+            args_schema: type[BaseModel] = ExecuteInput
+
+            def _run(_self, code: str) -> str:
+                return run_async(
+                    self.execute_typescript(code, disclosure=disclosure),
+                    timeout=self._execute_timeout,
+                ).markdown()
+
+        class ListFunctionsTool(CrewAiBaseTool):
+            name: str = "list_functions"
+            description: str = get_description("list_functions", overrides=descriptions)
+
+            def _run(_self) -> str:
+                return run_async(self.list_functions()).code
+
+        class SearchFunctionsTool(CrewAiBaseTool):
+            name: str = "search_functions"
+            description: str = get_description(
+                "search_functions", overrides=descriptions
+            )
+
+            def _run(_self, query: str, k: int = 10) -> str:
+                return self._search_functions_result_to_string(
+                    run_async(self.search_functions(query, k))
                 )
 
-            # Skip search_functions if BM25 not installed
-            if tool_name == "search_functions" and not HAS_SEARCH:
-                continue
-
-            # Create framework-specific tool
-            tool = self._create_crewai_tool(
-                tool_name, get_desc(tool_name), CrewAiBaseTool, main_loop
+        class GetFunctionDetailsTool(CrewAiBaseTool):
+            name: str = "get_function_details"
+            description: str = get_description(
+                "get_function_details", overrides=descriptions
             )
-            tools.append(tool)
+            args_schema: type[BaseModel] = GetFunctionDetailsInput
 
-        return tools
+            def _run(_self, functions: list[str]) -> str:
+                return run_async(self.get_function_details(functions=functions)).code
 
-    def _create_crewai_tool(
-        self, tool_name: ToolName, description: str, CrewAiBaseTool, main_loop
-    ):
-        """Factory method to create a CrewAI tool for the given tool name"""
-        import asyncio
+        all_tools = [
+            ExecuteBashTool(),
+            ExecuteTypeScriptTool(),
+            ListFunctionsTool(),
+            SearchFunctionsTool(),
+            GetFunctionDetailsTool(),
+        ]
 
-        # Capture description in local scope for class attribute access
-        desc = description
-
-        if tool_name == "execute_bash":
-
-            class ExecuteBashTool(CrewAiBaseTool):
-                name: str = "execute_bash"
-                description: str = desc
-                args_schema: type[BaseModel] = ExecuteBashInput
-
-                def _run(_self, command: str) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.execute_bash(command), main_loop
-                        )
-                        return future.result(timeout=30).markdown()
-                    else:
-                        return asyncio.run(self.execute_bash(command)).markdown()
-
-            return ExecuteBashTool()
-
-        elif tool_name == "execute_typescript":
-
-            class ExecuteTypeScriptTool(CrewAiBaseTool):
-                name: str = "execute_typescript"
-                description: str = desc
-                args_schema: type[BaseModel] = ExecuteInput
-
-                def _run(_self, code: str) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.execute(code), main_loop
-                        )
-                        return future.result(timeout=self._execute_timeout).markdown()
-                    else:
-                        return asyncio.run(self.execute(code)).markdown()
-
-            return ExecuteTypeScriptTool()
-
-        elif tool_name == "list_functions":
-
-            class ListFunctionsTool(CrewAiBaseTool):
-                name: str = "list_functions"
-                description: str = desc
-
-                def _run(_self) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.list_functions(), main_loop
-                        )
-                        return future.result(timeout=30).code
-                    else:
-                        return asyncio.run(self.list_functions()).code
-
-            return ListFunctionsTool()
-
-        elif tool_name == "search_functions":
-
-            class SearchFunctionsTool(CrewAiBaseTool):
-                name: str = "search_functions"
-                description: str = desc
-
-                def _run(_self, query: str, k: int = 10) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.search_functions(query, k), main_loop
-                        )
-                        return self._search_functions_result_to_string(
-                            future.result(timeout=30)
-                        )
-                    else:
-                        return self._search_functions_result_to_string(
-                            asyncio.run(self.search_functions(query, k))
-                        )
-
-            return SearchFunctionsTool()
-
-        elif tool_name == "get_function_details":
-
-            class GetFunctionDetailsTool(CrewAiBaseTool):
-                name: str = "get_function_details"
-                description: str = desc
-                args_schema: type[BaseModel] = GetFunctionDetailsInput
-
-                def _run(_self, functions: list[str]) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.get_function_details(functions=functions), main_loop
-                        )
-                        return future.result(timeout=30).code
-                    else:
-                        return asyncio.run(
-                            self.get_function_details(functions=functions)
-                        ).code
-
-            return GetFunctionDetailsTool()
-
-        elif tool_name == "execute":
-
-            class ExecuteTool(CrewAiBaseTool):
-                name: str = "execute"
-                description: str = desc
-                args_schema: type[BaseModel] = ExecuteInput
-
-                def _run(_self, code: str) -> str:
-                    if main_loop is not None:
-                        future = asyncio.run_coroutine_threadsafe(
-                            self.execute(code=code), main_loop
-                        )
-                        return future.result(timeout=self._execute_timeout).markdown()
-                    else:
-                        return asyncio.run(self.execute(code=code)).markdown()
-
-            return ExecuteTool()
-
-        else:
-            raise ValueError(f"Unsupported CrewAI tool: {tool_name}")
+        # filter according to disclosure
+        return [t for t in all_tools if disclosure.contains_tool(t.name)]
 
     def openai_agents_tools(
         self,
-        mode: ModeString | ToolConfig = "list_get_execute",
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
         descriptions: dict[ToolName, str] | None = None,
     ) -> "list[FunctionTool]":
         """
         Expose PCTX tools as OpenAI Agents SDK function tools
 
         Args:
-            mode: Tool mode configuration. Either:
-                  - "list_get_execute" (default): list_functions, search_functions,
-                    get_function_details, execute
-                  - "fs": execute_bash, execute_typescript
-                  - ToolConfig: Custom tool selection
+            disclosure: Controls which tools are exposed and how function context is
+                provided to the model. CATALOG (default) exposes list_functions,
+                get_function_details, and execute_typescript — the agent discovers
+                and retrieves function signatures before executing. FS exposes
+                execute_bash and execute_typescript — the agent browses the virtual
+                filesystem directly.
             descriptions: Optional custom descriptions to override defaults.
-                          Only used when mode is a string.
 
         Requires the 'openai' extra to be installed:
             pip install pctx[openai]
-
-        Returns:
-            List of function tools compatible with OpenAI Agents SDK
 
         Raises:
             ImportError: If openai is not installed.
 
         Examples:
-            Pre-bundled modes:
-            >>> tools = pctx.openai_agents_tools()  # default: list_get_execute
-            >>> tools = pctx.openai_agents_tools("fs")
-
-            Override descriptions:
-            >>> tools = pctx.openai_agents_tools("list_get_execute", descriptions={"execute": "Custom"})
-
-            Full control:
-            >>> from pctx_client.tools import ToolConfig
-            >>> tools = pctx.openai_agents_tools(ToolConfig(tools=["execute_bash", "list_functions"]))
+            >>> tools = pctx.openai_agents_tools()  # default: catalog
+            >>> tools = pctx.openai_agents_tools(disclosure="filesystem")
+            >>> tools = pctx.openai_agents_tools(descriptions={"execute_typescript": "Custom"})
         """
+        disclosure = ToolDisclosure(disclosure)
         try:
             from agents import function_tool
         except ImportError as e:
@@ -799,136 +670,72 @@ class Pctx:
                 "OpenAI Agents SDK is not installed. Install it with: pip install pctx[openai]"
             ) from e
 
-        # Convert mode string to ToolConfig if needed
-        if isinstance(mode, str):
-            toolset = get_toolset_from_mode(mode, descriptions)
-        else:
-            toolset = mode
+        # build all tools
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
+        async def execute_bash(command: str) -> str:
+            return (await self.execute_bash(command)).markdown()
 
-        tools = []
+        execute_bash.__doc__ = get_description("execute_bash", overrides=descriptions)
 
-        # Build tools based on toolset configuration using registry
-        from pctx_client._tool_registry import TOOL_REGISTRY
+        async def execute_typescript(code: str) -> str:
+            return (
+                await self.execute_typescript(code, disclosure=disclosure)
+            ).markdown()
 
-        for tool_name in toolset.tools:
-            # Validate tool exists in registry
-            if tool_name not in TOOL_REGISTRY:
-                raise ValueError(
-                    f"Unknown tool: {tool_name}. Valid tools: {sorted(TOOL_REGISTRY)}"
-                )
+        execute_typescript.__doc__ = get_description(
+            "execute_typescript", disclosure=disclosure, overrides=descriptions
+        )
 
-            # Skip search_functions if BM25 not installed
-            if tool_name == "search_functions" and not HAS_SEARCH:
-                continue
+        async def list_functions() -> str:
+            return (await self.list_functions()).code
 
-            # Create framework-specific tool
-            tool = self._create_openai_agents_tool(
-                tool_name, get_desc(tool_name), function_tool
-            )
-            tools.append(tool)
+        list_functions.__doc__ = get_description(
+            "list_functions", overrides=descriptions
+        )
 
-        return tools
-
-    def _create_openai_agents_tool(
-        self, tool_name: ToolName, description: str, function_tool
-    ):
-        """Factory method to create an OpenAI Agents SDK tool for the given tool name"""
-        if tool_name == "execute_bash":
-
-            async def execute_bash_wrapper(command: str) -> str:
-                return (await self.execute_bash(command)).markdown()
-
-            execute_bash_wrapper.__doc__ = f"""{description}
-
-Args:
-    command: Bash command to execute"""
-
-            return function_tool(name_override="execute_bash")(execute_bash_wrapper)
-
-        elif tool_name == "execute_typescript":
-
-            async def execute_typescript_wrapper(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            execute_typescript_wrapper.__doc__ = f"""{description}
-
-Args:
-    code: TypeScript code to execute"""
-
-            return function_tool(name_override="execute_typescript")(
-                execute_typescript_wrapper
+        async def search_functions(query: str, k: int = 10) -> str:
+            return self._search_functions_result_to_string(
+                await self.search_functions(query, k)
             )
 
-        elif tool_name == "list_functions":
+        search_functions.__doc__ = get_description(
+            "search_functions", overrides=descriptions
+        )
 
-            async def list_functions_wrapper() -> str:
-                return (await self.list_functions()).code
+        async def get_function_details(functions: list[str]) -> str:
+            return (await self.get_function_details(functions)).code
 
-            list_functions_wrapper.__doc__ = description
-            return function_tool(name_override="list_functions")(list_functions_wrapper)
+        get_function_details.__doc__ = get_description(
+            "get_function_details", overrides=descriptions
+        )
 
-        elif tool_name == "search_functions":
+        all_tools = [
+            function_tool(name_override="execute_bash")(execute_bash),
+            function_tool(name_override="execute_typescript")(execute_typescript),
+            function_tool(name_override="list_functions")(list_functions),
+            function_tool(name_override="search_functions")(search_functions),
+            function_tool(name_override="get_function_details")(get_function_details),
+        ]
 
-            async def search_functions_wrapper(query: str, k: int = 10) -> str:
-                functions = await self.search_functions(query, k)
-                return self._search_functions_result_to_string(functions)
-
-            search_functions_wrapper.__doc__ = description
-            return function_tool(name_override="search_functions")(
-                search_functions_wrapper
-            )
-
-        elif tool_name == "get_function_details":
-
-            async def get_function_details_wrapper(functions: list[str]) -> str:
-                return (await self.get_function_details(functions)).code
-
-            get_function_details_wrapper.__doc__ = f"""{description}
-
-Args:
-    functions: List of function names in 'namespace.functionName' format"""
-
-            return function_tool(name_override="get_function_details")(
-                get_function_details_wrapper
-            )
-
-        elif tool_name == "execute":
-
-            async def execute_wrapper(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            execute_wrapper.__doc__ = f"""{description}
-
-Args:
-    code: TypeScript code to execute"""
-
-            return function_tool(name_override="execute")(execute_wrapper)
-
-        else:
-            raise ValueError(f"Unsupported OpenAI Agents tool: {tool_name}")
+        # filter according to disclosure
+        return [t for t in all_tools if disclosure.contains_tool(t.name)]
 
     def pydantic_ai_tools(
         self,
-        mode: ModeString | ToolConfig = "list_get_execute",
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
         descriptions: dict[ToolName, str] | None = None,
     ) -> "list[PydanticAITool]":
         """
         Expose PCTX tools as Pydantic AI tools
 
         Args:
-            mode: Tool mode configuration. Either:
-                  - "list_get_execute" (default): list_functions, search_functions,
-                    get_function_details, execute
-                  - "fs": execute_bash, execute_typescript
-                  - ToolConfig: Custom tool selection
+            disclosure: Controls which tools are exposed and how function context is
+                provided to the model. CATALOG (default) exposes list_functions,
+                get_function_details, and execute_typescript — the agent discovers
+                and retrieves function signatures before executing. FS exposes
+                execute_bash and execute_typescript — the agent browses the virtual
+                filesystem directly.
             descriptions: Optional custom descriptions to override defaults.
-                          Only used when mode is a string.
 
         Requires the 'pydantic-ai' extra to be installed:
             pip install pctx[pydantic-ai]
@@ -937,17 +744,11 @@ Args:
             ImportError: If pydantic-ai is not installed.
 
         Examples:
-            Pre-bundled modes:
-            >>> tools = pctx.pydantic_ai_tools()  # default: list_get_execute
-            >>> tools = pctx.pydantic_ai_tools("fs")
-
-            Override descriptions:
-            >>> tools = pctx.pydantic_ai_tools("list_get_execute", descriptions={"execute": "Custom"})
-
-            Full control:
-            >>> from pctx_client.tools import ToolConfig
-            >>> tools = pctx.pydantic_ai_tools(ToolConfig(tools=["execute_bash", "list_functions"]))
+            >>> tools = pctx.pydantic_ai_tools()  # default: catalog
+            >>> tools = pctx.pydantic_ai_tools(disclosure="filesystem")
+            >>> tools = pctx.pydantic_ai_tools(descriptions={"execute_typescript": "Custom"})
         """
+        disclosure = ToolDisclosure(disclosure)
         try:
             from pydantic_ai.tools import Tool as PydanticAITool
         except ImportError as e:
@@ -955,118 +756,58 @@ Args:
                 "Pydantic AI is not installed. Install it with: pip install pctx[pydantic-ai]"
             ) from e
 
-        # Convert mode string to ToolConfig if needed
-        if isinstance(mode, str):
-            toolset = get_toolset_from_mode(mode, descriptions)
-        else:
-            toolset = mode
+        # build all tools
 
-        # Helper to get description with fallback
-        def get_desc(key: str) -> str:
-            if toolset.descriptions:
-                return toolset.descriptions.get(key, CODE_MODE_TOOL_DESCRIPTIONS[key])
-            return CODE_MODE_TOOL_DESCRIPTIONS[key]
+        async def execute_bash(command: str) -> str:
+            return (await self.execute_bash(command)).markdown()
 
-        tools = []
+        async def execute_typescript(code: str) -> str:
+            return (
+                await self.execute_typescript(code, disclosure=disclosure)
+            ).markdown()
 
-        # Build tools based on toolset configuration using registry
-        from pctx_client._tool_registry import TOOL_REGISTRY
+        async def list_functions() -> str:
+            return (await self.list_functions()).code
 
-        for tool_name in toolset.tools:
-            # Validate tool exists in registry
-            if tool_name not in TOOL_REGISTRY:
-                raise ValueError(
-                    f"Unknown tool: {tool_name}. Valid tools: {sorted(TOOL_REGISTRY)}"
-                )
-
-            # Skip search_functions if BM25 not installed
-            if tool_name == "search_functions" and not HAS_SEARCH:
-                continue
-
-            # Create framework-specific tool
-            tool = self._create_pydantic_ai_tool(
-                tool_name, get_desc(tool_name), PydanticAITool
+        async def search_functions(query: str, k: int = 10) -> str:
+            return self._search_functions_result_to_string(
+                await self.search_functions(query, k)
             )
-            tools.append(tool)
 
-        return tools
+        async def get_function_details(functions: list[str]) -> str:
+            return (await self.get_function_details(functions)).code
 
-    def _create_pydantic_ai_tool(
-        self, tool_name: ToolName, description: str, PydanticAITool
-    ):
-        """Factory method to create a Pydantic AI tool for the given tool name"""
-        if tool_name == "execute_bash":
-
-            async def execute_bash_wrapper(command: str) -> str:
-                return (await self.execute_bash(command)).markdown()
-
-            return PydanticAITool(
-                execute_bash_wrapper,
+        all_tools = [
+            PydanticAITool(
+                execute_bash,
                 name="execute_bash",
-                description=description,
-            )
-
-        elif tool_name == "execute_typescript":
-
-            async def execute_typescript_wrapper(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            return PydanticAITool(
-                execute_typescript_wrapper,
+                description=get_description("execute_bash", overrides=descriptions),
+            ),
+            PydanticAITool(
+                execute_typescript,
                 name="execute_typescript",
-                description=description,
-            )
-
-        elif tool_name == "list_functions":
-
-            async def list_functions_wrapper() -> str:
-                return (await self.list_functions()).code
-
-            return PydanticAITool(
-                list_functions_wrapper,
+                description=get_description(
+                    "execute_typescript", disclosure=disclosure, overrides=descriptions
+                ),
+            ),
+            PydanticAITool(
+                list_functions,
                 name="list_functions",
-                description=description,
-            )
-
-        elif tool_name == "search_functions":
-
-            async def search_functions_wrapper(query: str, k: int = 10) -> str:
-                functions = await self.search_functions(query, k)
-                return self._search_functions_result_to_string(functions)
-
-            return PydanticAITool(
-                search_functions_wrapper,
+                description=get_description("list_functions", overrides=descriptions),
+            ),
+            PydanticAITool(
+                search_functions,
                 name="search_functions",
-                description=description,
-            )
-
-        elif tool_name == "get_function_details":
-
-            async def get_function_details_wrapper(functions: list[str]) -> str:
-                return (await self.get_function_details(functions)).code
-
-            return PydanticAITool(
-                get_function_details_wrapper,
+                description=get_description("search_functions", overrides=descriptions),
+            ),
+            PydanticAITool(
+                get_function_details,
                 name="get_function_details",
-                description=description,
-            )
+                description=get_description(
+                    "get_function_details", overrides=descriptions
+                ),
+            ),
+        ]
 
-        elif tool_name == "execute":
-
-            async def execute_wrapper(code: str) -> str:
-                return (await self.execute(code)).markdown()
-
-            return PydanticAITool(
-                execute_wrapper,
-                name="execute",
-                description=description,
-            )
-
-        else:
-            raise ValueError(f"Unsupported Pydantic AI tool: {tool_name}")
-
-
-# Import tool descriptions - change this to experiment with different styles
-# Options: PRESCRIPTIVE_DESCRIPTIONS, TERMINAL_STYLE_DESCRIPTIONS
-# See pctx_client/tool_descriptions/README.md for details
-CODE_MODE_TOOL_DESCRIPTIONS = PRESCRIPTIVE_DESCRIPTIONS
+        # filter according to disclosure
+        return [t for t in all_tools if disclosure.contains_tool(t.name)]
