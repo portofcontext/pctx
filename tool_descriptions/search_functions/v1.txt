@@ -1,0 +1,2 @@
+Search for SDK functions by keyword.
+Returns matching functions ranked by relevance.

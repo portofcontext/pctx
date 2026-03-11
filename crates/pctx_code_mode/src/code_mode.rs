@@ -659,22 +659,6 @@ async function invoke<K extends keyof InvokeMap>(call: InvokeCall<K>): Promise<I
                     invoke_map_entries = invoke_map_entries.join("\n  "),
                     types = types.join("\n\n")
                 );
-
-                println!(
-                    r#"type InvokeMap = {{
-  {invoke_map_entries}
-}};
-
-type InvokeCall<K extends keyof InvokeMap> = 
-  undefined extends InvokeMap[K]["args"]
-    ? {{ name: K; arguments?: InvokeMap[K]["args"] }}
-    : {{ name: K; arguments: InvokeMap[K]["args"] }};
-
-async function invoke<K extends keyof InvokeMap>(call: InvokeCall<K>): Promise<InvokeMap[K]["returns"]> {{
-  return await invokeInternal(call);
-}}"#,
-                    invoke_map_entries = invoke_map_entries.join("\n"),
-                );
                 format!(
                     "{code}\n\n{invoke_interface}\n\nexport default await run();",
                     invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
