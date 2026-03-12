@@ -12,8 +12,8 @@ use camino::Utf8PathBuf;
 use clap::Parser;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton,
-        MouseEventKind,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers,
+        MouseButton, MouseEventKind,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -27,11 +27,10 @@ use crate::commands::mcp::start::StartCmd;
 use app::{App, AppMessage, FocusPanel};
 use pctx_mcp_server::PctxMcpServer;
 
-#[allow(unused)]
-const PRIMARY: Color = Color::Rgb(0, 43, 86); // #002B56
-const SECONDARY: Color = Color::Rgb(24, 66, 137); // #184289
-const TERTIARY: Color = Color::Rgb(30, 105, 105); // #1E6969
-const TEXT_COLOR: Color = Color::Rgb(1, 46, 88); // #012E58
+const BORDER_SELECTED: Color = Color::Cyan;
+const BORDER: Color = Color::Reset;
+const SELECTED_LINE_BG: Color = Color::Blue;
+const SELECTED_LINE_FG: Color = Color::White;
 
 type ServerControl = Arc<
     Mutex<
@@ -246,7 +245,7 @@ fn run_ui(
                     if key.kind == KeyEventKind::Press {
                         let mut app = app.lock().unwrap();
                         match key.code {
-                            KeyCode::Char('q') => {
+                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                 break;
                             }
                             KeyCode::Esc | KeyCode::Backspace => {
@@ -259,7 +258,7 @@ fn run_ui(
                                 }
                             }
                             KeyCode::Enter => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.show_tool_detail();
                                 }
                             }
@@ -271,13 +270,13 @@ fn run_ui(
                             }
                             KeyCode::Up => match app.focused_panel {
                                 FocusPanel::Logs => app.scroll_logs_up(),
-                                FocusPanel::Tools => app.scroll_tools_up(),
+                                FocusPanel::Namespaces => app.scroll_tools_up(),
                                 FocusPanel::ToolDetail => app.scroll_detail_up(),
                                 FocusPanel::Documentation => app.scroll_detail_up(),
                             },
                             KeyCode::Down => match app.focused_panel {
                                 FocusPanel::Logs => app.scroll_logs_down(),
-                                FocusPanel::Tools => app.scroll_tools_down(),
+                                FocusPanel::Namespaces => app.scroll_tools_down(),
                                 FocusPanel::ToolDetail => app.scroll_detail_down(),
                                 FocusPanel::Documentation => app.scroll_detail_down(),
                             },
@@ -300,12 +299,12 @@ fn run_ui(
                                 _ => {}
                             },
                             KeyCode::Left => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.move_to_prev_namespace();
                                 }
                             }
                             KeyCode::Right => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.move_to_next_namespace();
                                 }
                             }

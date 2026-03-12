@@ -45,7 +45,7 @@ impl Cli {
     fn cli_logger(&self) -> bool {
         !matches!(
             &self.command,
-            Commands::Mcp(McpCommands::Start(_)) // | McpCommands::Dev(_))
+            Commands::Mcp(McpCommands::Start(_) | McpCommands::Dev(_))
         )
     }
 

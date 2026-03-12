@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use super::{SECONDARY, TERTIARY};
 use chrono::{DateTime, Utc};
 use pctx_config::logger::LogLevel;
 use ratatui::{
@@ -34,8 +33,8 @@ impl LogEntry {
     pub(super) fn color(&self) -> Color {
         match &self.level {
             LogLevel::Trace => Color::LightMagenta,
-            LogLevel::Debug => SECONDARY,
-            LogLevel::Info => TERTIARY,
+            LogLevel::Debug => Color::Blue,
+            LogLevel::Info => Color::Green,
             LogLevel::Warn => Color::Yellow,
             LogLevel::Error => Color::Red,
         }
