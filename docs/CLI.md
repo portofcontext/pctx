@@ -62,6 +62,7 @@ Starts PCTX server with no pre-configured tools. Use a client library like `pip 
 * `--session-dir <SESSION_DIR>` — Path to session storage directory
 
   Default value: `.pctx/sessions`
+* `--allowed-origin <ALLOWED_ORIGINS>` — Allowed CORS origins. Can be specified multiple times. Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]). Specify your own origins to override the default (can include or exclude localhost). Origins without explicit ports will match any port. Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
 * `--no-banner` — Don't show the server banner
 
 

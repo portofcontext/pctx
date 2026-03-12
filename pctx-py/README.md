@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="../.github/assets/logo.png" alt="PCTX Logo" style="height: 128px">
+  <img src="https://raw.githubusercontent.com/portofcontext/pctx/refs/heads/main/.github/assets/logo.png" alt="PCTX Logo" style="height: 128px">
   <h1>Python pctx-client</h1>
 
 [![Made by](https://img.shields.io/badge/MADE%20BY-Port%20of%20Context-1e40af.svg?style=for-the-badge&labelColor=0c4a6e)](https://portofcontext.com)
@@ -139,8 +139,7 @@ The `Pctx` client provides 3 main code mode functions:
 3. **`execute(code)`** - Executes TypeScript code in an isolated Deno sandbox. The code can call any namespaced functions (e.g., `Namespace.functionName()`) discovered via `list_functions()`. Returns the execution result with stdout, stderr, and return value.
 
 If the optional dependancy `pctx-client[bm25s]` is installed, pctx will also
-provide:
-4. **`search_functions(query, top_k)`** - Searches available functions using BM25s vector search to find the most relevant functions for a given query.  LLMs are instructed to call this first to discover what functions are available from your registered tools and MCP servers.
+provide: 4. **`search_functions(query, top_k)`** - Searches available functions using BM25s vector search to find the most relevant functions for a given query. LLMs are instructed to call this first to discover what functions are available from your registered tools and MCP servers.
 
 ## Defining Tools
 
