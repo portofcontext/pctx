@@ -13,9 +13,6 @@ path = "src/bin/generate-openapi.rs"
 [dependencies]
 # Local crates
 pctx_code_mode = { path = "../pctx_code_mode" }
-pctx_config = { path = "../pctx_config" }
-pctx_registry = { path = "../pctx_registry" }
-pctx_codegen = { path = "../pctx_codegen" }
 
 # Web framework
 axum = { workspace = true, features = ["macros", "ws"] }

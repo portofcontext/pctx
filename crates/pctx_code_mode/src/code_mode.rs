@@ -1,6 +1,6 @@
-use pctx_code_execution_runtime::PctxRegistry;
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::{ToolDisclosure, server::ServerConfig};
+use pctx_registry::PctxRegistry;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{

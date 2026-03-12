@@ -22,8 +22,10 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use pctx_code_mode::model::ExecuteInput;
-use pctx_registry::{CallbackFn, PctxRegistry};
+use pctx_code_mode::{
+    model::ExecuteInput,
+    registry::{CallbackFn, PctxRegistry},
+};
 use rmcp::{
     ErrorData,
     model::{ErrorCode, JsonRpcMessage, RequestId},

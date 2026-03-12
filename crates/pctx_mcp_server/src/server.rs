@@ -47,7 +47,7 @@ impl PctxMcpServer {
         host: &str,
         port: u16,
         banner: bool,
-        cfg: &pctx_config::Config,
+        cfg: &pctx_code_mode::config::Config,
         code_mode: pctx_code_mode::CodeMode,
     ) -> Self {
         Self {
@@ -256,7 +256,7 @@ impl PctxMcpServer {
         if !self.service.code_mode.tool_sets().is_empty() {
             builder.push_record(["", ""]);
 
-            let tool_record = |s: &pctx_codegen::ToolSet| {
+            let tool_record = |s: &pctx_code_mode::codegen::ToolSet| {
                 format!(
                     "{} - {} tool{}",
                     fmt_cyan(s.name.as_deref().unwrap_or_default()),
@@ -336,7 +336,7 @@ impl PctxMcpServer {
 #[cfg(test)]
 mod tests {
     use super::PctxMcpServer;
-    use pctx_config::Config;
+    use pctx_code_mode::config::Config;
 
     #[tokio::test]
     async fn test_serve_stdio_with_immediate_shutdown() {

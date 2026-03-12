@@ -14,7 +14,7 @@ categories = ["development-tools", "api-bindings"]
 pctx_config = { version = "^0.1.3", path = "../pctx_config" }
 pctx_codegen = { version = "^0.2.0", path = "../pctx_codegen" }
 pctx_executor = { version = "^0.1.3", path = "../pctx_executor" }
-pctx_code_execution_runtime = { version = "^0.1.3", path = "../pctx_code_execution_runtime" }
+pctx_registry = { path = "../pctx_registry" }
 
 # general
 thiserror = { workspace = true }

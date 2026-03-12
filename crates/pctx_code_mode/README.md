@@ -5,7 +5,9 @@ A TypeScript code execution engine that enables AI agents to dynamically call to
 ## Quick Start
 
 ```rust
-use pctx_code_mode::{CodeMode, CallbackRegistry};
+use pctx_code_mode::{CodeMode};
+use pctx_code_mode::registry::PctxRegistry;
+use pctx_code_mode::config::ToolDisclosure;
 use pctx_code_mode::model::CallbackConfig;
 use serde_json::json;
 use std::sync::Arc;
@@ -34,8 +36,8 @@ async fn main() -> anyhow::Result<()> {
     code_mode.add_callback(&callback)?;
 
     // 3. Register callback functions that execute when tools are called
-    let registry = CallbackRegistry::default();
-    registry.add(&callback.id(), Arc::new(|args| {
+    let registry = PctxRegistry::default();
+    registry.add_callback(&callback.id(), Arc::new(|args| {
         Box::pin(async move {
             let name = args
                 .and_then(|v| v.get("name"))
@@ -43,7 +45,7 @@ async fn main() -> anyhow::Result<()> {
                 .unwrap_or("World");
             Ok(serde_json::json!({ "message": format!("Hello, {name}!") }))
         })
-    }))?;
+    }));
 
     // 4. Execute LLM-generated TypeScript code
     let code = r#"
@@ -53,7 +55,7 @@ async fn main() -> anyhow::Result<()> {
         }
     "#;
 
-    let output = code_mode.execute(code, Some(registry)).await?;
+    let output = code_mode.execute_typescript(code, ToolDisclosure::default(), registry).await?;
 
     if output.success {
         println!("Result: {}", serde_json::to_string_pretty(&output.output)?);
@@ -69,7 +71,7 @@ async fn main() -> anyhow::Result<()> {
 
 ### 1. CodeMode
 
-The [`CodeMode`] struct is the main execution engine. It provides:
+The `CodeMode` struct is the main execution engine. It provides:
 
 **Builder methods** (chainable):
 
@@ -84,15 +86,18 @@ The [`CodeMode`] struct is the main execution engine. It provides:
 
 **Accessor methods**:
 
-- `tool_sets()` - Get registered ToolSets
+- `tool_sets()` - Get all registered ToolSets
+- `server_tool_sets()` - Get only MCP server ToolSets
 - `servers()` - Get registered server configurations
 - `callbacks()` - Get registered callback configurations
+- `virtual_fs()` - Get the virtual filesystem used by bash execution
 
 **Execution methods**:
 
 - `list_functions()` - List all available functions with minimal interfaces
 - `get_function_details()` - Get full typed interfaces for specific functions
-- `execute()` - Execute TypeScript code in the sandbox
+- `execute_typescript()` - Execute TypeScript code in the sandbox
+- `execute_bash()` - Execute a bash command in the virtual filesystem
 
 ```rust
 use pctx_code_mode::CodeMode;
@@ -129,24 +134,41 @@ let details = code_mode.get_function_details(GetFunctionDetailsInput {
 println!("TypeScript definitions:\n{}", details.code);
 ```
 
-### 2. Tools and ToolSets
+### 2. ToolDisclosure
 
-[`Tool`]s represent individual functions callable from TypeScript.
-They are organized into [`ToolSet`]s (namespaces). Tools can be:
+`ToolDisclosure` controls how tools are presented to the LLM and how generated TypeScript code invokes them. Choose the mode that matches your agent's workflow:
+
+- **`Catalog`** (default) - Tools are discovered via `list_tools` → `get_tool_details`, then called through typed TypeScript namespaces (e.g. `await Greeter.greet({ name: "Alice" })`).
+- **`Filesystem`** - Like `Catalog` but the agent works within a virtual filesystem via `execute_bash` before invoking TypeScript.
+- **`Sidecar`** - Tools are passed as original MCP descriptions. The generated code uses an `InvokeMap` type and a type-safe `invoke()` function rather than namespace methods.
+
+```rust
+use pctx_code_mode::config::ToolDisclosure;
+
+// Default catalog mode — typed namespaces
+let output = code_mode.execute_typescript(code, ToolDisclosure::Catalog, registry).await?;
+
+// Sidecar mode — InvokeMap / invoke() interface
+let output = code_mode.execute_typescript(code, ToolDisclosure::Sidecar, registry).await?;
+```
+
+### 3. Tools and ToolSets
+
+`Tool`s represent individual functions callable from TypeScript.
+They are organized into `ToolSet`s (namespaces). Tools can be:
 
 - **MCP tools**: Loaded from MCP servers via `add_server()`
 - **Callback tools**: Defined via `CallbackConfig` and `add_callback()`
 
-### 3. Callbacks
+### 4. PctxRegistry
 
-[`CallbackFn`] are Rust async functions that execute when TypeScript code calls callback tools.
-Register them in a [`CallbackRegistry`] and pass it to `execute()`.
+`PctxRegistry` is a thread-safe registry that routes TypeScript function calls to either local Rust callbacks or upstream MCP servers. Pass it to `execute_typescript()`.
 
 ```rust
-use pctx_code_mode::{CallbackRegistry, CallbackFn};
+use pctx_code_mode::{PctxRegistry, CallbackFn};
 use std::sync::Arc;
 
-let registry = CallbackRegistry::default();
+let registry = PctxRegistry::default();
 
 let callback: CallbackFn = Arc::new(|args| {
     Box::pin(async move {
@@ -165,14 +187,19 @@ let callback: CallbackFn = Arc::new(|args| {
 });
 
 // Register with namespace.function format
-registry.add("DataApi.fetchData", callback)?;
+registry.add_callback("DataApi.fetchData", callback);
+
+// Register MCP tools from a server
+registry.add_mcp(tool_names, server_config);
 ```
 
-### 4. Code Execution
+### 5. Code Execution
 
 Execute LLM-generated TypeScript code that calls your registered tools.
 
 ```rust
+use pctx_code_mode::config::ToolDisclosure;
+
 let code = r#"
     async function run() {
         // Call your registered tools
@@ -190,7 +217,7 @@ let code = r#"
     }
 "#;
 
-let output = code_mode.execute(code, Some(registry)).await?;
+let output = code_mode.execute_typescript(code, ToolDisclosure::default(), registry).await?;
 
 match output.success {
     true => println!("Success: {:?}", output.output),
@@ -297,12 +324,14 @@ let details = code_mode.get_function_details(GetFunctionDetailsInput {
 println!("TypeScript code:\n{}", details.code);
 ```
 
-#### `execute(code: &str, callbacks: Option<CallbackRegistry>) -> Result<ExecuteOutput>`
+#### `execute_typescript(code: &str, disclosure: ToolDisclosure, registry: PctxRegistry) -> Result<ExecuteOutput>`
 
 Executes TypeScript code in a sandboxed Deno runtime.
 
 ```rust
-let output = code_mode.execute(typescript_code, Some(callback_registry)).await?;
+use pctx_code_mode::config::ToolDisclosure;
+
+let output = code_mode.execute_typescript(typescript_code, ToolDisclosure::default(), registry).await?;
 
 if output.success {
     println!("Return value: {:?}", output.output);
@@ -312,49 +341,70 @@ if output.success {
 }
 ```
 
+#### `execute_bash(command: &str) -> Result<ExecuteOutput>`
+
+Executes a bash command in the virtual filesystem (used with `ToolDisclosure::Filesystem`).
+
+```rust
+let output = code_mode.execute_bash("ls -la /workspace").await?;
+```
+
 #### Accessor Methods
 
 ```rust
-// Get registered tool sets
+// Get all registered tool sets
 let tool_sets: &[ToolSet] = code_mode.tool_sets();
+
+// Get only MCP server tool sets
+let server_tool_sets: &[ToolSet] = code_mode.server_tool_sets();
 
 // Get registered server configurations
 let servers: &[ServerConfig] = code_mode.servers();
 
 // Get registered callback configurations
 let callbacks: &[CallbackConfig] = code_mode.callbacks();
+
+// Get the virtual filesystem
+let vfs = code_mode.virtual_fs();
 ```
 
-### CallbackRegistry
+### PctxRegistry
 
-Thread-safe registry for managing callback functions.
+Thread-safe registry that routes tool calls to Rust callbacks or MCP servers.
 
-#### `default() -> CallbackRegistry`
+#### `default() -> PctxRegistry`
 
 ```rust
-let registry = CallbackRegistry::default();
+let registry = PctxRegistry::default();
 ```
 
-#### `add(id: &str, callback: CallbackFn) -> Result<()>`
+#### `add_callback(id: &str, callback: CallbackFn)`
 
 Registers a callback with a specific ID (format: `Namespace.functionName`).
 
 ```rust
-registry.add("DataApi.fetchData", Arc::new(|args| {
+registry.add_callback("DataApi.fetchData", Arc::new(|args| {
     Box::pin(async move {
-        // Your implementation
         Ok(serde_json::json!({"result": "data"}))
     })
-}))?;
+}));
 ```
+
+#### `add_mcp(tool_names, cfg)`
+
+Registers MCP tools from a server configuration.
+
+#### `invoke(id: &str, args: Option<Value>) -> Result<Value>`
+
+Dispatches a call by tool ID. Used internally during execution.
 
 #### `has(id: &str) -> bool`
 
-Checks if a callback is registered.
+Checks if a tool is registered.
 
 ```rust
 if registry.has("DataApi.fetchData") {
-    println!("Callback is registered");
+    println!("Tool is registered");
 }
 ```
 
@@ -372,23 +422,6 @@ pub struct CallbackConfig {
     pub input_schema: Option<serde_json::Value>,
     pub output_schema: Option<serde_json::Value>,
 }
-```
-
-```rust
-use pctx_code_mode::model::CallbackConfig;
-use serde_json::json;
-
-let config = CallbackConfig {
-    namespace: "MyNamespace".to_string(),
-    name: "myFunction".to_string(),
-    description: Some("Does something useful".to_string()),
-    input_schema: Some(json!({
-        "type": "object",
-        "properties": { "id": { "type": "integer" } },
-        "required": ["id"]
-    })),
-    output_schema: None,
-};
 ```
 
 #### `Tool` and `ToolSet`
@@ -468,7 +501,7 @@ for config in tool_configs {
 
     // Register the corresponding callback function
     let callback_id = format!("{}.{}", config.namespace, config.name);
-    registry.add(&callback_id, create_callback_for_config(&config))?;
+    registry.add_callback(&callback_id, create_callback_for_config(&config));
 }
 ```
 
@@ -477,7 +510,7 @@ for config in tool_configs {
 Callbacks support full async operations:
 
 ```rust
-registry.add("Database.query", Arc::new(|args| {
+registry.add_callback("Database.query", Arc::new(|args| {
     Box::pin(async move {
         let query = args
             .and_then(|v| v.get("sql"))
@@ -493,13 +526,15 @@ registry.add("Database.query", Arc::new(|args| {
 
         Ok(serde_json::to_value(rows)?)
     })
-}))?;
+}));
 ```
 
 ### Error Handling
 
 ```rust
-let output = code_mode.execute(code, Some(registry)).await?;
+use pctx_code_mode::config::ToolDisclosure;
+
+let output = code_mode.execute_typescript(code, ToolDisclosure::default(), registry).await?;
 
 if !output.success {
     // Check stderr for execution errors
@@ -527,39 +562,46 @@ async function run() {
 }
 ```
 
+In `Sidecar` mode, use the `invoke()` function instead of namespace methods:
+
+```typescript
+async function run() {
+  const result = await invoke("Namespace.toolName", { param: value });
+  return result;
+}
+```
+
 The code execution engine:
 
-- Wraps your code with namespace implementations
+- Wraps your code with generated namespace implementations or an `InvokeMap` (depending on `ToolDisclosure`)
 - Automatically calls `run()` and captures its return value
 - Provides the return value in `ExecuteOutput.output`
 
 ## Architecture
 
 1. **Tool Definition**: Tools are defined with JSON Schemas for inputs/outputs
-2. **Code Generation**: TypeScript interface definitions are generated from schemas
-3. **Code Execution**: User code is wrapped with namespace implementations and executed in Deno
-4. **Callback Routing**: Function calls in TypeScript are routed to Rust callbacks or MCP servers
-5. **Result Marshaling**: JSON values are passed between TypeScript and Rust
+2. **Disclosure Mode**: `ToolDisclosure` determines how tools are surfaced and the TypeScript code generation strategy used
+3. **Code Generation**: TypeScript interface definitions are generated from schemas; `Catalog`/`Filesystem` modes emit full namespace implementations, `Sidecar` emits an `InvokeMap`
+4. **Code Execution**: User code is wrapped with generated bindings and executed in Deno
+5. **Call Routing**: TypeScript function calls are dispatched through `PctxRegistry` to Rust callbacks or MCP servers
+6. **Result Marshaling**: JSON values are passed between TypeScript and Rust
 
 ## Sandbox Security
 
 Code is executed in a Deno runtime with:
 
 - Network access restricted to allowed hosts (from registered MCP servers)
-- No file system access
+- No file system access (use `execute_bash` with the virtual filesystem instead)
 - No subprocess spawning
 - Isolated V8 context per execution
-
-```rust
-// Add servers
-code_mode.add_server(&server_config).await?;
-```
 
 ## Examples
 
 ### Multi-Tool Workflow
 
 ```rust
+use pctx_code_mode::config::ToolDisclosure;
+
 let code = r#"
     async function run() {
         // Fetch user data
@@ -585,12 +627,14 @@ let code = r#"
     }
 "#;
 
-let output = code_mode.execute(code, Some(registry)).await?;
+let output = code_mode.execute_typescript(code, ToolDisclosure::Catalog, registry).await?;
 ```
 
 ### Error Recovery
 
 ```rust
+use pctx_code_mode::config::ToolDisclosure;
+
 let code = r#"
     async function run() {
         try {
@@ -603,7 +647,7 @@ let code = r#"
     }
 "#;
 
-let output = code_mode.execute(code, Some(registry)).await?;
+let output = code_mode.execute_typescript(code, ToolDisclosure::default(), registry).await?;
 
 // Check console output
 if !output.stdout.is_empty() {
@@ -630,10 +674,10 @@ let code = r#"
 
 ## Related Crates
 
-- `pctx_config`: Server configuration types (`ServerConfig`)
+- `pctx_config`: Server configuration types (`ServerConfig`, `ToolDisclosure`)
 - `pctx_codegen`: TypeScript code generation from JSON schemas
 - `pctx_executor`: Deno runtime execution engine
-- `pctx_code_execution_runtime`: Runtime environment and callback system
+- `pctx_code_execution_runtime`: Runtime environment (`PctxRegistry`, `CallbackFn`)
 
 ## License
 

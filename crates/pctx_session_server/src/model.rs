@@ -1,6 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::ExecuteOutput;
-use pctx_config::ToolDisclosure;
+use pctx_code_mode::{config, model::ExecuteOutput};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -89,7 +88,7 @@ pub struct RegisterToolsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RegisterMcpServersRequest {
     #[schema(value_type = Vec<serde_json::Value>)]
-    pub servers: Vec<pctx_config::server::ServerConfig>,
+    pub servers: Vec<config::server::ServerConfig>,
 }
 
 /// Response after registering MCP servers
@@ -136,7 +135,7 @@ pub struct ExecuteToolParams {
 pub struct ExecuteTypescriptParams {
     pub code: String,
     #[serde(default)]
-    pub disclosure: ToolDisclosure,
+    pub disclosure: config::ToolDisclosure,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

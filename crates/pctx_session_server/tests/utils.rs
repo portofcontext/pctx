@@ -3,8 +3,7 @@
 use std::sync::Arc;
 
 use axum_test::{TestResponse, TestServer};
-use pctx_code_mode::{CodeMode, model::CallbackConfig};
-use pctx_registry::CallbackFn;
+use pctx_code_mode::{CodeMode, model::CallbackConfig, registry::CallbackFn};
 use pctx_session_server::{
     AppState, LocalBackend, PctxSessionBackend, model::CreateSessionResponse, server::create_router,
 };

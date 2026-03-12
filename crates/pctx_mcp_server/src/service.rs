@@ -1,14 +1,15 @@
 use std::{collections::HashMap, sync::Arc};
 
 use pctx_code_mode::{
-    CodeMode, PctxRegistry, RegistryAction,
+    CodeMode,
+    config::{Config, ToolDisclosure},
     model::{
         ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
         GetFunctionDetailsOutput, ListFunctionsOutput,
     },
+    registry::{PctxRegistry, RegistryAction},
     tool_descriptions,
 };
-use pctx_config::ToolDisclosure;
 use rmcp::{
     RoleServer, ServerHandler, ServiceError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
@@ -38,7 +39,7 @@ pub(crate) struct PctxMcpService {
 
 #[tool_router]
 impl PctxMcpService {
-    pub(crate) fn new(cfg: &pctx_config::Config, code_mode: CodeMode) -> Self {
+    pub(crate) fn new(cfg: &Config, code_mode: CodeMode) -> Self {
         Self {
             name: cfg.name.clone(),
             version: cfg.version.clone(),
