@@ -1,108 +1,102 @@
-use anstyle::{AnsiColor, Color, RgbColor, Style};
-use clap::builder::Styles;
-
+#![allow(dead_code)]
 use crate::utils::{CHECK, MARK};
 
-// Brand colors
-#[allow(dead_code)]
-const PRIMARY: RgbColor = RgbColor(0, 43, 86); // #002B56
-const SECONDARY: RgbColor = RgbColor(24, 66, 137); // #184289
-const TERTIARY: RgbColor = RgbColor(30, 105, 105); // #1E6969
-const TEXT_COLOR: RgbColor = RgbColor(1, 46, 88); // #012E58
+// CLI Styling copied from cargo
 
-pub(crate) fn get_styles() -> Styles {
-    Styles::styled()
-        .usage(
-            Style::new()
-                .bold()
-                .underline()
-                .fg_color(Some(Color::Rgb(SECONDARY))),
-        )
-        .header(
-            Style::new()
-                .bold()
-                .underline()
-                .fg_color(Some(Color::Rgb(SECONDARY))),
-        )
-        .literal(Style::new().fg_color(Some(Color::Rgb(TERTIARY))))
-        .invalid(
-            Style::new()
-                .bold()
-                .fg_color(Some(Color::Ansi(AnsiColor::Red))),
-        )
-        .error(
-            Style::new()
-                .bold()
-                .fg_color(Some(Color::Ansi(AnsiColor::Red))),
-        )
-        .valid(
-            Style::new()
-                .bold()
-                .underline()
-                .fg_color(Some(Color::Rgb(TERTIARY))),
-        )
-        .placeholder(Style::new().fg_color(Some(Color::Ansi(AnsiColor::White))))
+#[allow(dead_code)]
+pub(crate) mod cargo_styles {
+    use anstyle::*;
+
+    pub(crate) const NOP: Style = Style::new();
+    pub(crate) const HEADER: Style = AnsiColor::BrightGreen.on_default().effects(Effects::BOLD);
+    pub(crate) const USAGE: Style = AnsiColor::BrightGreen.on_default().effects(Effects::BOLD);
+    pub(crate) const LITERAL: Style = AnsiColor::BrightCyan.on_default().effects(Effects::BOLD);
+    pub(crate) const PLACEHOLDER: Style = AnsiColor::Cyan.on_default();
+    pub(crate) const ERROR: Style = AnsiColor::BrightRed.on_default().effects(Effects::BOLD);
+    pub(crate) const WARN: Style = AnsiColor::Yellow.on_default();
+    pub(crate) const NOTE: Style = AnsiColor::BrightGreen.on_default().effects(Effects::BOLD);
+    pub(crate) const GOOD: Style = AnsiColor::BrightGreen.on_default().effects(Effects::BOLD);
+    pub(crate) const VALID: Style = AnsiColor::BrightCyan.on_default().effects(Effects::BOLD);
+    pub(crate) const INVALID: Style = AnsiColor::Yellow.on_default();
+    pub(crate) const TRANSIENT: Style = AnsiColor::BrightCyan.on_default().effects(Effects::BOLD);
+    pub(crate) const CONTEXT: Style = AnsiColor::BrightBlue.on_default().effects(Effects::BOLD);
+    pub(crate) const UPDATE_ADDED: Style = NOTE;
+    pub(crate) const UPDATE_REMOVED: Style = ERROR;
+    pub(crate) const UPDATE_UPGRADED: Style = GOOD;
+    pub(crate) const UPDATE_DOWNGRADED: Style = WARN;
+    pub(crate) const UPDATE_UNCHANGED: Style = anstyle::Style::new().bold();
+    pub(crate) const DEP_NORMAL: Style = anstyle::Style::new().effects(anstyle::Effects::DIMMED);
+    pub(crate) const DEP_BUILD: Style = anstyle::AnsiColor::Blue
+        .on_default()
+        .effects(anstyle::Effects::BOLD);
+    pub(crate) const DEP_DEV: Style = anstyle::AnsiColor::Cyan
+        .on_default()
+        .effects(anstyle::Effects::BOLD);
+    pub(crate) const DEP_FEATURE: Style = anstyle::AnsiColor::Magenta
+        .on_default()
+        .effects(anstyle::Effects::DIMMED);
 }
 
-fn fmt_style(msg: &str, style: &Style) -> String {
+pub(crate) fn get_styles() -> clap::builder::Styles {
+    clap::builder::styling::Styles::styled()
+        .header(cargo_styles::HEADER)
+        .usage(cargo_styles::USAGE)
+        .literal(cargo_styles::LITERAL)
+        .placeholder(cargo_styles::PLACEHOLDER)
+        .error(cargo_styles::ERROR)
+        .valid(cargo_styles::VALID)
+        .invalid(cargo_styles::INVALID)
+}
+
+pub(crate) fn fmt_style(msg: &str, style: &anstyle::Style) -> String {
     format!("{style}{msg}{style:#}")
 }
 
-#[allow(dead_code)]
-pub(crate) fn fmt_primary(msg: &str) -> String {
-    let style = Style::new().fg_color(Some(Color::Rgb(PRIMARY)));
-    fmt_style(msg, &style)
+macro_rules! make_fmt {
+    ($($fn_name:ident => $const:ident),* $(,)?) => {
+        $(pub(crate) fn $fn_name(msg: &str) -> String {
+            fmt_style(msg, &cargo_styles::$const)
+        })*
+    };
 }
 
-pub(crate) fn fmt_secondary(msg: &str) -> String {
-    let style = Style::new().fg_color(Some(Color::Rgb(SECONDARY)));
-    fmt_style(msg, &style)
-}
-
-pub(crate) fn fmt_tertiary(msg: &str) -> String {
-    let style = Style::new().fg_color(Some(Color::Rgb(TERTIARY)));
-    fmt_style(msg, &style)
-}
-
-#[allow(dead_code)]
-pub(crate) fn fmt_text(msg: &str) -> String {
-    let style = Style::new().fg_color(Some(Color::Rgb(TEXT_COLOR)));
-    fmt_style(msg, &style)
-}
-
-// Legacy color functions - map to brand colors
-pub(crate) fn fmt_green(msg: &str) -> String {
-    fmt_tertiary(msg)
-}
-
-pub(crate) fn fmt_cyan(msg: &str) -> String {
-    fmt_secondary(msg)
-}
-
-pub(crate) fn fmt_red(msg: &str) -> String {
-    let red = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Red)));
-    fmt_style(msg, &red)
-}
-
-pub(crate) fn fmt_yellow(msg: &str) -> String {
-    let yellow = Style::new().fg_color(Some(Color::Ansi(AnsiColor::Yellow)));
-    fmt_style(msg, &yellow)
+make_fmt! {
+    fmt_nop               => NOP,
+    fmt_header            => HEADER,
+    fmt_usage             => USAGE,
+    fmt_literal           => LITERAL,
+    fmt_placeholder       => PLACEHOLDER,
+    fmt_warn              => WARN,
+    fmt_note              => NOTE,
+    fmt_good              => GOOD,
+    fmt_valid             => VALID,
+    fmt_invalid           => INVALID,
+    fmt_transient         => TRANSIENT,
+    fmt_context           => CONTEXT,
+    fmt_update_added      => UPDATE_ADDED,
+    fmt_update_removed    => UPDATE_REMOVED,
+    fmt_update_upgraded   => UPDATE_UPGRADED,
+    fmt_update_downgraded => UPDATE_DOWNGRADED,
+    fmt_update_unchanged  => UPDATE_UNCHANGED,
+    fmt_dep_normal        => DEP_NORMAL,
+    fmt_dep_build         => DEP_BUILD,
+    fmt_dep_dev           => DEP_DEV,
+    fmt_dep_feature       => DEP_FEATURE,
+    // ERROR is omitted — fmt_error adds an icon and has different semantics
+    fmt_error               => ERROR,
 }
 
 pub(crate) fn fmt_bold(msg: &str) -> String {
-    let bold = Style::new().bold().fg_color(Some(Color::Rgb(TEXT_COLOR)));
-    fmt_style(msg, &bold)
+    fmt_update_unchanged(msg)
 }
-
 pub(crate) fn fmt_dimmed(msg: &str) -> String {
-    let dimmed = Style::new().dimmed();
-    fmt_style(msg, &dimmed)
+    fmt_dep_normal(msg)
 }
 
-pub(crate) fn fmt_success(msg: &str) -> String {
-    format!("{} {msg}", fmt_tertiary(CHECK))
+pub(crate) fn fmt_good_check(msg: &str) -> String {
+    format!("{} {msg}", fmt_good(CHECK))
 }
 
-pub(crate) fn fmt_error(msg: &str) -> String {
-    format!("{} {msg}", fmt_red(MARK))
+pub(crate) fn fmt_error_x(msg: &str) -> String {
+    format!("{} {msg}", fmt_error(MARK))
 }

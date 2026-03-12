@@ -70,27 +70,43 @@ Code runs in Deno with strict limits:
 - Prevent invalid code from running
 - Clear error messages with line/column
 
-## Three MCP Tools
+## MCP Tools & Tool Disclosure
 
-`pctx` exposes three tools that your LLM calls:
+`pctx` exposes tools that your LLM calls. The exact set depends on the `disclosure` mode configured for your server.
 
-### 1. `list_functions`
+### `catalog` mode (default)
 
-Returns TypeScript namespaces for all connected MCP servers.
+Three tools for dynamic discovery and execution.
 
-### 2. `get_function_details`
-
-Returns full TypeScript signatures with JSDoc for specific functions.
-
-### 3. `execute`
-
-Runs TypeScript code with type checking, returns `{ success, stdout, output, diagnostics }`.
-
-**Typical flow:**
+| Tool                   | Description                                                                                 |
+| ---------------------- | ------------------------------------------------------------------------------------------- |
+| `list_functions`       | Returns TypeScript namespaces for all connected MCP servers                                 |
+| `get_function_details` | Returns full TypeScript signatures with JSDoc for specific functions                        |
+| `execute_typescript`   | Runs TypeScript code with type checking, returns `{ success, stdout, output, diagnostics }` |
 
 ```
-list_functions() → get_function_details([...]) → execute({ code })
+list_functions() → get_function_details([...]) → execute_typescript({ code })
 ```
+
+### `filesystem` mode
+
+Two tools for dynamic discovery and execution. The generated TypeScript code is loaded into a virtual filesystem that
+LLMs can explore (`grep`, `find`, `cat`, `sed`, etc.) to gain the knowledge to write a script.
+
+| Tool                 | Description                                           |
+| -------------------- | ----------------------------------------------------- |
+| `execute_bash`       | Reads TypeScript tool definitions from the filesystem |
+| `execute_typescript` | Runs TypeScript code with type checking               |
+
+```
+execute_bash() → execute_typescript({ code })
+```
+
+### `sidecar` mode
+
+_Currently only supported in the unified MCP server with `pctx mcp start`_
+
+Upstream tool descriptions are surfaced directly as MCP tools with the addition of `execute_typescript`; the agent calls `execute_typescript` to invoke them without a separate discovery step.
 
 ## Namespaces
 

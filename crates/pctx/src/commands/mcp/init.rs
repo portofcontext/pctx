@@ -8,7 +8,7 @@ use crate::{
     commands::{USER_CANCELLED, mcp::add::AddCmd},
     utils::{
         prompts,
-        styles::{fmt_bold, fmt_dimmed, fmt_success},
+        styles::{fmt_bold, fmt_dimmed, fmt_good_check, fmt_literal},
     },
 };
 
@@ -154,7 +154,7 @@ impl InitCmd {
                         cfg = updated;
                         info!(
                             "{}",
-                            fmt_success(&format!("Added {name}", name = fmt_bold(&name)))
+                            fmt_good_check(&format!("Added {name}", name = fmt_bold(&name)))
                         );
                     }
                     Err(e) => warn!("{e}"),
@@ -170,10 +170,10 @@ impl InitCmd {
 
         info!(
             "{}",
-            fmt_success(&format!(
+            fmt_good_check(&format!(
                 "{name} configuration created: {path}",
                 name = fmt_bold("pctx"),
-                path = fmt_dimmed(cfg.path().as_str()),
+                path = fmt_literal(cfg.path().as_str()),
             ))
         );
 

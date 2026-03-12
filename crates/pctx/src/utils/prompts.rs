@@ -4,7 +4,7 @@ use pctx_codegen::case::Case;
 use pctx_config::auth::{AuthConfig, AuthSecret, SecretString, write_to_keychain};
 use tracing::info;
 
-use crate::utils::styles::{fmt_dimmed, fmt_success};
+use crate::utils::styles::{fmt_dimmed, fmt_good_check};
 
 pub(crate) fn prompt_auth(server_name: &str) -> Result<AuthConfig> {
     let options = vec![
@@ -107,7 +107,7 @@ pub(crate) fn prompt_secret(msg: &str, prefix: &str, key: &str) -> Result<Secret
             write_to_keychain(key, &secret)?;
             info!(
                 "{}",
-                fmt_success(&format!("{prefix}Value stored in keychain"))
+                fmt_good_check(&format!("{prefix}Value stored in keychain"))
             );
             Ok(SecretString::new_secret(AuthSecret::Keychain(key.into())))
         }
