@@ -46,6 +46,7 @@ To add a new description style:
 5. Add to `__all__` exports
 
 Example:
+
 ```
 your_style/
 ├── __init__.py
@@ -63,7 +64,7 @@ from pctx_client.tool_descriptions import TERMINAL_STYLE_DESCRIPTIONS
 tools = pctx.langchain_tools(descriptions=TERMINAL_STYLE_DESCRIPTIONS)
 
 # Or write your own
-custom = {"execute": "Your description", "list_functions": "Another"}
+custom = {"execute_typescript": "Your description", "list_functions": "Another"}
 tools = pctx.langchain_tools(descriptions=custom)
 
 # Combine with different modes
