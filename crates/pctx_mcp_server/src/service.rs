@@ -3,12 +3,12 @@ use std::{collections::HashMap, sync::Arc};
 use pctx_code_mode::{
     CodeMode,
     config::{Config, ToolDisclosure},
+    descriptions,
     model::{
         ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
         GetFunctionDetailsOutput, ListFunctionsOutput,
     },
     registry::{PctxRegistry, RegistryAction},
-    tool_descriptions,
 };
 use rmcp::{
     RoleServer, ServerHandler, ServiceError,
@@ -252,7 +252,7 @@ impl PctxMcpService {
 
 impl ServerHandler for PctxMcpService {
     fn get_info(&self) -> ServerInfo {
-        let default_description = format!(
+        let available_namespaces = format!(
             "This server provides tools to explore SDK functions and execute SDK scripts for the following services: {}",
             self.code_mode
                 .tool_sets()
@@ -262,13 +262,20 @@ impl ServerHandler for PctxMcpService {
                 .join(", ")
         );
 
+        let workflow =
+            pctx_code_mode::descriptions::workflow::get_workflow_description(self.disclosure);
+
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
             .with_server_info(
                 Implementation::new(self.name.clone(), self.version.clone())
                     .with_title(self.name.clone()),
             )
-            .with_instructions(self.description.clone().unwrap_or(default_description))
+            .with_instructions(
+                self.description
+                    .clone()
+                    .unwrap_or(format!("{available_namespaces}\n{workflow}")),
+            )
     }
 
     #[instrument(skip_all, fields(mcp.method = "tools/list", mcp.id = %ctx.id))]
@@ -347,14 +354,14 @@ impl ToolOverride {
             "list_functions".into(),
             Self {
                 enabled: matches!(disclosure, ToolDisclosure::Catalog),
-                description: tool_descriptions::LIST_FUNCTIONS.into(),
+                description: descriptions::tools::LIST_FUNCTIONS.into(),
             },
         );
         overrides.insert(
             "get_function_details".into(),
             Self {
                 enabled: matches!(disclosure, ToolDisclosure::Catalog),
-                description: tool_descriptions::GET_FUNCTION_DETAILS.into(),
+                description: descriptions::tools::GET_FUNCTION_DETAILS.into(),
             },
         );
 
@@ -363,7 +370,7 @@ impl ToolOverride {
             "execute_bash".into(),
             Self {
                 enabled: matches!(disclosure, ToolDisclosure::Filesystem),
-                description: tool_descriptions::EXECUTE_BASH.into(),
+                description: descriptions::tools::EXECUTE_BASH.into(),
             },
         );
 
@@ -372,7 +379,7 @@ impl ToolOverride {
             "execute_typescript".into(),
             Self {
                 enabled: true,
-                description: tool_descriptions::disclosure_execute_description(disclosure),
+                description: descriptions::tools::disclosure_execute_description(disclosure),
             },
         );
 

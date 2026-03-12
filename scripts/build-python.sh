@@ -4,8 +4,8 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 PCTX_PY="$REPO_ROOT/pctx-py"
-SYMLINK="$PCTX_PY/src/pctx_client/_tool_descriptions/data"
-SYMLINK_TARGET="../../../../tool_descriptions"
+SYMLINK="$PCTX_PY/src/pctx_client/descriptions/data"
+SYMLINK_TARGET="../../../../descriptions"
 RESOLVED=false
 
 cleanup() {

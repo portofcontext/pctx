@@ -13,9 +13,9 @@ from httpx import AsyncClient
 from pydantic import BaseModel
 
 from pctx_client._tool import AsyncTool, Tool
-from pctx_client._tool_descriptions import get_description
 from pctx_client._utils import HAS_SEARCH, to_snake_case
 from pctx_client._websocket_client import WebSocketClient
+from pctx_client.descriptions import get_tool_description
 from pctx_client.exceptions import ConnectionError, SessionError
 from pctx_client.models import (
     ExecuteBashInput,
@@ -473,13 +473,13 @@ class Pctx:
         # build all tools
 
         @langchain_tool(
-            description=get_description("execute_bash", overrides=descriptions)
+            description=get_tool_description("execute_bash", overrides=descriptions)
         )
         async def execute_bash(command: str) -> str:
             return (await self.execute_bash(command)).markdown()
 
         @langchain_tool(
-            description=get_description(
+            description=get_tool_description(
                 "execute_typescript", disclosure=disclosure, overrides=descriptions
             )
         )
@@ -489,20 +489,22 @@ class Pctx:
             ).markdown()
 
         @langchain_tool(
-            description=get_description("list_functions", overrides=descriptions)
+            description=get_tool_description("list_functions", overrides=descriptions)
         )
         async def list_functions() -> str:
             return (await self.list_functions()).code
 
         @langchain_tool(
-            description=get_description("search_functions", overrides=descriptions)
+            description=get_tool_description("search_functions", overrides=descriptions)
         )
         async def search_functions(query: str, k: int = 10) -> str:
             functions = await self.search_functions(query, k)
             return self._search_functions_result_to_string(functions)
 
         @langchain_tool(
-            description=get_description("get_function_details", overrides=descriptions)
+            description=get_tool_description(
+                "get_function_details", overrides=descriptions
+            )
         )
         async def get_function_details(functions: list[str]) -> str:
             return (
@@ -576,7 +578,9 @@ class Pctx:
 
         class ExecuteBashTool(CrewAiBaseTool):
             name: str = "execute_bash"
-            description: str = get_description("execute_bash", overrides=descriptions)
+            description: str = get_tool_description(
+                "execute_bash", overrides=descriptions
+            )
             args_schema: type[BaseModel] = ExecuteBashInput
 
             def _run(_self, command: str) -> str:
@@ -584,7 +588,7 @@ class Pctx:
 
         class ExecuteTypeScriptTool(CrewAiBaseTool):
             name: str = "execute_typescript"
-            description: str = get_description(
+            description: str = get_tool_description(
                 "execute_typescript", disclosure=disclosure, overrides=descriptions
             )
             args_schema: type[BaseModel] = ExecuteInput
@@ -597,14 +601,16 @@ class Pctx:
 
         class ListFunctionsTool(CrewAiBaseTool):
             name: str = "list_functions"
-            description: str = get_description("list_functions", overrides=descriptions)
+            description: str = get_tool_description(
+                "list_functions", overrides=descriptions
+            )
 
             def _run(_self) -> str:
                 return run_async(self.list_functions()).code
 
         class SearchFunctionsTool(CrewAiBaseTool):
             name: str = "search_functions"
-            description: str = get_description(
+            description: str = get_tool_description(
                 "search_functions", overrides=descriptions
             )
 
@@ -615,7 +621,7 @@ class Pctx:
 
         class GetFunctionDetailsTool(CrewAiBaseTool):
             name: str = "get_function_details"
-            description: str = get_description(
+            description: str = get_tool_description(
                 "get_function_details", overrides=descriptions
             )
             args_schema: type[BaseModel] = GetFunctionDetailsInput
@@ -675,21 +681,23 @@ class Pctx:
         async def execute_bash(command: str) -> str:
             return (await self.execute_bash(command)).markdown()
 
-        execute_bash.__doc__ = get_description("execute_bash", overrides=descriptions)
+        execute_bash.__doc__ = get_tool_description(
+            "execute_bash", overrides=descriptions
+        )
 
         async def execute_typescript(code: str) -> str:
             return (
                 await self.execute_typescript(code, disclosure=disclosure)
             ).markdown()
 
-        execute_typescript.__doc__ = get_description(
+        execute_typescript.__doc__ = get_tool_description(
             "execute_typescript", disclosure=disclosure, overrides=descriptions
         )
 
         async def list_functions() -> str:
             return (await self.list_functions()).code
 
-        list_functions.__doc__ = get_description(
+        list_functions.__doc__ = get_tool_description(
             "list_functions", overrides=descriptions
         )
 
@@ -698,14 +706,14 @@ class Pctx:
                 await self.search_functions(query, k)
             )
 
-        search_functions.__doc__ = get_description(
+        search_functions.__doc__ = get_tool_description(
             "search_functions", overrides=descriptions
         )
 
         async def get_function_details(functions: list[str]) -> str:
             return (await self.get_function_details(functions)).code
 
-        get_function_details.__doc__ = get_description(
+        get_function_details.__doc__ = get_tool_description(
             "get_function_details", overrides=descriptions
         )
 
@@ -781,29 +789,35 @@ class Pctx:
             PydanticAITool(
                 execute_bash,
                 name="execute_bash",
-                description=get_description("execute_bash", overrides=descriptions),
+                description=get_tool_description(
+                    "execute_bash", overrides=descriptions
+                ),
             ),
             PydanticAITool(
                 execute_typescript,
                 name="execute_typescript",
-                description=get_description(
+                description=get_tool_description(
                     "execute_typescript", disclosure=disclosure, overrides=descriptions
                 ),
             ),
             PydanticAITool(
                 list_functions,
                 name="list_functions",
-                description=get_description("list_functions", overrides=descriptions),
+                description=get_tool_description(
+                    "list_functions", overrides=descriptions
+                ),
             ),
             PydanticAITool(
                 search_functions,
                 name="search_functions",
-                description=get_description("search_functions", overrides=descriptions),
+                description=get_tool_description(
+                    "search_functions", overrides=descriptions
+                ),
             ),
             PydanticAITool(
                 get_function_details,
                 name="get_function_details",
-                description=get_description(
+                description=get_tool_description(
                     "get_function_details", overrides=descriptions
                 ),
             ),

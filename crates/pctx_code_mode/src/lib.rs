@@ -181,8 +181,8 @@
 //! - Isolated V8 context per execution
 
 mod code_mode;
+pub mod descriptions;
 pub mod model;
-pub mod tool_descriptions;
 
 // Core execution API
 pub use code_mode::CodeMode;

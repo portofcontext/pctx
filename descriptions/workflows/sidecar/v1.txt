@@ -1,0 +1,3 @@
+WORKFLOW:
+    1. Review all the available tools.
+    2. Write and execute ONE script via `execute_typescript` that calls ALL tools needed for the task, no need to import `invoke`, it is globally available.
