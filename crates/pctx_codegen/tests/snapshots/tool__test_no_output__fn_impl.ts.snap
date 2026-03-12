@@ -16,8 +16,8 @@ export type SendNotificationInput = {
 export async function sendNotification(
   input: SendNotificationInput,
 ): Promise<any> {
-  return await invokeCallback<any>({
-    id: "test_server.send_notification",
+  return await invokeInternal({
+    name: "test_server__send_notification",
     arguments: input,
   });
 }

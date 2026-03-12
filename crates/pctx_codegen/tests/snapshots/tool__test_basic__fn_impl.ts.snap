@@ -22,9 +22,8 @@ export type GetWeatherOutput = {
 export async function getWeather(
   input: GetWeatherInput,
 ): Promise<GetWeatherOutput> {
-  return await callMCPTool<GetWeatherOutput>({
-    serverName: "test_server",
-    toolName: "get_weather",
+  return await invokeInternal({
+    name: "test_server__get_weather",
     arguments: input,
   });
 }

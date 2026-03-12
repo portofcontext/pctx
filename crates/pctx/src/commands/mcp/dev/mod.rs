@@ -608,7 +608,7 @@ mod tests {
         app.track_tool_usage(&log_entry);
 
         // Verify that the tool was tracked
-        let key = "banking::get_account_balance";
+        let key = "banking__get_account_balance";
         assert!(
             app.tool_usage.contains_key(key),
             "Expected tool_usage to contain key '{}', but it doesn't. Keys present: {:?}",
@@ -651,7 +651,7 @@ mod tests {
         app.track_tool_usage(&log_entry);
 
         // Verify that the tool was tracked
-        let key = "banking::freeze_account";
+        let key = "banking__freeze_account";
         assert!(
             app.tool_usage.contains_key(key),
             "Expected tool_usage to contain key '{}', but it doesn't. Keys present: {:?}",
@@ -706,7 +706,7 @@ mod tests {
         app.track_tool_usage(&log_entry1);
         app.track_tool_usage(&log_entry2);
 
-        let key = "banking::get_account_balance";
+        let key = "banking__get_account_balance";
         let usage = app.tool_usage.get(key).unwrap();
         assert_eq!(usage.count, 2, "Expected count to be 2 after two calls");
         assert_eq!(

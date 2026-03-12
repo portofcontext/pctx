@@ -6,7 +6,5 @@ expression: impl_code
  * Health check ping
  */
 export async function ping(): Promise<any> {
-  return await invokeCallback<any>({
-    id: "test_server.ping",
-  });
+  return await invokeInternal({ name: "test_server__ping" });
 }

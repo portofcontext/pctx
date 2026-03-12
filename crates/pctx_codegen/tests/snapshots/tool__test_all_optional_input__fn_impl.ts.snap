@@ -32,9 +32,8 @@ export type SearchLogsOutputResults = {
 export async function searchLogs(
   input: SearchLogsInput = {},
 ): Promise<SearchLogsOutput> {
-  return await callMCPTool<SearchLogsOutput>({
-    serverName: "test_server",
-    toolName: "search_logs",
+  return await invokeInternal({
+    name: "test_server__search_logs",
     arguments: input,
   });
 }

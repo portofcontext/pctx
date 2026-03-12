@@ -301,7 +301,7 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             .tools
             .iter()
             .map(|tool| {
-                let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
+                let usage_key = tool.id(tool_set.name.as_deref());
                 let usage_count = app.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                 (tool, usage_count)
             })
@@ -420,7 +420,7 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
 
 fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
     if let Some((tool_set, tool)) = app.get_selected_tool() {
-        let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
+        let usage_key = tool.id(tool_set.name.as_deref());
         let usage = app.tool_usage.get(&usage_key);
 
         let mut lines: Vec<Line> = vec![

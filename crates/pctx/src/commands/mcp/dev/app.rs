@@ -224,7 +224,7 @@ impl App {
                                     .trim()
                                     .to_string();
 
-                                let key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
+                                let key = tool.id(tool_set.name.as_deref());
 
                                 self.tool_usage
                                     .entry(key.clone())
@@ -553,7 +553,7 @@ impl App {
                 .tools
                 .iter()
                 .map(|tool| {
-                    let usage_key = format!("{}::{}", tool_set.pascal_namespace(), tool.name);
+                    let usage_key = tool.id(tool_set.name.as_deref());
                     let usage_count = self.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                     (tool.clone(), usage_count)
                 })
