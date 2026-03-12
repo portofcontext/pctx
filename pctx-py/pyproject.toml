@@ -18,8 +18,8 @@ dependencies = [
 [project.optional-dependencies]
 langchain = ["langchain>=1.1.2"]
 crewai = ["crewai>=1.6.1"]
-openai = ["openai-agents>=0.6.2"]
-pydantic-ai = ["pydantic-ai>=0.0.14"]
+openai = ["openai-agents>=0.12.0"]
+pydantic-ai = ["pydantic-ai>=1.60.0"]
 bm25s = ["bm25s[stem]>=0.2.12"]
 
 [project.urls]
@@ -43,8 +43,8 @@ dev = [
     "langchain>=1.1.2",
     "langchain-openai>=0.3.0",
     "crewai>=1.6.1",
-    "openai-agents>=0.6.2",
-    "pydantic-ai>=0.0.14",
+    "openai-agents>=0.12.0",
+    "pydantic-ai>=1.60.0",
     "bm25s[stem]>=0.2.12",
     "sphinx",
     "sphinx-autobuild",
