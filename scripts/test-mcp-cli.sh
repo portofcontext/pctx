@@ -206,7 +206,7 @@ execute_response=$(curl -s -X POST http://localhost:8080/mcp \
 if echo "$execute_response" | grep -q '"result"'; then
     echo -e "${GREEN}✓ execute called successfully${NC}"
     # Check that the code execution succeeded (not just that we got a response)
-    if echo "$execute_response" | grep -q '"success":true'; then
+    if echo "$execute_response" | grep -q 'Code Executed Successfully: true'; then
         echo "  Code executed successfully and returned result"
     else
         echo -e "${RED}✗ Code execution failed${NC}"
