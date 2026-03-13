@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 10 commits contributed to the release.
+ - 11 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.0, pctx_config v0.1.4, pctx_registry v0.1.0, pctx_code_execution_runtime v0.2.0, pctx_type_check_runtime v0.1.3, pctx_executor v0.2.0, pctx_code_mode v0.3.0 ([`f80514b`](https://github.com/portofcontext/pctx/commit/f80514b0057cbba2015fc059e08e98b9252eacbf))
     - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
     - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
     - Merge pull request #56 from portofcontext/in-memory-fs ([`8b692dd`](https://github.com/portofcontext/pctx/commit/8b692dde566648ff4eae65bee0e5578170d419bf))
