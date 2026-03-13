@@ -27,29 +27,48 @@ env:
   CARGO_INCREMENTAL: 0
 
 jobs:
-  # CLI integration tests - tests pctx mcp start command
-  cli-tests:
+  # Build pctx binary once and share across test jobs
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Install build dependencies
       - name: Install build dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y build-essential libclang-dev libc6-dev
 
-      # Set up Rust with caching
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: false
-          # Changed cache key to invalidate corrupted v8 cache from adding just-bash/bundle.js
           shared-key: "integration-tests-v2"
 
-      # Build pctx binary in release mode
       - name: Build pctx
         run: cargo build --release --bin pctx
+
+      - name: Upload pctx binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: pctx-binary
+          path: target/release/pctx
+          retention-days: 1
+
+  # CLI integration tests - tests pctx mcp start command
+  cli-tests:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download pctx binary
+        uses: actions/download-artifact@v4
+        with:
+          name: pctx-binary
+          path: target/release
+
+      - name: Make pctx executable
+        run: chmod +x target/release/pctx
 
       # Run the CLI integration test script with built binary
       - name: Run CLI integration tests
@@ -72,28 +91,19 @@ jobs:
 
   # Python client integration tests - tests HTTP client
   python-client-tests:
-    needs: cli-tests
+    needs: [build, cli-tests]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      # Install build dependencies
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libclang-dev libc6-dev
-
-      # Set up Rust with caching
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - name: Download pctx binary
+        uses: actions/download-artifact@v4
         with:
-          cache-on-failure: false
-          # Changed cache key to invalidate corrupted v8 cache from adding just-bash/bundle.js
-          shared-key: "integration-tests-v2"
+          name: pctx-binary
+          path: target/release
 
-      # Build pctx binary in release mode (should hit cache from cli-tests)
-      - name: Build pctx
-        run: cargo build --release --bin pctx
+      - name: Make pctx executable
+        run: chmod +x target/release/pctx
 
       # Set up Python
       - uses: actions/setup-python@v4
