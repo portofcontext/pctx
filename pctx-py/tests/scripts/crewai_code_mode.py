@@ -23,14 +23,14 @@ async def run_agent():
     await code_mode.connect()
 
     llm = LLM(
-        model="openrouter/deepseek/deepseek-chat",
+        model="openai/gpt-oss-120b",
         api_key=os.environ.get("OPENROUTER_API_KEY"),
         base_url="https://openrouter.ai/api/v1",
     )
 
     agent = Agent(
         llm=llm,
-        tools=code_mode.crewai_tools(),
+        tools=code_mode.crewai_tools("filesystem"),
         verbose=True,
         role="Helpful assistant",
         goal="answer queries about time and weather with your available tools",

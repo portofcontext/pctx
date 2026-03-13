@@ -1,6 +1,6 @@
 [package]
 name = "pctx"
-version = "0.6.0-beta.2"
+version = "0.6.0"
 edition = "2024"
 rust-version = "1.89"
 license = "MIT"
@@ -95,6 +95,7 @@ tokio = { workspace = true, features = [
 
 # Errors
 anyhow = { workspace = true }
+regex = "1.12.3"
 
 
 [target.'cfg(all(not(target_env = "msvc"), any(target_arch = "x86_64", target_arch = "aarch64", target_arch = "powerpc64")))'.dependencies]

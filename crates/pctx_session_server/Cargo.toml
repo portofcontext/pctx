@@ -13,9 +13,6 @@ path = "src/bin/generate-openapi.rs"
 [dependencies]
 # Local crates
 pctx_code_mode = { path = "../pctx_code_mode" }
-pctx_config = { path = "../pctx_config" }
-pctx_code_execution_runtime = { path = "../pctx_code_execution_runtime" }
-pctx_codegen = { path = "../pctx_codegen" }
 
 # Web framework
 axum = { workspace = true, features = ["macros", "ws"] }
@@ -63,6 +60,7 @@ serial_test = "3"
 axum-test = { version = "18", features = ["ws"] }
 similar-asserts = { version = "1", features = ["serde"] }
 test-log = "0.2"
+rstest = "0.23"
 
 [lints]
 workspace = true

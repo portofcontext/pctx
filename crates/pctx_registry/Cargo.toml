@@ -1,0 +1,22 @@
+[package]
+name = "pctx_registry"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Callback and MCP server registries for pctx"
+keywords = ["mcp", "registry", "pctx"]
+categories = ["development-tools"]
+
+[dependencies]
+pctx_config = { version = "^0.1.4", path = "../pctx_config" }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+thiserror = { workspace = true }
+rmcp = { workspace = true }
+tokio = { workspace = true }
+deno_error = { workspace = true }
+
+[lints]
+workspace = true

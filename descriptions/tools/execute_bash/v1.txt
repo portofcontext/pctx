@@ -1,0 +1,25 @@
+Execute bash commands to explore the TypeScript SDK filesystem.
+
+FILESYSTEM STRUCTURE:
+The SDK is organized as an in-memory virtual filesystem at /sdk/ containing:
+- README.md - Overview of all available functions organized by namespace
+- {Namespace}/ - Directory for each namespace containing:
+  - {functionName}.d.ts - TypeScript definition file for each function
+
+EXPLORATION WORKFLOW:
+1. List files: `ls` to see README.md and namespace directories
+2. Read README: `cat README.md` to see all available functions
+3. Search: `grep 'keyword' README.md` to find specific functions
+4. Read types: `cat {Namespace}/{functionName}.d.ts` for detailed type information
+
+COMMANDS:
+- ls, cat, grep, find - Explore the filesystem
+- All standard bash utilities for text processing
+- Networking bash commands like `curl`, `ping`, etc. are unavailable.
+Use bash to explore the SDK and write a script.
+
+CURRENT WORKING DIRECTORY: /sdk/
+
+IMPORTANT:
+- This is a READ-ONLY virtual filesystem for SDK exploration
+- Use this to discover available functions and their signatures

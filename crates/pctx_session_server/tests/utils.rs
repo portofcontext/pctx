@@ -3,8 +3,7 @@
 use std::sync::Arc;
 
 use axum_test::{TestResponse, TestServer};
-use pctx_code_execution_runtime::CallbackFn;
-use pctx_code_mode::{CodeMode, model::CallbackConfig};
+use pctx_code_mode::{CodeMode, model::CallbackConfig, registry::CallbackFn};
 use pctx_session_server::{
     AppState, LocalBackend, PctxSessionBackend, model::CreateSessionResponse, server::create_router,
 };
@@ -105,7 +104,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "add".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Add two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -123,7 +122,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "subtract".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Subtract two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -141,7 +140,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "multiply".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Multiply two numbers & return result".into()),
                 input_schema: Some(input_schema.clone()),
                 output_schema: Some(output_schema.clone()),
@@ -159,7 +158,7 @@ pub(crate) fn callback_tools() -> Vec<(CallbackConfig, CallbackFn)> {
         (
             CallbackConfig {
                 name: "divide".into(),
-                namespace: "test_math".into(),
+                namespace: Some("test_math".into()),
                 description: Some("Divide two numbers & return result".into()),
                 input_schema: Some(json!({
                     "type": "object",

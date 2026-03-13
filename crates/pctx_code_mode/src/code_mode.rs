@@ -1,13 +1,12 @@
+use pctx_codegen::{Tool, ToolSet};
+use pctx_config::{ToolDisclosure, server::ServerConfig};
+use pctx_registry::PctxRegistry;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
     time::Duration,
 };
-
-use pctx_code_execution_runtime::CallbackRegistry;
-use pctx_codegen::{Tool, ToolSet};
-use pctx_config::server::ServerConfig;
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use tracing::{debug, info, instrument, warn};
 
 use crate::{
@@ -75,9 +74,7 @@ impl CodeMode {
     ) -> Result<()> {
         let timeout = Duration::from_secs(timeout_secs);
         let mut tasks = vec![];
-        let mut servers_to_add = vec![];
         for server in servers {
-            servers_to_add.push(server.clone());
             let server = server.clone();
             let task = tokio::spawn(async move {
                 let result = tokio::time::timeout(timeout, Self::server_to_toolset(&server)).await;
@@ -98,26 +95,24 @@ impl CodeMode {
         }
 
         // join and unpack results
-        let results = futures::future::join_all(tasks).await;
-        let mut tool_sets = vec![];
-        for result in results {
-            tool_sets.push(result.map_err(|e| {
+        let joined_results = futures::future::join_all(tasks).await;
+        let mut results = vec![];
+        for result in joined_results {
+            results.push(result.map_err(|e| {
                 Error::Message(format!("Failed joining parallel MCP registration: {e:?}"))
             })??);
         }
 
         // check for ToolSet conflicts & add to self
-        for tool_set in tool_sets {
+        for (tool_set, server_cfg) in results {
             self.add_tool_set(tool_set)?;
+            self.servers.push(server_cfg)
         }
-
-        // add server configs
-        self.servers.extend(servers_to_add);
 
         Ok(())
     }
 
-    async fn server_to_toolset(server: &ServerConfig) -> Result<ToolSet> {
+    async fn server_to_toolset(server: &ServerConfig) -> Result<(ToolSet, ServerConfig)> {
         // Connect to the MCP server (this is the slow operation)
         debug!(
             "Connecting to MCP server '{}'({})...",
@@ -137,7 +132,7 @@ impl CodeMode {
 
         // Convert MCP tools to pctx tools
         let mut tools = vec![];
-        for mcp_tool in listed_tools {
+        for mcp_tool in &listed_tools {
             let input_schema =
                 serde_json::from_value::<pctx_codegen::RootSchema>(json!(mcp_tool.input_schema))
                     .map_err(|e| {
@@ -160,9 +155,9 @@ impl CodeMode {
             };
 
             tools.push(
-                Tool::new_mcp(
+                Tool::new(
                     &mcp_tool.name,
-                    mcp_tool.description.map(String::from),
+                    mcp_tool.description.clone().map(String::from),
                     Some(input_schema),
                     output_schema,
                 )
@@ -177,7 +172,7 @@ impl CodeMode {
             .and_then(|p| p.server_info.title.clone())
             .unwrap_or(format!("MCP server at {}", server.display_target()));
 
-        let tool_set = ToolSet::new(&server.name, &description, tools);
+        let tool_set = ToolSet::new(Some(server.name.clone()), &description, tools);
 
         info!(
             "Successfully initialized MCP server '{}' with {} tools",
@@ -185,7 +180,7 @@ impl CodeMode {
             tool_set.tools.len()
         );
 
-        Ok(tool_set)
+        Ok((tool_set, server.clone()))
     }
 
     pub fn add_callbacks<'a>(
@@ -210,7 +205,7 @@ impl CodeMode {
             .unwrap_or_else(|| {
                 let idx = self.tool_sets.len();
                 self.tool_sets
-                    .push(ToolSet::new(&callback.namespace, "", vec![]));
+                    .push(ToolSet::new(callback.namespace.clone(), "", vec![]));
                 idx
             });
         let tool_set = &mut self.tool_sets[idx];
@@ -218,7 +213,8 @@ impl CodeMode {
         if tool_set.tools.iter().any(|t| t.name == callback.name) {
             return Err(Error::Message(format!(
                 "ToolSet `{}` already has a tool with name `{}`. Tool names must be unique within tool sets",
-                &tool_set.name, &callback.name
+                tool_set.name.as_deref().unwrap_or_default(),
+                &callback.name
             )));
         }
 
@@ -244,7 +240,7 @@ impl CodeMode {
         } else {
             None
         };
-        let tool = Tool::new_callback(
+        let tool = Tool::new(
             &callback.name,
             callback.description.clone(),
             input_schema,
@@ -263,7 +259,7 @@ impl CodeMode {
         if self.tool_sets.iter().any(|t| t.name == tool_set.name) {
             return Err(Error::Message(format!(
                 "CodeMode already has ToolSet with name: {}",
-                tool_set.name
+                tool_set.name.unwrap_or_default()
             )));
         }
 
@@ -299,7 +295,7 @@ impl CodeMode {
             }
 
             // e.g. "## Tools"
-            readme.push_str(&format!("## {}\n", tool_set.namespace));
+            readme.push_str(&format!("## {}\n", tool_set.pascal_namespace()));
 
             // One line per function: "Namespace/fn.d.ts  # description"
             // `cat` omitted since it's stated once in the header above.
@@ -318,15 +314,20 @@ impl CodeMode {
 
                     // Create file for this function under /sdk/
                     let tool_file_path =
-                        format!("/sdk/{}/{}.d.ts", tool_set.namespace, tool.fn_name);
-                    let tool_code = tool.fn_signature(true);
+                        format!("/sdk/{}/{}.d.ts", tool_set.pascal_namespace(), tool.fn_name);
+                    let tool_code = tool.ts_fn_signature(true);
                     let formatted = pctx_codegen::format::format_d_ts(&tool_code);
                     files.insert(tool_file_path, formatted);
 
                     if desc.is_empty() {
-                        format!("{}/{}.d.ts", tool_set.namespace, tool.fn_name)
+                        format!("{}/{}.d.ts", tool_set.pascal_namespace(), tool.fn_name)
                     } else {
-                        format!("{}/{}.d.ts  # {}", tool_set.namespace, tool.fn_name, desc)
+                        format!(
+                            "{}/{}.d.ts  # {}",
+                            tool_set.pascal_namespace(),
+                            tool.fn_name,
+                            desc
+                        )
                     }
                 })
                 .collect();
@@ -346,6 +347,29 @@ impl CodeMode {
         &self.tool_sets
     }
 
+    /// Returns an immutable reference to the registered ToolSets
+    /// representing upstream servers
+    pub fn server_tool_sets(&self) -> Vec<(&ServerConfig, &pctx_codegen::ToolSet)> {
+        // let server_names: Vec<&str> = self.servers.iter().map(|s| s.0.name.as_str()).collect();
+        self.tool_sets
+            .iter()
+            .filter_map(|ts| {
+                if let Some(server_cfg) = self
+                    .servers
+                    .iter()
+                    .find(|s| Some(s.name.as_str()) == ts.name.as_deref())
+                {
+                    Some((server_cfg, ts))
+                } else {
+                    None
+                }
+                // ts.name
+                //     .as_deref()
+                //     .is_some_and(|n| server_names.contains(&n))
+            })
+            .collect()
+    }
+
     /// Returns an immutable reference to the registered server configurations
     pub fn servers(&self) -> &[ServerConfig] {
         &self.servers
@@ -362,25 +386,14 @@ impl CodeMode {
         &self.virtual_fs
     }
 
-    pub fn allowed_hosts(&self) -> HashSet<String> {
-        self.servers
-            .iter()
-            .filter_map(|s| {
-                let http_cfg = s.http()?;
-                let host = http_cfg.url.host()?;
-                let allowed = if let Some(port) = http_cfg.url.port() {
-                    format!("{host}:{port}")
-                } else {
-                    let default_port = if http_cfg.url.scheme() == "https" {
-                        443
-                    } else {
-                        80
-                    };
-                    format!("{host}:{default_port}")
-                };
-                Some(allowed)
-            })
-            .collect()
+    // --------------- Utilities ---------------
+    pub fn add_mcp_servers_to_registry(&self, registry: &mut PctxRegistry) -> Result<()> {
+        for (cfg, tool_set) in self.server_tool_sets() {
+            let tool_names: Vec<String> = tool_set.tools.iter().map(|t| t.name.clone()).collect();
+            registry.add_mcp(&tool_names, cfg.clone())?;
+        }
+
+        Ok(())
     }
 
     // --------------- Code-Mode Tools ---------------
@@ -396,10 +409,10 @@ impl CodeMode {
                 continue;
             }
 
-            namespaces.push(tool_set.namespace_interface(false));
+            namespaces.push(tool_set.ts_namespace_declaration(false));
 
             functions.extend(tool_set.tools.iter().map(|t| ListedFunction {
-                namespace: tool_set.namespace.clone(),
+                namespace: tool_set.pascal_namespace(),
                 name: t.fn_name.clone(),
                 description: t.description.clone(),
             }));
@@ -426,7 +439,7 @@ impl CodeMode {
         let mut functions = vec![];
 
         for tool_set in &self.tool_sets {
-            if let Some(fn_names) = by_mod.get(&tool_set.namespace) {
+            if let Some(fn_names) = by_mod.get(&tool_set.pascal_namespace()) {
                 // filter tools based on requested fn names
                 let tools: Vec<&pctx_codegen::Tool> = tool_set
                     .tools
@@ -437,13 +450,13 @@ impl CodeMode {
                 if !tools.is_empty() {
                     // code definition
                     let fn_details: Vec<String> =
-                        tools.iter().map(|t| t.fn_signature(true)).collect();
-                    namespaces.push(tool_set.wrap_with_namespace(&fn_details.join("\n\n")));
+                        tools.iter().map(|t| t.ts_fn_signature(true)).collect();
+                    namespaces.push(tool_set.ts_wrap_with_namespace(&fn_details.join("\n\n")));
 
                     // struct output
                     functions.extend(tools.iter().map(|t| FunctionDetails {
                         listed: ListedFunction {
-                            namespace: tool_set.namespace.clone(),
+                            namespace: tool_set.pascal_namespace(),
                             name: t.fn_name.clone(),
                             description: t.description.clone(),
                         },
@@ -469,10 +482,6 @@ impl CodeMode {
     pub async fn execute_bash(&self, command: &str) -> Result<ExecuteOutput> {
         debug!(command = %command, "Executing bash command");
 
-        // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json =
-            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
-
         // Wrap bash command in async IIFE and export the result
         // The result from bashFs.exec() contains: { stdout: string, stderr: string, exitCode: number }
         let to_execute = format!(
@@ -488,17 +497,14 @@ const result = await (async () => {{
 }})();
 
 export default result;"#,
-            virtual_fs_json = virtual_fs_json,
-            command = serde_json::to_string(command).unwrap_or_else(|_| "\"\"".to_string()),
+            virtual_fs_json = json!(self.virtual_fs),
+            command = json!(command),
         );
 
         debug!(to_execute = %to_execute, "Executing bash in sandbox");
 
-        let options = pctx_executor::ExecuteOptions::new()
-            .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
-            .with_servers(self.servers.clone());
-
-        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+        let execution_res =
+            pctx_executor::execute(&to_execute, pctx_executor::ExecuteOptions::new()).await?;
 
         // Extract stdout and stderr from the bash result object
         // The output field contains the result object: { stdout, stderr, exitCode }
@@ -551,13 +557,16 @@ export default result;"#,
     }
 
     /// Execute TypeScript code with access to registered tools and virtual filesystem
-    #[instrument(skip(self, callback_registry), ret(Display), err)]
+    #[instrument(skip(self, registry), ret(Display), err)]
     pub async fn execute_typescript(
         &self,
         code: &str,
-        callback_registry: Option<CallbackRegistry>,
+        disclosure: ToolDisclosure,
+        registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
-        let registry = callback_registry.unwrap_or_default();
+        let mut registry = registry.unwrap_or_default();
+        self.add_mcp_servers_to_registry(&mut registry)?;
+
         // Format for logging only
         let formatted_code = pctx_codegen::format::format_ts(code);
 
@@ -566,77 +575,104 @@ export default result;"#,
             formatted_code = %formatted_code,
             code_length = code.len(),
             callbacks =? registry.ids(),
+            disclosure =? disclosure,
             "Received TypeScript code to execute"
         );
 
-        // confirm all configured callbacks in the CodeMode interface have
-        // registered callback functions
-        let missing_ids: Vec<String> = self
-            .callbacks
+        // confirm all configured tool IDs the CodeMode interface have
+        // registered actions
+        let all_ids: Vec<String> = self.tool_sets.iter().flat_map(|ts| ts.tool_ids()).collect();
+        let missing_ids: Vec<String> = all_ids
             .iter()
             .filter_map(|c| {
-                if registry.has(&c.id()) {
+                if registry.has(c) {
                     None
                 } else {
-                    Some(c.id())
+                    Some(c.clone())
                 }
             })
             .collect();
         if !missing_ids.is_empty() {
             return Err(Error::Message(format!(
-                "Missing configured callbacks in registry with ids: {missing_ids:?}"
+                "Registry missing ids: {missing_ids:?}"
             )));
         }
 
-        // generate the full script to be executed
-        let namespaces: Vec<String> = self
-            .tool_sets
-            .iter()
-            .filter_map(|s| {
-                if s.tools.is_empty() {
-                    None
-                } else {
-                    Some(s.namespace())
-                }
-            })
-            .collect();
+        let to_execute = match disclosure {
+            ToolDisclosure::Catalog | ToolDisclosure::Filesystem => {
+                // generate the full script to be executed
+                let namespaces: Vec<String> = self
+                    .tool_sets
+                    .iter()
+                    .filter_map(|s| {
+                        if s.tools.is_empty() {
+                            None
+                        } else {
+                            Some(s.ts_namespace_impl())
+                        }
+                    })
+                    .collect();
 
-        // Serialize virtual_fs for injection into JavaScript
-        let virtual_fs_json =
-            serde_json::to_string(&self.virtual_fs).unwrap_or_else(|_| "{}".to_string());
+                format!(
+                    "{code}\n\n{namespaces}\n\nexport default await run();",
+                    namespaces = pctx_codegen::format::format_ts(&namespaces.join("\n\n")),
+                )
+            }
+            ToolDisclosure::Sidecar => {
+                let invoke_map_entries: Vec<String> = self
+                    .tool_sets
+                    .iter()
+                    .flat_map(|ts| {
+                        ts.tools
+                            .iter()
+                            .map(|t| t.ts_invoke_map_entry(ts.name.as_deref()))
+                    })
+                    .collect();
+                let types: Vec<String> = self
+                    .tool_sets
+                    .iter()
+                    .flat_map(|ts| {
+                        ts.tools.iter().filter_map(|t| {
+                            let types = t.types();
+                            if types.is_empty() { None } else { Some(types) }
+                        })
+                    })
+                    .collect();
 
-        // Initialize bashFs with tool definitions, then user code, then namespaces
-        let to_execute = format!(
-            r#"// TypeScript declaration for bashFs
-declare global {{
-    var bashFs: InstanceType<typeof justBash>;
-}}
+                let invoke_interface = format!(
+                    r#"
+                        type InvokeMap = {{
+                        {invoke_map_entries}
+                        }};
 
-// Initialize bash filesystem with tool definitions
-const bashFs = new justBash({{
-    files: {virtual_fs_json},
-    cwd: "/sdk",
-}});
-globalThis.bashFs = bashFs;
+                        type InvokeCall<K extends keyof InvokeMap> = 
+                        undefined extends InvokeMap[K]["args"]
+                            ? {{ name: K; arguments?: InvokeMap[K]["args"] }}
+                            : {{ name: K; arguments: InvokeMap[K]["args"] }};
 
-{code}
+                        async function invoke<K extends keyof InvokeMap>(call: InvokeCall<K>): Promise<InvokeMap[K]["returns"]> {{
+                            return await invokeInternal(call);
+                        }}
 
-{namespaces}
-
-export default await run();
-"#,
-            virtual_fs_json = virtual_fs_json,
-            namespaces = namespaces.join("\n\n"),
-        );
+                        {types}
+                    "#,
+                    invoke_map_entries = invoke_map_entries.join("\n  "),
+                    types = types.join("\n\n")
+                );
+                format!(
+                    "{code}\n\n{invoke_interface}\n\nexport default await run();",
+                    invoke_interface = pctx_codegen::format::format_ts(&invoke_interface)
+                )
+            }
+        };
 
         debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
 
-        let options = pctx_executor::ExecuteOptions::new()
-            .with_allowed_hosts(self.allowed_hosts().into_iter().collect())
-            .with_servers(self.servers.clone())
-            .with_callbacks(registry);
-
-        let execution_res = pctx_executor::execute(&to_execute, options).await?;
+        let execution_res = pctx_executor::execute(
+            &to_execute,
+            pctx_executor::ExecuteOptions::new().with_registry(registry),
+        )
+        .await?;
 
         if execution_res.success {
             debug!("TypeScript execution completed successfully");
@@ -650,17 +686,5 @@ export default await run();
             stderr: execution_res.stderr,
             output: execution_res.output,
         })
-    }
-
-    /// Main execute function that routes to bash or typescript execution
-    /// Defaults to TypeScript for backward compatibility
-    #[instrument(skip(self, callback_registry), ret(Display), err)]
-    pub async fn execute(
-        &self,
-        code: &str,
-        callback_registry: Option<CallbackRegistry>,
-    ) -> Result<ExecuteOutput> {
-        // Default to TypeScript execution for backward compatibility
-        self.execute_typescript(code, callback_registry).await
     }
 }

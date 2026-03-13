@@ -12,8 +12,8 @@ use camino::Utf8PathBuf;
 use clap::Parser;
 use crossterm::{
     event::{
-        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, MouseButton,
-        MouseEventKind,
+        self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyEventKind, KeyModifiers,
+        MouseButton, MouseEventKind,
     },
     execute,
     terminal::{EnterAlternateScreen, LeaveAlternateScreen, disable_raw_mode, enable_raw_mode},
@@ -27,11 +27,10 @@ use crate::commands::mcp::start::StartCmd;
 use app::{App, AppMessage, FocusPanel};
 use pctx_mcp_server::PctxMcpServer;
 
-#[allow(unused)]
-const PRIMARY: Color = Color::Rgb(0, 43, 86); // #002B56
-const SECONDARY: Color = Color::Rgb(24, 66, 137); // #184289
-const TERTIARY: Color = Color::Rgb(30, 105, 105); // #1E6969
-const TEXT_COLOR: Color = Color::Rgb(1, 46, 88); // #012E58
+const BORDER_SELECTED: Color = Color::Cyan;
+const BORDER: Color = Color::Reset;
+const SELECTED_LINE_BG: Color = Color::Blue;
+const SELECTED_LINE_FG: Color = Color::White;
 
 type ServerControl = Arc<
     Mutex<
@@ -246,7 +245,7 @@ fn run_ui(
                     if key.kind == KeyEventKind::Press {
                         let mut app = app.lock().unwrap();
                         match key.code {
-                            KeyCode::Char('q') => {
+                            KeyCode::Char('c') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                                 break;
                             }
                             KeyCode::Esc | KeyCode::Backspace => {
@@ -259,7 +258,7 @@ fn run_ui(
                                 }
                             }
                             KeyCode::Enter => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.show_tool_detail();
                                 }
                             }
@@ -271,13 +270,13 @@ fn run_ui(
                             }
                             KeyCode::Up => match app.focused_panel {
                                 FocusPanel::Logs => app.scroll_logs_up(),
-                                FocusPanel::Tools => app.scroll_tools_up(),
+                                FocusPanel::Namespaces => app.scroll_tools_up(),
                                 FocusPanel::ToolDetail => app.scroll_detail_up(),
                                 FocusPanel::Documentation => app.scroll_detail_up(),
                             },
                             KeyCode::Down => match app.focused_panel {
                                 FocusPanel::Logs => app.scroll_logs_down(),
-                                FocusPanel::Tools => app.scroll_tools_down(),
+                                FocusPanel::Namespaces => app.scroll_tools_down(),
                                 FocusPanel::ToolDetail => app.scroll_detail_down(),
                                 FocusPanel::Documentation => app.scroll_detail_down(),
                             },
@@ -300,12 +299,12 @@ fn run_ui(
                                 _ => {}
                             },
                             KeyCode::Left => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.move_to_prev_namespace();
                                 }
                             }
                             KeyCode::Right => {
-                                if app.focused_panel == FocusPanel::Tools {
+                                if app.focused_panel == FocusPanel::Namespaces {
                                     app.move_to_next_namespace();
                                 }
                             }
@@ -473,7 +472,7 @@ fn spawn_server_task(
     let handle = tokio::spawn(async move {
         tx.send(AppMessage::ServerStarting).ok();
 
-        let tools = match load_code_mode_for_dev(&cfg).await {
+        let code_mode = match load_code_mode_for_dev(&cfg).await {
             Ok(loaded) => loaded,
             Err(err) => {
                 tx.send(AppMessage::ServerFailed(format!(
@@ -485,12 +484,12 @@ fn spawn_server_task(
         };
 
         // Run server with shutdown signal
-        let pctx_mcp = PctxMcpServer::new(&host, port, false);
+        let pctx_mcp = PctxMcpServer::new(&host, port, false, &cfg, code_mode.clone());
 
-        tx.send(AppMessage::ServerReady(tools.clone())).ok();
+        tx.send(AppMessage::ServerReady(cfg, code_mode)).ok();
 
         if let Err(e) = pctx_mcp
-            .serve_with_shutdown(&cfg, tools, async move {
+            .serve_with_shutdown(async move {
                 let _ = shutdown_rx.await;
             })
             .await
@@ -525,7 +524,7 @@ mod tests {
     use pctx_config::logger::LogLevel;
     use serde_json::json;
 
-    fn create_pctx_tools() -> CodeMode {
+    fn create_test_code_mode() -> CodeMode {
         let account_schema = json!({
             "type": "object",
             "required": ["account_id", "opened_at", "balance", "status"],
@@ -537,7 +536,7 @@ mod tests {
             }
         });
         let tools = vec![
-            Tool::new_mcp(
+            Tool::new(
                 "get_account_balance",
                 Some("Retrieves the balance for an account".into()),
                 serde_json::from_value(json!({
@@ -551,7 +550,7 @@ mod tests {
                 Some(serde_json::from_value(account_schema.clone()).unwrap()),
             )
             .unwrap(),
-            Tool::new_mcp(
+            Tool::new(
                 "freeze_account",
                 Some("Freezes an account".into()),
                 serde_json::from_value(json!({
@@ -568,8 +567,12 @@ mod tests {
         ];
 
         let mut cm = CodeMode::default();
-        cm.add_tool_set(ToolSet::new("banking", "Banking MCP Server", tools))
-            .unwrap();
+        cm.add_tool_set(ToolSet::new(
+            Some("banking".into()),
+            "Banking MCP Server",
+            tools,
+        ))
+        .unwrap();
 
         cm
     }
@@ -582,7 +585,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // Create a log entry with code_from_llm field containing Banking.getAccountBalance
         let log_entry = LogEntry {
@@ -604,7 +607,7 @@ mod tests {
         app.track_tool_usage(&log_entry);
 
         // Verify that the tool was tracked
-        let key = "banking::get_account_balance";
+        let key = "banking__get_account_balance";
         assert!(
             app.tool_usage.contains_key(key),
             "Expected tool_usage to contain key '{}', but it doesn't. Keys present: {:?}",
@@ -627,7 +630,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // Create a log entry with Banking.freezeAccount
         let log_entry = LogEntry {
@@ -647,7 +650,7 @@ mod tests {
         app.track_tool_usage(&log_entry);
 
         // Verify that the tool was tracked
-        let key = "banking::freeze_account";
+        let key = "banking__freeze_account";
         assert!(
             app.tool_usage.contains_key(key),
             "Expected tool_usage to contain key '{}', but it doesn't. Keys present: {:?}",
@@ -669,7 +672,7 @@ mod tests {
         let mut app = App::new("localhost".to_string(), 8080, log_file);
 
         // Add the test server
-        app.tools = create_pctx_tools();
+        app.code_mode = create_test_code_mode();
 
         // First call
         let log_entry1 = LogEntry {
@@ -702,7 +705,7 @@ mod tests {
         app.track_tool_usage(&log_entry1);
         app.track_tool_usage(&log_entry2);
 
-        let key = "banking::get_account_balance";
+        let key = "banking__get_account_balance";
         let usage = app.tool_usage.get(key).unwrap();
         assert_eq!(usage.count, 2, "Expected count to be 2 after two calls");
         assert_eq!(

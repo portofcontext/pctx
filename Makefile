@@ -1,4 +1,4 @@
-.PHONY: help release publish-crates docs test-python test-python-integration format-python test-cli
+.PHONY: help release publish-crates docs test-python test-python-integration format-python test-cli build-python
 
 # Default target - show help when running just 'make'
 .DEFAULT_GOAL := help
@@ -14,6 +14,7 @@ help:
 	@echo "  make test-cli                - Run CLI integration tests (pctx mcp start)"
 	@echo "  make release                 - Interactive release script (bump version, update changelog)"
 	@echo "  make publish-crates          - Publish pctx_code_mode + dependencies to crates.io (runs locally)"
+	@echo "  make build-python            - Build Python package (resolves symlinks before build)"
 	@echo ""
 
 # Generate CLI and Python documentation
@@ -47,4 +48,8 @@ release:
 # Publish Rust crates to crates.io
 publish-crates:
 	@./scripts/publish-crates.sh
+
+# Build Python package (resolves _tool_descriptions/data symlink before build, restores after)
+build-python:
+	@./scripts/build-python.sh
 

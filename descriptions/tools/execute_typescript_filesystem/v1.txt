@@ -1,0 +1,20 @@
+Execute TypeScript code with SDK functions.
+
+Your code runs in a sandbox with access to SDK functions discovered via execute_bash.
+Functions are called as 'Namespace.functionName()' and return parsed JavaScript objects.
+
+Structure:
+async function run() {
+    // Your TypeScript code
+    return result;
+}
+
+Important Rules:
+- You MUST define a `run()` function
+- You MUST NOT call or export any functions from the root of the script, `run()` will be called automatically
+- ALWAYS try to batch multiple tool operations into ONE execute call, unless the typing is unknown and you cannot infer
+- Only functions from list_functions() are available - no fetch(), fs, or other Node/Deno APIs
+- Variables don't persist between runs
+- Add console.log() statements between API calls to track progress and/or errors
+
+Keep return values small to minimize token usage.

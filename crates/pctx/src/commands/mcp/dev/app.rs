@@ -9,7 +9,7 @@ use anyhow::Result;
 use camino::Utf8PathBuf;
 use chrono::{DateTime, Utc};
 use pctx_codegen::{Tool, ToolSet};
-use pctx_config::logger::LogLevel;
+use pctx_config::{Config, logger::LogLevel};
 use ratatui::{layout::Rect, widgets::ListState};
 
 use super::log_entry::LogEntry;
@@ -20,7 +20,7 @@ use pctx_code_mode::CodeMode;
 #[derive(Clone)]
 pub(super) enum AppMessage {
     ServerStarting,
-    ServerReady(CodeMode),
+    ServerReady(Config, CodeMode),
     ServerFailed(String),
     ServerStopped,
     ConfigChanged,
@@ -28,7 +28,7 @@ pub(super) enum AppMessage {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(super) enum FocusPanel {
-    Tools,
+    Namespaces,
     Logs,
     ToolDetail,
     Documentation,
@@ -47,12 +47,14 @@ pub(super) struct ToolUsage {
 
 pub(super) struct App {
     pub(super) logs: Vec<LogEntry>,
-    pub(super) tools: CodeMode,
+    pub(super) code_mode: CodeMode,
+    pub(super) config: Config,
     pub(super) server_ready: bool,
     pub(super) host: String,
     pub(super) port: u16,
     pub(super) start_time: Option<Instant>,
     pub(super) log_scroll_offset: usize,
+    pub(super) log_visible_height: usize,
     pub(super) log_file_path: Utf8PathBuf,
     pub(super) log_file_pos: u64,
 
@@ -65,6 +67,7 @@ pub(super) struct App {
     pub(super) selected_tool_index: Option<usize>,
     pub(super) selected_namespace_index: usize, // Index of currently selected namespace/server
     pub(super) detail_scroll_offset: usize,
+    pub(super) detail_max_scroll: usize,
 
     // Tool usage tracking
     pub(super) tool_usage: HashMap<String, ToolUsage>,
@@ -74,32 +77,41 @@ pub(super) struct App {
     pub(super) logs_rect: Option<Rect>,
     pub(super) namespace_rects: Vec<Rect>, // Rectangles for each namespace column
     pub(super) docs_rect: Option<Rect>,    // Rectangle for documentation column
+    pub(super) url_rect: Option<Rect>,     // Rectangle for server URL box
+
+    // Clipboard feedback
+    pub(super) copied_at: Option<Instant>,
 }
 
 impl App {
     pub(super) fn new(host: String, port: u16, log_file_path: Utf8PathBuf) -> Self {
         Self {
             logs: Vec::new(),
-            tools: CodeMode::default(),
+            code_mode: CodeMode::default(), // set on first ServerReady event
+            config: Config::default(),      // set on first ServerReady event
             server_ready: false,
             host,
             port,
             start_time: None,
             error: None,
             log_scroll_offset: 0,
+            log_visible_height: 0,
             log_file_path,
             log_file_pos: 0,
-            focused_panel: FocusPanel::Logs,
+            focused_panel: FocusPanel::Namespaces,
             log_filter: LogLevel::Info,
             tools_list_state: ListState::default(),
             selected_tool_index: None,
             selected_namespace_index: 0,
             detail_scroll_offset: 0,
+            detail_max_scroll: 0,
             tool_usage: HashMap::new(),
             tools_rect: None,
             logs_rect: None,
             namespace_rects: Vec::new(),
             docs_rect: None,
+            url_rect: None,
+            copied_at: None,
         }
     }
 
@@ -159,6 +171,7 @@ impl App {
         Ok(())
     }
 
+    // TODO: track tool usage from pctx_registry logs.
     pub(super) fn track_tool_usage(&mut self, entry: &LogEntry) {
         // Look for code execution logs that contain upstream tool calls
         if let Some(code_from_llm) = entry
@@ -170,89 +183,89 @@ impl App {
             tracing::trace!(
                 "Found code_from_llm field (length={}), checking for tool usage. Servers available: {}",
                 code_from_llm.len(),
-                self.tools.tool_sets().len()
+                self.code_mode.tool_sets().len()
             );
 
-            // Parse the code to find upstream tool calls like "Banking.getAccountBalance"
+            // Parse the code to find upstream tool calls like "await Banking.getAccountBalance(" (fs or catalog mode)
+            // or "await invoke({ name: 'banking__get_account_balance'," (sidecar)
             // Pattern: namespace.methodName(
-            for tool_set in self.tools.tool_sets() {
-                let namespace_pattern = format!("{}.", &tool_set.namespace);
+            for tool_set in self.code_mode.tool_sets() {
                 tracing::trace!(
-                    "Checking for server '{}' with namespace pattern '{namespace_pattern}' in code",
+                    "Checking for server '{:?}' for usage in code",
                     &tool_set.name
                 );
 
-                if code_from_llm.contains(&namespace_pattern) {
+                for tool in &tool_set.tools {
+                    let namespace_pattern = regex::Regex::new(&format!(
+                        r"await\s+{}\.{}\(",
+                        tool_set.pascal_namespace(),
+                        &tool.fn_name
+                    ))
+                    .unwrap();
+                    let sidecar_pattern = regex::Regex::new(&format!(
+                        r#"await\s+invoke\(\s*\{{\s*["']?name["']?:\s*["']{}["']"#,
+                        tool.id(tool_set.name.as_deref())
+                    ))
+                    .unwrap();
+
                     tracing::trace!(
-                        "✓ Found {} namespace in code_from_llm, checking {} tools",
-                        &tool_set.namespace,
-                        tool_set.tools.len()
+                        "Checking for tool '{}' (namespace_pattern={}, sidecar_pattern={})",
+                        &tool.name,
+                        namespace_pattern,
+                        sidecar_pattern,
                     );
 
-                    // Find all method calls for this server
-                    for tool in &tool_set.tools {
-                        // Check if this function is called in the code
-                        let method_pattern = format!("{}.{}(", &tool_set.namespace, &tool.fn_name);
-                        tracing::trace!(
-                            "Checking for method pattern '{}' for tool '{}'",
-                            method_pattern,
-                            &tool.name
-                        );
-
-                        if code_from_llm.contains(&method_pattern) {
-                            tracing::trace!(
-                                "✓ Found tool usage: {}.{} (tool_name={})",
-                                &tool_set.namespace,
-                                &tool.fn_name,
-                                &tool.name
-                            );
-
-                            // Extract a snippet of the call
-                            if let Some(idx) = code_from_llm.find(&method_pattern) {
-                                let snippet_start = idx.saturating_sub(10);
-                                let snippet_end =
-                                    (idx + method_pattern.len() + 50).min(code_from_llm.len());
-                                let code_snippet = code_from_llm[snippet_start..snippet_end]
-                                    .lines()
-                                    .next()
-                                    .unwrap_or("")
-                                    .trim()
-                                    .to_string();
-
-                                let key = format!("{}::{}", tool_set.name, tool.name);
-
-                                self.tool_usage
-                                    .entry(key.clone())
-                                    .and_modify(|usage| {
-                                        usage.count += 1;
-                                        usage.last_used = entry.timestamp;
-                                        if !code_snippet.is_empty()
-                                            && !usage.code_snippets.contains(&code_snippet)
-                                        {
-                                            usage.code_snippets.push(code_snippet.clone());
-                                        }
-                                    })
-                                    .or_insert_with(|| ToolUsage {
-                                        tool_name: tool.name.clone(),
-                                        server_name: tool_set.name.clone(),
-                                        count: 1,
-                                        last_used: entry.timestamp,
-                                        code_snippets: if code_snippet.is_empty() {
-                                            vec![]
-                                        } else {
-                                            vec![code_snippet]
-                                        },
-                                    });
-
-                                tracing::trace!("✓ Tracked tool usage for key: {}", key);
-                            }
+                    // Only one pattern will ever match (namespace vs sidecar style),
+                    // but there may be multiple call-sites in the code.
+                    let matches: Vec<_> = {
+                        let ns = namespace_pattern
+                            .find_iter(code_from_llm)
+                            .collect::<Vec<_>>();
+                        if !ns.is_empty() {
+                            ns
+                        } else {
+                            sidecar_pattern.find_iter(code_from_llm).collect()
                         }
+                    };
+
+                    for m in matches {
+                        let snippet_start = m.start().saturating_sub(10);
+                        let snippet_end = (m.end() + 50).min(code_from_llm.len());
+                        let code_snippet = code_from_llm[snippet_start..snippet_end]
+                            .lines()
+                            .next()
+                            .unwrap_or("")
+                            .trim()
+                            .to_string();
+
+                        let key = tool.id(tool_set.name.as_deref());
+
+                        self.tool_usage
+                            .entry(key.clone())
+                            .and_modify(|usage| {
+                                usage.count += 1;
+                                tracing::trace!("usage count: {}", usage.count);
+                                usage.last_used = entry.timestamp;
+                                if !code_snippet.is_empty()
+                                    && !usage.code_snippets.contains(&code_snippet)
+                                {
+                                    usage.code_snippets.push(code_snippet.clone());
+                                }
+                            })
+                            .or_insert_with(|| ToolUsage {
+                                tool_name: tool.name.clone(),
+                                server_name: tool_set.name.clone().unwrap_or_default(),
+                                count: 1,
+                                last_used: entry.timestamp,
+                                code_snippets: if code_snippet.is_empty() {
+                                    vec![]
+                                } else {
+                                    vec![code_snippet]
+                                },
+                            });
+
+                        tracing::debug!("✓ Tracked tool usage for key: {key}");
                     }
-                } else {
-                    tracing::trace!(
-                        "Namespace pattern '{}' not found in code_from_llm",
-                        namespace_pattern
-                    );
                 }
             }
         }
@@ -284,21 +297,32 @@ impl App {
     pub(super) fn filtered_logs(&self) -> Vec<&LogEntry> {
         self.logs
             .iter()
-            .filter(|l| self.log_filter <= l.level)
+            .filter(|l| self.log_filter <= l.level && !l.fields.message.is_empty())
             .collect()
     }
 
     pub(super) fn handle_message(&mut self, msg: AppMessage) {
         match msg {
-            AppMessage::ServerReady(tools) => {
+            AppMessage::ServerReady(cfg, code_mode) => {
                 self.server_ready = true;
                 self.error = None;
-                self.tools = tools;
+                self.code_mode = code_mode;
+                self.config = cfg;
+
+                // Auto-select the first tool
+                let has_tools = self
+                    .code_mode
+                    .tool_sets()
+                    .iter()
+                    .any(|ts| !ts.tools.is_empty());
+                if has_tools && self.selected_tool_index.is_none() {
+                    self.selected_tool_index = Some(0);
+                }
 
                 // Re-process all existing logs now that we have server metadata
                 tracing::info!(
                     "ServerConnected: {} servers available. Re-processing existing logs for tool usage tracking.",
-                    self.tools.tool_sets().len()
+                    self.code_mode.tool_sets().len()
                 );
                 self.reprocess_logs_for_tool_usage();
             }
@@ -317,7 +341,7 @@ impl App {
             AppMessage::ConfigChanged => {
                 tracing::info!("Configuration file changed, reloading servers...");
                 // Clear existing servers - they will be repopulated when reconnection completes
-                self.tools = CodeMode::default();
+                self.code_mode = CodeMode::default();
                 self.selected_tool_index = None;
                 self.selected_namespace_index = 0;
             }
@@ -326,8 +350,10 @@ impl App {
 
     pub(super) fn scroll_logs_up(&mut self) {
         // Scroll up = go back in time = increase offset
+        // Stop when the first log is already in frame
         let filtered_count = self.filtered_logs().len();
-        if self.log_scroll_offset < filtered_count.saturating_sub(1) {
+        let max_offset = filtered_count.saturating_sub(self.log_visible_height);
+        if self.log_scroll_offset < max_offset {
             self.log_scroll_offset += 1;
         }
     }
@@ -349,8 +375,8 @@ impl App {
 
     pub(super) fn next_panel(&mut self) {
         self.focused_panel = match self.focused_panel {
-            FocusPanel::Tools => FocusPanel::Logs,
-            FocusPanel::Logs => FocusPanel::Tools,
+            FocusPanel::Namespaces => FocusPanel::Logs,
+            FocusPanel::Logs => FocusPanel::Namespaces,
             FocusPanel::ToolDetail => FocusPanel::ToolDetail, // Stay in detail view
             FocusPanel::Documentation => FocusPanel::Documentation, // Stay in docs view
         };
@@ -358,8 +384,8 @@ impl App {
 
     pub(super) fn prev_panel(&mut self) {
         self.focused_panel = match self.focused_panel {
-            FocusPanel::Tools => FocusPanel::Logs,
-            FocusPanel::Logs => FocusPanel::Tools,
+            FocusPanel::Namespaces => FocusPanel::Logs,
+            FocusPanel::Logs => FocusPanel::Namespaces,
             FocusPanel::ToolDetail => FocusPanel::ToolDetail, // Stay in detail view
             FocusPanel::Documentation => FocusPanel::Documentation, // Stay in docs view
         };
@@ -378,11 +404,11 @@ impl App {
     }
 
     pub(super) fn close_tool_detail(&mut self) {
-        self.focused_panel = FocusPanel::Tools;
+        self.focused_panel = FocusPanel::Namespaces;
     }
 
     pub(super) fn close_documentation(&mut self) {
-        self.focused_panel = FocusPanel::Tools;
+        self.focused_panel = FocusPanel::Namespaces;
     }
 
     pub(super) fn scroll_detail_up(&mut self) {
@@ -392,12 +418,12 @@ impl App {
 
     pub(super) fn scroll_detail_down(&mut self) {
         // Scroll faster (3 lines at a time) for better UX
-        self.detail_scroll_offset += 3;
+        self.detail_scroll_offset = (self.detail_scroll_offset + 3).min(self.detail_max_scroll);
     }
 
     pub(super) fn scroll_tools_down(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -433,7 +459,7 @@ impl App {
 
     pub(super) fn scroll_tools_up(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if sorted.is_empty() {
@@ -462,12 +488,12 @@ impl App {
     }
 
     pub(super) fn move_to_next_namespace(&mut self) {
-        if self.tools.tool_sets().is_empty() {
+        if self.code_mode.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -483,12 +509,12 @@ impl App {
     }
 
     pub(super) fn move_to_prev_namespace(&mut self) {
-        if self.tools.tool_sets().is_empty() {
+        if self.code_mode.tool_sets().is_empty() {
             return;
         }
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         let num_namespaces = sorted.len();
@@ -509,7 +535,7 @@ impl App {
 
     pub(super) fn select_first_tool_in_current_namespace(&mut self) {
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         if self.selected_namespace_index >= sorted.len() {
@@ -538,7 +564,7 @@ impl App {
         let mut counter = 0;
 
         // Sort servers alphabetically (same as rendering)
-        let mut sorted: Vec<ToolSet> = self.tools.tool_sets().iter().cloned().collect();
+        let mut sorted: Vec<ToolSet> = self.code_mode.tool_sets().iter().cloned().collect();
         sorted.sort_by_key(|s| s.name.clone());
 
         for tool_set in sorted {
@@ -547,7 +573,7 @@ impl App {
                 .tools
                 .iter()
                 .map(|tool| {
-                    let usage_key = format!("{}::{}", tool_set.name, tool.name);
+                    let usage_key = tool.id(tool_set.name.as_deref());
                     let usage_count = self.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                     (tool.clone(), usage_count)
                 })
@@ -566,6 +592,19 @@ impl App {
     }
 
     pub(super) fn handle_mouse_click(&mut self, x: u16, y: u16) {
+        // Check URL box click — copy to clipboard
+        if let Some(rect) = self.url_rect
+            && self.server_ready
+            && x >= rect.x
+            && x < rect.x + rect.width
+            && y >= rect.y
+            && y < rect.y + rect.height
+        {
+            let _ = self.copy_server_url_to_clipboard();
+            self.copied_at = Some(Instant::now());
+            return;
+        }
+
         // Always check the back button first (available in all views)
         if let Some(rect) = self.docs_rect
             && x >= rect.x
@@ -597,7 +636,7 @@ impl App {
             && y >= rect.y
             && y < rect.y + rect.height
         {
-            self.focused_panel = FocusPanel::Tools;
+            self.focused_panel = FocusPanel::Namespaces;
 
             // Check which namespace was clicked within the tools panel
             for (idx, namespace_rect) in self.namespace_rects.iter().enumerate() {

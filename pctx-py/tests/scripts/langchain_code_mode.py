@@ -1,9 +1,9 @@
 import asyncio
 import os
-import pprint
 
 from langchain.agents import create_agent
 from langchain_openai import ChatOpenAI
+from rich import print
 
 from pctx_client import Pctx, tool
 
@@ -25,7 +25,7 @@ async def run_agent():
     await code_mode.connect()
 
     llm = ChatOpenAI(
-        model="deepseek/deepseek-chat",
+        model="anthropic/claude-sonnet-4.6",
         temperature=0,
         api_key=os.environ.get("OPENROUTER_API_KEY"),
         base_url="https://openrouter.ai/api/v1",
@@ -34,7 +34,7 @@ async def run_agent():
     agent = create_agent(
         llm,
         tools=code_mode.langchain_tools(),
-        system_prompt="You are a helpful assistant",
+        system_prompt="You are a helpful assistant, use tools when you need to access real-time information.",
     )
 
     result = await agent.ainvoke(
@@ -45,7 +45,7 @@ async def run_agent():
         }
     )
 
-    pprint.pprint(result)
+    print(result)
 
     await code_mode.disconnect()
 

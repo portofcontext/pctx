@@ -1,12 +1,17 @@
+use std::{collections::HashMap, sync::Arc};
+
 use pctx_code_mode::{
     CodeMode,
+    config::{Config, ToolDisclosure},
+    descriptions,
     model::{
-        ExecuteInput, ExecuteOutput, GetFunctionDetailsInput, GetFunctionDetailsOutput,
-        ListFunctionsOutput,
+        ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
+        GetFunctionDetailsOutput, ListFunctionsOutput,
     },
+    registry::{PctxRegistry, RegistryAction},
 };
 use rmcp::{
-    RoleServer, ServerHandler,
+    RoleServer, ServerHandler, ServiceError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{
         CallToolRequestParams, CallToolResult, Content, Implementation, ListToolsResult,
@@ -16,7 +21,7 @@ use rmcp::{
     tool, tool_router,
 };
 use serde_json::json;
-use tracing::{error, info, instrument};
+use tracing::{debug, error, info, instrument};
 
 // Metrics removed - will be added via telemetry support later
 
@@ -24,60 +29,119 @@ type McpResult<T> = Result<T, rmcp::ErrorData>;
 
 #[derive(Clone)]
 pub(crate) struct PctxMcpService {
-    name: String,
-    version: String,
-    description: Option<String>,
-    code_mode: CodeMode,
-    tool_router: ToolRouter<PctxMcpService>,
+    pub(crate) name: String,
+    pub(crate) version: String,
+    pub(crate) description: Option<String>,
+    pub(crate) code_mode: CodeMode,
+    pub(crate) disclosure: ToolDisclosure,
+    pub(crate) tool_router: ToolRouter<PctxMcpService>,
 }
 
 #[tool_router]
 impl PctxMcpService {
-    pub(crate) fn new(cfg: &pctx_config::Config, code_mode: CodeMode) -> Self {
+    pub(crate) fn new(cfg: &Config, code_mode: CodeMode) -> Self {
         Self {
             name: cfg.name.clone(),
             version: cfg.version.clone(),
             description: cfg.description.clone(),
             code_mode,
+            disclosure: cfg.disclosure,
             tool_router: Self::tool_router(),
         }
     }
 
+    pub(crate) fn list_filtered_tools(&self) -> ListToolsResult {
+        let original_list_tools = ListToolsResult::with_all_items(self.tool_router.list_all());
+        let mut filtered = original_list_tools.clone();
+        filtered.tools.clear();
+
+        if matches!(self.disclosure, ToolDisclosure::Sidecar) {
+            // add upstream tools to list of tools
+            for (_, tool_set) in self.code_mode.server_tool_sets() {
+                filtered.tools.extend(tool_set.tools.iter().map(|t| {
+                    let input_schema: Option<rmcp::model::JsonObject> =
+                        serde_json::from_value(json!(t.input_schema.clone())).unwrap();
+                    let output_schema: Option<Arc<rmcp::model::JsonObject>> =
+                        serde_json::from_value(json!(t.output_schema.clone())).unwrap();
+
+                    let mut tool = rmcp::model::Tool::new(
+                        t.id(tool_set.name.as_deref()),
+                        t.description.clone().unwrap_or_default(),
+                        input_schema.unwrap_or_default(),
+                    );
+                    tool.output_schema = output_schema;
+                    tool
+                }));
+            }
+        }
+
+        // dynamically add descriptions based on tool disclosure
+        let overrides = ToolOverride::for_disclosure(self.disclosure);
+        for mut tool in original_list_tools.tools {
+            if let Some(o) = overrides.get(&tool.name.to_string()) {
+                if !o.enabled {
+                    continue;
+                }
+                tool.description = Some(o.description.clone().into());
+            }
+
+            filtered.tools.push(tool)
+        }
+
+        filtered
+    }
+
+    pub(crate) async fn handle_direct_tool_call(
+        &self,
+        mut req: CallToolRequestParams,
+    ) -> McpResult<CallToolResult> {
+        let mut registry = PctxRegistry::default();
+        self.code_mode
+            .add_mcp_servers_to_registry(&mut registry)
+            .map_err(|e| {
+                rmcp::ErrorData::internal_error(
+                    format!("failed building internal MCP registry: {e}"),
+                    None,
+                )
+            })?;
+
+        if let Some(RegistryAction::Mcp(mcp_tool_id)) = registry.get(&req.name) {
+            let server = self
+                .code_mode
+                .servers()
+                .iter()
+                .find(|s| s.name == mcp_tool_id.sever_name)
+                .ok_or(rmcp::ErrorData::invalid_params("tool not found", None))?;
+            let client = server.connect().await.map_err(|e| {
+                rmcp::ErrorData::invalid_request(
+                    format!(
+                        "failed connecting to upstream MCP at `{}`: {e}",
+                        server.display_target()
+                    ),
+                    None,
+                )
+            })?;
+            req.name = mcp_tool_id.tool_name.into();
+
+            client.call_tool(req).await.map_err(service_error_to_mcp)
+        } else {
+            Err(rmcp::ErrorData::invalid_params("tool not found", None))
+        }
+    }
+
     #[tool(
-        title = "List Functions",
-        description = "ALWAYS USE THIS TOOL FIRST to list all available functions organized by namespace.
-
-        WORKFLOW:
-        1. Start here - Call this tool to see what functions are available
-        2. Then call get_function_details() for specific functions you need to understand
-        3. Finally call execute() to run your TypeScript code
-
-        This returns function signatures without full details.",
+                                    title = "List Functions",
         output_schema = rmcp::handler::server::tool::schema_for_type::<ListFunctionsOutput>()
     )]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
         let listed = self.code_mode.list_functions();
-        let mut res = CallToolResult::success(vec![Content::text(&listed.code)]);
-        res.structured_content = Some(json!(listed));
+        let res = success_with_structure(&listed.code, &listed);
 
         Ok(res)
     }
 
     #[tool(
         title = "Get Function Details",
-        description = "Get detailed information about specific functions you want to use.
-
-        WHEN TO USE: After calling list_functions(), use this to learn about parameter types, return values, and usage for specific functions.
-
-        REQUIRED FORMAT: Functions must be specified as 'namespace.functionName' (e.g., 'Namespace.apiPostSearch')
-
-        This tool is lightweight and only returns details for the functions you request, avoiding unnecessary token usage.
-        Only request details for functions you actually plan to use in your code.
-
-        NOTE ON RETURN TYPES:
-        - If a function returns Promise<any>, the MCP server didn't provide an output schema
-        - The actual value is a parsed object (not a string) - access properties directly
-        - Don't use JSON.parse() on the results - they're already JavaScript objects",
         output_schema = rmcp::handler::server::tool::schema_for_type::<GetFunctionDetailsOutput>()
     )]
     async fn get_function_details(
@@ -85,56 +149,24 @@ impl PctxMcpService {
         Parameters(input): Parameters<GetFunctionDetailsInput>,
     ) -> McpResult<CallToolResult> {
         let details = self.code_mode.get_function_details(input);
-        let mut res = CallToolResult::success(vec![Content::text(&details.code)]);
-        res.structured_content = Some(json!(details));
+        let res = success_with_structure(&details.code, &details);
 
         Ok(res)
     }
 
     #[tool(
-        title = "Execute Code",
-        description = "Execute TypeScript code that calls namespaced functions. USE THIS LAST after list_functions() and get_function_details().
-
-        TOKEN USAGE WARNING: This tool could return LARGE responses if your code returns big objects.
-        To minimize tokens:
-        - Filter/map/reduce data IN YOUR CODE before returning
-        - Only return specific fields you need (e.g., return {id: result.id, count: items.length})
-        - Use console.log() for intermediate results instead of returning everything
-        - Avoid returning full API responses - extract just what you need
-
-        REQUIRED CODE STRUCTURE:
-        async function run() {
-            // Your code here
-            // Call namespace.functionName() - MUST include namespace prefix
-            // Process data here to minimize return size
-            return onlyWhatYouNeed; // Keep this small!
-        }
-
-        IMPORTANT RULES:
-        - Functions MUST be called as 'Namespace.functionName' (e.g., 'Notion.apiPostSearch')
-        - Only functions from list_functions() are available - no fetch(), fs, or other Node/Deno APIs
-        - Variables don't persist between execute() calls - return or log anything you need later
-        - Add console.log() statements between API calls to track progress if errors occur
-        - Code runs in an isolated Deno sandbox with restricted network access
-
-        RETURN TYPE NOTE:
-        - Functions without output schemas show Promise<any> as return type
-        - The actual runtime value is already a parsed JavaScript object, NOT a JSON string
-        - Do NOT call JSON.parse() on results - they're already objects
-        - Access properties directly (e.g., result.data) or inspect with console.log() first
-        - If you see 'Promise<any>', the structure is unknown - log it to see what's returned
-        ",
+        title = "Execute Bash",
         output_schema = rmcp::handler::server::tool::schema_for_type::<ExecuteOutput>()
     )]
-    async fn execute(
+    async fn execute_bash(
         &self,
-        Parameters(input): Parameters<ExecuteInput>,
+        Parameters(input): Parameters<ExecuteBashInput>,
     ) -> McpResult<CallToolResult> {
         // Capture current tracing context to propagate to spawned thread
         let current_span = tracing::Span::current();
 
         let code_mode = self.code_mode.clone();
-        let code = input.code;
+        let command = input.command;
 
         let execution_output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
             // Enter the captured span context in the new thread
@@ -148,7 +180,55 @@ impl PctxMcpService {
 
             rt.block_on(async {
                 code_mode
-                    .execute(&code, None)
+                    .execute_bash(&command)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
+            })
+        })
+        .await
+        .map_err(|e| {
+            error!("Task join failed: {e}");
+            rmcp::ErrorData::internal_error(format!("Task join failed: {e}"), None)
+        })?
+        .map_err(|e| {
+            error!("Sandbox execution error: {e}");
+            rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
+        })?;
+
+        let mut res = CallToolResult::success(vec![Content::text(execution_output.markdown())]);
+        res.structured_content = Some(json!(execution_output));
+
+        Ok(res)
+    }
+
+    #[tool(
+        title = "Execute Typescript Code",
+        output_schema = rmcp::handler::server::tool::schema_for_type::<ExecuteOutput>()
+    )]
+    async fn execute_typescript(
+        &self,
+        Parameters(input): Parameters<ExecuteInput>,
+    ) -> McpResult<CallToolResult> {
+        // Capture current tracing context to propagate to spawned thread
+        let current_span = tracing::Span::current();
+
+        let code_mode = self.code_mode.clone();
+        let code = input.code;
+        let style = self.disclosure;
+
+        let execution_output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
+            // Enter the captured span context in the new thread
+            let _guard = current_span.enter();
+
+            // Create a new current-thread runtime for Deno ops that use deno_unsync
+            let rt = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+                .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
+
+            rt.block_on(async {
+                code_mode
+                    .execute_typescript(&code, style, None)
                     .await
                     .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
             })
@@ -172,15 +252,18 @@ impl PctxMcpService {
 
 impl ServerHandler for PctxMcpService {
     fn get_info(&self) -> ServerInfo {
-        let default_description = format!(
+        let available_namespaces = format!(
             "This server provides tools to explore SDK functions and execute SDK scripts for the following services: {}",
             self.code_mode
                 .tool_sets()
                 .iter()
-                .map(|s| s.name.clone())
+                .map(|s| s.pascal_namespace())
                 .collect::<Vec<String>>()
                 .join(", ")
         );
+
+        let workflow =
+            pctx_code_mode::descriptions::workflow::get_workflow_description(self.disclosure);
 
         ServerInfo::new(ServerCapabilities::builder().enable_tools().build())
             .with_protocol_version(ProtocolVersion::V_2024_11_05)
@@ -188,7 +271,11 @@ impl ServerHandler for PctxMcpService {
                 Implementation::new(self.name.clone(), self.version.clone())
                     .with_title(self.name.clone()),
             )
-            .with_instructions(self.description.clone().unwrap_or(default_description))
+            .with_instructions(
+                self.description
+                    .clone()
+                    .unwrap_or(format!("{available_namespaces}\n{workflow}")),
+            )
     }
 
     #[instrument(skip_all, fields(mcp.method = "tools/list", mcp.id = %ctx.id))]
@@ -198,19 +285,17 @@ impl ServerHandler for PctxMcpService {
         ctx: RequestContext<RoleServer>,
     ) -> McpResult<ListToolsResult> {
         let start = std::time::Instant::now();
-        let res = ListToolsResult::with_all_items(self.tool_router.list_all());
+        let filtered_tools = self.list_filtered_tools();
+
         let latency = start.elapsed();
         info!(
-            tools.length = res.tools.len(),
-            tools.next_cursor = res.next_cursor.is_some(),
+            tools.length = filtered_tools.tools.len(),
+            tools.next_cursor = filtered_tools.next_cursor.is_some(),
             latency_ms = latency.as_millis(),
             "tools/list"
         );
 
-        // Metrics disabled for now
-        let _ = latency;
-
-        Ok(res)
+        Ok(filtered_tools)
     }
 
     #[instrument(skip_all, fields(mcp.method = "tools/call", mcp.id = %ctx.id, mcp.tool.name = %req.name))]
@@ -222,8 +307,17 @@ impl ServerHandler for PctxMcpService {
         let start = std::time::Instant::now();
         let tool_name = req.name.clone();
 
-        let tcc = ToolCallContext::new(self, req, ctx);
-        let res = self.tool_router.call(tcc).await;
+        let res: Result<CallToolResult, rmcp::ErrorData> =
+            if matches!(self.disclosure, ToolDisclosure::Sidecar)
+                && tool_name != "execute_typescript"
+            {
+                // call tool directly
+                debug!("Calling tool directly in sidecar style");
+                self.handle_direct_tool_call(req).await
+            } else {
+                let tcc = ToolCallContext::new(self, req, ctx);
+                self.tool_router.call(tcc).await
+            };
 
         let latency = start.elapsed();
         let is_error = res
@@ -244,5 +338,76 @@ impl ServerHandler for PctxMcpService {
         );
 
         Ok(res)
+    }
+}
+
+struct ToolOverride {
+    enabled: bool,
+    description: String,
+}
+impl ToolOverride {
+    fn for_disclosure(disclosure: ToolDisclosure) -> HashMap<String, Self> {
+        let mut overrides = HashMap::new();
+
+        // catalog only
+        overrides.insert(
+            "list_functions".into(),
+            Self {
+                enabled: matches!(disclosure, ToolDisclosure::Catalog),
+                description: descriptions::tools::LIST_FUNCTIONS.into(),
+            },
+        );
+        overrides.insert(
+            "get_function_details".into(),
+            Self {
+                enabled: matches!(disclosure, ToolDisclosure::Catalog),
+                description: descriptions::tools::GET_FUNCTION_DETAILS.into(),
+            },
+        );
+
+        // fs only
+        overrides.insert(
+            "execute_bash".into(),
+            Self {
+                enabled: matches!(disclosure, ToolDisclosure::Filesystem),
+                description: descriptions::tools::EXECUTE_BASH.into(),
+            },
+        );
+
+        // execute_typescript
+        overrides.insert(
+            "execute_typescript".into(),
+            Self {
+                enabled: true,
+                description: descriptions::tools::disclosure_execute_description(disclosure),
+            },
+        );
+
+        overrides
+    }
+}
+
+fn success_with_structure<V: serde::Serialize>(text: &str, structured: V) -> CallToolResult {
+    let mut res = CallToolResult::success(vec![Content::text(text)]);
+    res.structured_content = Some(json!(structured));
+
+    res
+}
+
+fn service_error_to_mcp(e: ServiceError) -> rmcp::ErrorData {
+    match e {
+        ServiceError::McpError(mcp_err) => mcp_err,
+        ServiceError::TransportClosed => rmcp::ErrorData::internal_error("transport closed", None),
+        ServiceError::TransportSend(err) => rmcp::ErrorData::internal_error(err.to_string(), None),
+        ServiceError::UnexpectedResponse => {
+            rmcp::ErrorData::internal_error("unexpected response type", None)
+        }
+        ServiceError::Cancelled { reason } => {
+            rmcp::ErrorData::internal_error(reason.unwrap_or_else(|| "cancelled".to_string()), None)
+        }
+        ServiceError::Timeout { timeout } => {
+            rmcp::ErrorData::internal_error(format!("request timeout after {timeout:?}"), None)
+        }
+        _ => rmcp::ErrorData::internal_error(e.to_string(), None),
     }
 }

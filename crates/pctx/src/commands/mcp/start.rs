@@ -51,11 +51,11 @@ impl StartCmd {
 
         let code_mode = StartCmd::load_code_mode(&cfg).await?;
 
-        let server = PctxMcpServer::new(&self.host, self.port, !self.no_banner);
+        let server = PctxMcpServer::new(&self.host, self.port, !self.no_banner, &cfg, code_mode);
         if self.stdio {
-            server.serve_stdio(&cfg, code_mode).await?;
+            server.serve_stdio().await?;
         } else {
-            server.serve(&cfg, code_mode).await?;
+            server.serve().await?;
         }
 
         info!("Shutting down...");

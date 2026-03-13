@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::model::ExecuteOutput;
+use pctx_code_mode::{config, model::ExecuteOutput};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -88,7 +88,7 @@ pub struct RegisterToolsResponse {
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RegisterMcpServersRequest {
     #[schema(value_type = Vec<serde_json::Value>)]
-    pub servers: Vec<pctx_config::server::ServerConfig>,
+    pub servers: Vec<config::server::ServerConfig>,
 }
 
 /// Response after registering MCP servers
@@ -110,19 +110,6 @@ pub struct CloseSessionResponse {
     pub success: bool,
 }
 
-/// Request to execute a bash command
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteBashRequest {
-    pub command: String,
-}
-
-/// Response after executing a bash command
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
-pub struct ExecuteBashResponse {
-    #[serde(flatten)]
-    pub output: ExecuteOutput,
-}
-
 // ----------- Websocket JRPC Message structs -----------
 
 pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, PctxJsonRpcResponse>;
@@ -130,22 +117,25 @@ pub type WsJsonRpcMessage = rmcp::model::JsonRpcMessage<PctxJsonRpcRequest, Pctx
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "method")]
 pub enum PctxJsonRpcRequest {
-    #[serde(rename = "execute_code")]
-    ExecuteCode { params: ExecuteCodeParams },
+    #[serde(alias = "execute_code")]
+    #[serde(rename = "execute_typescript")]
+    ExecuteTypescript { params: ExecuteTypescriptParams },
     #[serde(rename = "execute_tool")]
     ExecuteTool { params: ExecuteToolParams },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteToolParams {
-    pub namespace: String,
+    pub namespace: Option<String>,
     pub name: String,
     pub args: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExecuteCodeParams {
+pub struct ExecuteTypescriptParams {
     pub code: String,
+    #[serde(default)]
+    pub disclosure: config::ToolDisclosure,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

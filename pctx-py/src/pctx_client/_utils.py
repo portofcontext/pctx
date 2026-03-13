@@ -1,4 +1,7 @@
 import re
+from importlib.util import find_spec
+
+HAS_SEARCH = find_spec("bm25s") is not None and find_spec("Stemmer") is not None
 
 
 def to_snake_case(name: str) -> str:

@@ -10,7 +10,5 @@ export type ListFilesOutput = {
  * List all files in the current workspace
  */
 export async function listFiles(): Promise<ListFilesOutput> {
-  return await invokeCallback<ListFilesOutput>({
-    id: "test_server.list_files",
-  });
+  return await invokeInternal({ name: "test_server__list_files" });
 }

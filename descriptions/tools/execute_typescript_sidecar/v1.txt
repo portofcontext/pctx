@@ -1,0 +1,35 @@
+Execute TypeScript code with access to all available tools.
+
+CODE STRUCTURE:
+async function run() {
+    // Your code here
+    // Call `await invoke({ name: "tool_name", arguments: {...} })` with proper types
+    return result;
+}
+
+IMPORTANT RULES:
+- ALWAYS make ALL tool calls via typescript unless otherwise explicitly stated in the tool definition.
+- You can call any of the available tools using the `invoke` typescript function (does not need to be imported)
+- `invoke` takes a single object as an argument with 2 properties:
+    - `name: string` - the name of the function/tool to be called, exactly as it is written in the function list.
+    - `arguments: {[key: string]: any}` - the arguments for the function as described by the json schema in the function/tool list.
+- `invoke` will either return a native typescript object as defined by the successful return schema (in the function definition).
+    - if there is no return schema in the function definition then the return type of the function is `unknown`.
+- The typescript environment has STRICT typing, the code will only execute if the typecheck passes. For example if a `string` property is not listed as required by the json schema you must handle the case when it is undefined.
+- You MUST define a `run()` function
+- You MUST NOT call or export any functions from the root of the script, `run()` will be called automatically
+- ALWAYS batch multiple tool calls into ONE execute typescript call
+- Only listed tools are available to call via `invoke` - other common functions/modules like fetch(), fs, or other Node/Deno APIs are unavailable.
+- Variables don't persist between executions
+- Code runs in an isolated Deno sandbox
+
+TOKEN USAGE WARNING:
+- This tool could return LARGE responses if your code returns big objects
+- AVOID adding comments to the code
+- Filter/map/reduce data IN YOUR CODE before returning
+- Only return the data you actually need for to complete the task, AVOID returning whole objects
+
+RETURN TYPE NOTE:
+- Function results are already parsed JavaScript objects, NOT JSON strings
+- Do NOT call JSON.parse() on results
+- Access properties directly (e.g., result.data)

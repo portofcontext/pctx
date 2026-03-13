@@ -8,7 +8,7 @@ use ratatui::{
 };
 
 use super::{
-    SECONDARY, TERTIARY, TEXT_COLOR,
+    BORDER, BORDER_SELECTED, SELECTED_LINE_BG, SELECTED_LINE_FG,
     app::{App, FocusPanel},
 };
 
@@ -81,32 +81,35 @@ pub(super) fn ui(f: &mut Frame, app: &mut App) {
 }
 
 fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
-    // Create a 3-column layout: Title | Server | Docs
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Min(20),    // Title (flexible)
             Constraint::Length(50), // Server URL
-            Constraint::Length(12), // Docs button
         ])
         .split(area);
 
     // Title
     let title = vec![
-        Span::styled("PCTX ", Style::default().fg(SECONDARY).bold()),
-        Span::styled("Dev Mode", Style::default().fg(TEXT_COLOR)),
+        Span::styled("PCTX ", Style::default().fg(Color::Blue).bold()),
+        Span::styled("Dev Mode", Style::default().fg(Color::Blue)),
     ];
     let title_widget = Paragraph::new(Line::from(title))
         .block(Block::default().borders(Borders::ALL))
         .alignment(Alignment::Center);
     f.render_widget(title_widget, chunks[0]);
 
-    // Url
-
-    let url_span = if app.server_ready {
+    // Server URL — show "Copied!" for 2s after click, then URL
+    let copied = app
+        .copied_at
+        .map(|t| t.elapsed().as_secs() < 2)
+        .unwrap_or(false);
+    let url_span = if copied {
+        Span::styled("Copied!", Style::default().fg(Color::LightGreen).bold())
+    } else if app.server_ready {
         Span::styled(
-            format!("{} [c]", app.get_server_url()),
-            Style::default().fg(TERTIARY).bold(),
+            format!("{}", app.get_server_url()),
+            Style::default().fg(Color::Blue),
         )
     } else {
         Span::raw("")
@@ -116,34 +119,16 @@ fn render_header(f: &mut Frame, app: &mut App, area: Rect) {
         .alignment(Alignment::Center);
     f.render_widget(url_widget, chunks[1]);
 
-    // Docs/Back button with keyboard shortcut hint
-    // In ToolDetail view: show "Back" (goes to Tools)
-    // In Documentation view: show "Back" (goes to Tools)
-    // In Tools/Logs: show "Docs" (opens documentation)
-    let (docs_text, docs_color) = match app.focused_panel {
-        FocusPanel::ToolDetail => ("[d] Back", TERTIARY),
-        FocusPanel::Documentation => ("[d] Back", TERTIARY),
-        _ => ("[d] Docs", SECONDARY),
-    };
-    let docs_content = vec![Span::styled(
-        docs_text,
-        Style::default().fg(docs_color).add_modifier(Modifier::BOLD),
-    )];
-    let docs_widget = Paragraph::new(Line::from(docs_content))
-        .block(Block::default().borders(Borders::ALL))
-        .alignment(Alignment::Center);
-    f.render_widget(docs_widget, chunks[2]);
-
-    // Store docs button rectangle for click detection
-    app.docs_rect = Some(chunks[2]);
+    app.url_rect = Some(chunks[1]);
+    app.docs_rect = None;
 }
 
 fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
-    let is_focused = app.focused_panel == FocusPanel::Tools;
+    let is_focused = app.focused_panel == FocusPanel::Namespaces;
     let border_style = if is_focused {
-        Style::default().fg(SECONDARY)
+        Style::default().fg(BORDER_SELECTED)
     } else {
-        Style::default()
+        Style::default().fg(BORDER)
     };
 
     if let Some(err) = &app.error {
@@ -154,7 +139,6 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
                     .border_style(border_style)
                     .title("Error"),
             )
-            .style(Style::default().red())
             .alignment(Alignment::Center);
         f.render_widget(placeholder, area);
         return;
@@ -166,80 +150,39 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
                     .borders(Borders::ALL)
                     .border_style(border_style),
             )
-            .style(Style::default().yellow())
             .alignment(Alignment::Center);
         f.render_widget(placeholder, area);
         return;
     }
 
-    let total_tools: usize = app.tools.tool_sets().iter().map(|s| s.tools.len()).sum();
+    let total_tools: usize = app
+        .code_mode
+        .tool_sets()
+        .iter()
+        .map(|s| s.tools.len())
+        .sum();
     let title = format!("MCP Tools [{total_tools} total]");
 
     // Sort servers alphabetically by name
-    let mut sorted: Vec<ToolSet> = app.tools.tool_sets().iter().cloned().collect();
+    let mut sorted: Vec<ToolSet> = app.code_mode.tool_sets().iter().cloned().collect();
     sorted.sort_by_key(|s| s.name.clone());
 
     if sorted.is_empty() {
         let help_lines = vec![
+            Line::from(""),
             Line::from(vec![Span::styled(
-                "No MCP servers connected",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
+                "  No MCP servers connected",
+                Style::default().add_modifier(Modifier::BOLD),
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                "To add upstream MCP servers:",
-                Style::default().fg(TEXT_COLOR),
+                "  To add upstream MCP servers:",
+                Style::default(),
             )]),
             Line::from(""),
-            Line::from(vec![
-                Span::styled("1. ", Style::default().fg(SECONDARY)),
-                Span::raw("Edit your "),
-                Span::styled(
-                    "pctx.json",
-                    Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(" config file"),
-            ]),
-            Line::from(vec![
-                Span::styled("2. ", Style::default().fg(SECONDARY)),
-                Span::raw("Add servers to the "),
-                Span::styled("\"upstreams\"", Style::default().fg(TERTIARY)),
-                Span::raw(" array"),
-            ]),
-            Line::from(vec![
-                Span::styled("3. ", Style::default().fg(SECONDARY)),
-                Span::raw("Server will restart automatically"),
-            ]),
-            Line::from(""),
             Line::from(vec![Span::styled(
-                "Example config:",
-                Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
-            )]),
-            Line::from(vec![Span::styled(
-                r#"  "upstreams": [{"#,
-                Style::default().fg(Color::DarkGray),
-            )]),
-            Line::from(vec![Span::styled(
-                r"    {",
-                Style::default().fg(Color::DarkGray),
-            )]),
-            Line::from(vec![Span::styled(
-                r#"      "name": "my-server","#,
-                Style::default().fg(Color::DarkGray),
-            )]),
-            Line::from(vec![Span::styled(
-                r#"      "url": "http://localhost:3000""#,
-                Style::default().fg(Color::DarkGray),
-            )]),
-            Line::from(vec![Span::styled(
-                r"    }",
-                Style::default().fg(Color::DarkGray),
-            )]),
-            Line::from(vec![Span::styled(
-                r"  ]",
-                Style::default().fg(Color::DarkGray),
+                "    pctx mcp add <NAME> [URL]",
+                Style::default().fg(Color::LightBlue),
             )]),
         ];
 
@@ -276,27 +219,12 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
     for (idx, tool_set) in sorted.iter().enumerate() {
         let mut items: Vec<ListItem> = Vec::new();
 
-        // Server header
-        let status = if tool_set.tools.is_empty() {
-            "!"
-        } else {
-            "✓"
-        };
-
-        items.push(ListItem::new(Line::from(vec![
-            Span::styled(format!("{status} "), Style::default().fg(TERTIARY)),
-            Span::styled(
-                &tool_set.name,
-                Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
-            ),
-        ])));
-
         // Sort tools by usage count (descending)
         let mut tools_with_usage: Vec<_> = tool_set
             .tools
             .iter()
             .map(|tool| {
-                let usage_key = format!("{}::{}", tool_set.name, tool.name);
+                let usage_key = tool.id(tool_set.name.as_deref());
                 let usage_count = app.tool_usage.get(&usage_key).map_or(0, |u| u.count);
                 (tool, usage_count)
             })
@@ -310,13 +238,13 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
         for (tool, usage_count) in tools_with_usage {
             let is_selected_tool = app.selected_tool_index == Some(global_tool_index);
 
-            let mut spans = vec![Span::styled(&tool.fn_name, Style::default().fg(TERTIARY))];
+            let mut spans = vec![Span::styled(&tool.fn_name, Style::default())];
 
             // Add usage count in gray if > 0
             if usage_count > 0 {
                 spans.push(Span::styled(
                     format!(" ({usage_count} calls)"),
-                    Style::default().fg(Color::DarkGray),
+                    Style::default().dim(),
                 ));
             }
 
@@ -324,7 +252,9 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             if is_selected_tool && is_focused {
                 spans.push(Span::styled(
                     " [enter]",
-                    Style::default().fg(TERTIARY).add_modifier(Modifier::DIM),
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::DIM),
                 ));
             }
 
@@ -332,53 +262,54 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             global_tool_index += 1;
         }
 
-        let namespace_title = format!("{} ({} tools)", tool_set.name, tool_set.tools.len());
+        let namespace_title = format!(
+            "{} ({} tools)",
+            tool_set.pascal_namespace(),
+            tool_set.tools.len()
+        );
 
         // Check if a tool in this namespace is selected
         let selected_in_this_namespace = app
             .selected_tool_index
             .filter(|&idx| idx >= tools_start_index && idx < global_tool_index)
-            .map(|idx| idx - tools_start_index + 1); // +1 to account for header row
+            .map(|idx| idx - tools_start_index);
 
         let mut list_state = ListState::default();
         if let Some(local_idx) = selected_in_this_namespace {
             list_state.select(Some(local_idx));
         }
 
-        // Highlight border of active namespace
-        let namespace_border_style = if is_focused && idx == app.selected_namespace_index {
-            Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD)
-        } else {
-            border_style
-        };
-
         let list = List::new(items)
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(namespace_border_style)
+                    .border_style(border_style)
                     .title(namespace_title),
             )
-            .highlight_style(
+            .highlight_style(if is_focused {
                 Style::default()
-                    .bg(Color::DarkGray)
-                    .add_modifier(Modifier::BOLD),
-            );
+                    .bg(SELECTED_LINE_BG)
+                    .fg(SELECTED_LINE_FG)
+                    .add_modifier(Modifier::BOLD)
+            } else {
+                Style::default()
+            });
 
         f.render_stateful_widget(list, namespace_chunks[idx], &mut list_state);
     }
 }
 
-fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
+fn render_logs_panel(f: &mut Frame, app: &mut App, area: Rect) {
     let is_focused = app.focused_panel == FocusPanel::Logs;
     let border_style = if is_focused {
-        Style::default().fg(SECONDARY)
+        Style::default().fg(BORDER_SELECTED)
     } else {
-        Style::default()
+        Style::default().fg(BORDER)
     };
 
-    let filtered_logs = app.filtered_logs();
     let visible_height = area.height.saturating_sub(2) as usize;
+    app.log_visible_height = visible_height;
+    let filtered_logs = app.filtered_logs();
 
     // Show most recent logs at the bottom
     let total_logs = filtered_logs.len();
@@ -407,34 +338,33 @@ fn render_logs_panel(f: &mut Frame, app: &App, area: Rect) {
         .wrap(Wrap { trim: false });
 
     f.render_widget(logs, area);
+
+    let placeholder = Paragraph::new("").block(
+        Block::default()
+            .borders(Borders::ALL)
+            .border_style(border_style)
+            .title(format!("Logs [{}]", app.log_filter.as_str().to_uppercase())),
+    );
+    f.render_widget(placeholder, area);
 }
 
-fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
+fn render_tool_detail(f: &mut Frame, app: &mut App, area: Rect) {
     if let Some((tool_set, tool)) = app.get_selected_tool() {
-        let usage_key = format!("{}::{}", tool_set.name, tool.name);
+        let usage_key = tool.id(tool_set.name.as_deref());
         let usage = app.tool_usage.get(&usage_key);
 
         let mut lines: Vec<Line> = vec![
             // Tool header
             Line::from(vec![
-                Span::styled(
-                    "Server: ",
-                    Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
-                ),
-                Span::raw(&tool_set.name),
+                Span::styled("Server: ", Style::default().add_modifier(Modifier::BOLD)),
+                Span::raw(tool_set.pascal_namespace()),
             ]),
             Line::from(vec![
-                Span::styled(
-                    "Function: ",
-                    Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
-                ),
+                Span::styled("Function: ", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(&tool.fn_name),
             ]),
             Line::from(vec![
-                Span::styled(
-                    "Tool Name: ",
-                    Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
-                ),
+                Span::styled("Tool Name: ", Style::default().add_modifier(Modifier::BOLD)),
                 Span::raw(&tool.name),
             ]),
             Line::from(""),
@@ -444,9 +374,11 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
         if let Some(desc) = &tool.description {
             lines.push(Line::from(vec![Span::styled(
                 "Description:",
-                Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
+                Style::default().add_modifier(Modifier::BOLD),
             )]));
-            lines.push(Line::from(Span::raw(desc)));
+            for desc_line in desc.lines() {
+                lines.push(Line::from(Span::raw(desc_line.to_owned())));
+            }
             lines.push(Line::from(""));
         }
 
@@ -454,7 +386,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
         if let Some(usage) = usage {
             lines.push(Line::from(vec![Span::styled(
                 "Usage Stats:",
-                Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
+                Style::default().add_modifier(Modifier::BOLD),
             )]));
             lines.push(Line::from(format!("  Calls: {}", usage.count)));
             lines.push(Line::from(format!(
@@ -466,7 +398,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             if !usage.code_snippets.is_empty() {
                 lines.push(Line::from(vec![Span::styled(
                     "Example Usage:",
-                    Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
+                    Style::default().add_modifier(Modifier::BOLD),
                 )]));
                 for snippet in &usage.code_snippets {
                     lines.push(Line::from(format!("  {snippet}")));
@@ -478,7 +410,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
         // Input type
         lines.push(Line::from(vec![Span::styled(
             "Input Type:",
-            Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
+            Style::default().add_modifier(Modifier::BOLD),
         )]));
         if let Some(i) = &tool.input_signature() {
             lines.push(Line::from(format!("  {i}")));
@@ -490,7 +422,7 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
         // Output type
         lines.push(Line::from(vec![Span::styled(
             "Output Type:",
-            Style::default().fg(SECONDARY).add_modifier(Modifier::BOLD),
+            Style::default().add_modifier(Modifier::BOLD),
         )]));
         lines.push(Line::from(format!("  {}", tool.output_signature())));
         lines.push(Line::from(""));
@@ -498,14 +430,17 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
         // TypeScript types
         lines.push(Line::from(vec![Span::styled(
             "TypeScript Definition:",
-            Style::default().fg(TERTIARY).add_modifier(Modifier::BOLD),
+            Style::default().add_modifier(Modifier::BOLD),
         )]));
         for line in tool.types().lines() {
             lines.push(Line::from(format!("  {line}")));
         }
+        lines.push(Line::from(format!("")));
+        lines.push(Line::from(format!("")));
 
         // Apply scroll
         let visible_height = area.height.saturating_sub(2) as usize;
+        app.detail_max_scroll = lines.len().saturating_sub(visible_height);
 
         let start_idx = app.detail_scroll_offset.min(lines.len().saturating_sub(1));
         let end_idx = (start_idx + visible_height).min(lines.len());
@@ -515,13 +450,8 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
             .block(
                 Block::default()
                     .borders(Borders::ALL)
-                    .border_style(Style::default().fg(SECONDARY))
-                    .title(format!(
-                        "Tool Detail - {} [{}/{}]",
-                        tool.name,
-                        app.detail_scroll_offset + 1,
-                        lines.len()
-                    )),
+                    .border_style(Style::default().fg(BORDER_SELECTED))
+                    .title(format!("Tool Detail - {}", tool.name)),
             )
             .wrap(Wrap { trim: false });
 
@@ -529,13 +459,13 @@ fn render_tool_detail(f: &mut Frame, app: &App, area: Rect) {
     } else {
         let placeholder = Paragraph::new("No tool selected")
             .block(Block::default().borders(Borders::ALL).title("Tool Detail"))
-            .style(Style::default().fg(Color::DarkGray))
+            .style(Style::default())
             .alignment(Alignment::Center);
         f.render_widget(placeholder, area);
     }
 }
 
-fn render_documentation(f: &mut Frame, app: &App, area: Rect) {
+fn render_documentation(f: &mut Frame, app: &mut App, area: Rect) {
     // Read and render the CLI.md documentation
     const CLI_DOCS: &str = include_str!("../../../../../../docs/CLI.md");
 
@@ -545,6 +475,7 @@ fn render_documentation(f: &mut Frame, app: &App, area: Rect) {
 
     // Apply scroll
     let visible_height = area.height.saturating_sub(2) as usize;
+    app.detail_max_scroll = total_lines.saturating_sub(visible_height);
     let start_idx = app.detail_scroll_offset.min(total_lines.saturating_sub(1));
     let end_idx = (start_idx + visible_height).min(total_lines);
 
@@ -564,7 +495,7 @@ fn render_documentation(f: &mut Frame, app: &App, area: Rect) {
 }
 
 fn render_footer(f: &mut Frame, app: &App, area: Rect) {
-    let mut help_text = vec![Span::raw("[q] Quit  ")];
+    let mut help_text = vec![Span::raw("[^C] Quit  ")];
 
     // Always show copy URL if server is running
     if app.server_ready {
@@ -576,7 +507,7 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
     let fast_scroll = Span::raw("[PgUp/PgDn] Fast Scroll  ");
     let select_text = Span::raw("[Mouse] Select Text  ");
     let docs = Span::raw("[d] Docs  ");
-    let filter_level = Span::raw("[f] Filter Level  ");
+    let filter_level = Span::raw("[f] Log Level  ");
     let switch_panel = Span::raw("[Tab] Switch Panel  ");
     let navigate = Span::raw("[↑/↓] Navigate  ");
     let switch_namespace = Span::raw("[←/→] Switch Namespace  ");
@@ -592,14 +523,14 @@ fn render_footer(f: &mut Frame, app: &App, area: Rect) {
         FocusPanel::Logs => {
             help_text.extend([docs, switch_panel, navigate, filter_level]);
         }
-        FocusPanel::Tools => {
+        FocusPanel::Namespaces => {
             help_text.extend([docs, switch_panel, navigate, switch_namespace, view_details]);
         }
     }
 
     let footer = Paragraph::new(Line::from(help_text))
         .block(Block::default().borders(Borders::ALL))
-        .style(Style::default().fg(Color::White));
+        .style(Style::default());
 
     f.render_widget(footer, area);
 }

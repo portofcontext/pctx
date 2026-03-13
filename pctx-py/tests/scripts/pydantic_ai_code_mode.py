@@ -40,11 +40,11 @@ async def run_agent():
     await code_mode.connect()
 
     # Get PCTX tools in Pydantic AI format
-    pctx_tools = code_mode.pydantic_ai_tools()
+    pctx_tools = code_mode.pydantic_ai_tools("filesystem")
 
     # Create a Pydantic AI agent with PCTX tools
     agent = Agent(
-        "openrouter:deepseek/deepseek-chat",
+        "openrouter:anthropic/claude-sonnet-4-5",
         system_prompt="You are a helpful assistant with access to code execution tools.",
         tools=pctx_tools,
     )

@@ -9,9 +9,6 @@ repository.workspace = true
 [dependencies]
 # Local crates
 pctx_code_mode = { path = "../pctx_code_mode" }
-pctx_code_execution_runtime = { path = "../pctx_code_execution_runtime" }
-pctx_config = { path = "../pctx_config" }
-pctx_codegen = { path = "../pctx_codegen" }
 
 # MCP
 rmcp = { workspace = true, features = [

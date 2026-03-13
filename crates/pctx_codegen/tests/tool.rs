@@ -18,24 +18,14 @@ struct ToolFixture {
 }
 
 impl ToolFixture {
-    fn to_mcp_tool(&self) -> Tool {
-        Tool::new_mcp(
+    fn to_tool(&self) -> Tool {
+        Tool::new(
             &self.name,
             self.description.clone(),
             self.input_schema.clone(),
             self.output_schema.clone(),
         )
-        .expect("Tool::new_mcp failed")
-    }
-
-    fn to_callback_tool(&self) -> Tool {
-        Tool::new_callback(
-            &self.name,
-            self.description.clone(),
-            self.input_schema.clone(),
-            self.output_schema.clone(),
-        )
-        .expect("Tool::new_callback failed")
+        .expect("Tool::new failed")
     }
 }
 
@@ -46,13 +36,14 @@ fn load_fixture(yml: &str) -> ToolFixture {
 // --- Tool tests ---
 
 macro_rules! tool_test {
-    ($test_name:ident, variant: $variant:ident, $fixture:expr) => {
+    ($test_name:ident, $fixture:expr) => {
         #[tokio::test]
         async fn $test_name() {
             let fixture = load_fixture($fixture);
-            let tool = fixture.$variant();
+            let tool = fixture.to_tool();
 
-            let impl_code = pctx_codegen::format::format_ts(&tool.fn_impl("test_server"));
+            let impl_code =
+                pctx_codegen::format::format_ts(&tool.ts_fn_impl(Some("test_server".into())));
             let check_res = type_check(&impl_code).expect("failed typecheck");
 
             assert!(
@@ -64,12 +55,12 @@ macro_rules! tool_test {
     };
 }
 
-tool_test!(test_basic, variant: to_mcp_tool, BASIC_TOOL);
-tool_test!(test_nested_types, variant: to_mcp_tool, NESTED_TYPES_TOOL);
-tool_test!(test_no_output, variant: to_callback_tool, NO_OUTPUT_TOOL);
-tool_test!(test_no_input, variant: to_callback_tool, NO_INPUT_TOOL);
-tool_test!(test_no_input_or_output, variant: to_callback_tool, NO_INPUT_OR_OUTPUT_TOOL);
-tool_test!(test_all_optional_input, variant: to_mcp_tool, ALL_OPTIONAL_INPUT_TOOL);
+tool_test!(test_basic, BASIC_TOOL);
+tool_test!(test_nested_types, NESTED_TYPES_TOOL);
+tool_test!(test_no_output, NO_OUTPUT_TOOL);
+tool_test!(test_no_input, NO_INPUT_TOOL);
+tool_test!(test_no_input_or_output, NO_INPUT_OR_OUTPUT_TOOL);
+tool_test!(test_all_optional_input, ALL_OPTIONAL_INPUT_TOOL);
 
 // --- ToolSet tests ---
 
@@ -79,13 +70,13 @@ fn test_toolset_namespace() {
     let notif = load_fixture(NESTED_TYPES_TOOL);
 
     let toolset = ToolSet::new(
-        "my_tools",
+        Some("my_tools".into()),
         "A collection of utility tools",
-        vec![basic.to_mcp_tool(), notif.to_callback_tool()],
+        vec![basic.to_tool(), notif.to_tool()],
     );
 
     insta::assert_snapshot!(
         "toolset__namespace_interface.ts",
-        toolset.namespace_interface(true)
+        toolset.ts_namespace_declaration(true)
     );
 }

@@ -17,15 +17,15 @@ use crate::{
     AppState, PctxSessionBackend,
     extractors::HeaderExtractor,
     model::{
-        CloseSessionResponse, CreateSessionResponse, ErrorData, ExecuteBashRequest,
-        ExecuteBashResponse, HealthResponse, RegisterMcpServersRequest, RegisterMcpServersResponse,
-        RegisterToolsRequest, RegisterToolsResponse,
+        CloseSessionResponse, CreateSessionResponse, ErrorData, HealthResponse,
+        RegisterMcpServersRequest, RegisterMcpServersResponse, RegisterToolsRequest,
+        RegisterToolsResponse,
     },
     routes, websocket,
 };
 use pctx_code_mode::model::{
-    CallbackConfig, FunctionDetails, GetFunctionDetailsInput, GetFunctionDetailsOutput,
-    ListFunctionsOutput, ListedFunction,
+    CallbackConfig, ExecuteBashInput, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
+    GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
 };
 
 #[derive(OpenApi)]
@@ -54,8 +54,8 @@ use pctx_code_mode::model::{
             GetFunctionDetailsOutput,
             FunctionDetails,
             // Execute bash
-            ExecuteBashRequest,
-            ExecuteBashResponse,
+            ExecuteBashInput,
+            ExecuteOutput,
             // Tool registration
             RegisterToolsRequest,
             CallbackConfig,

@@ -1,6 +1,6 @@
 use crate::utils::{CHECK, MARK};
 
-use super::styles::{fmt_green, fmt_red, fmt_yellow};
+use super::styles::{fmt_error, fmt_good, fmt_warn};
 use spinoff::{Color, spinners};
 use std::borrow::Cow;
 use tracing::log::{Level, error, info, log_enabled, warn};
@@ -41,7 +41,7 @@ impl Spinner {
     }
 
     pub(crate) fn stop_success<M: Into<Cow<'static, str>>>(&mut self, msg: M) {
-        let symbol = fmt_green(CHECK);
+        let symbol = fmt_good(CHECK);
         if let Some(sp) = self.sp.as_mut() {
             sp.stop_and_persist(&symbol, &msg.into());
         } else {
@@ -50,7 +50,7 @@ impl Spinner {
     }
 
     pub(crate) fn stop_warn<M: Into<Cow<'static, str>>>(&mut self, msg: M) {
-        let symbol = fmt_yellow("ø");
+        let symbol = fmt_warn("ø");
         if let Some(sp) = self.sp.as_mut() {
             sp.stop_and_persist(&symbol, &msg.into());
         } else {
@@ -59,7 +59,7 @@ impl Spinner {
     }
 
     pub(crate) fn stop_error<M: Into<Cow<'static, str>>>(&mut self, msg: M) {
-        let symbol = fmt_red(MARK);
+        let symbol = fmt_error(MARK);
         if let Some(sp) = self.sp.as_mut() {
             sp.stop_and_persist(&symbol, &msg.into());
         } else {

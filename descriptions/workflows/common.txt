@@ -1,0 +1,7 @@
+General:
+    - BATCH MULTIPLE TOOL CALLS INTO ONE `execute_typescript` CALL.
+    - These tools exists to reduce round-trips. When a task requires multiple tool calls:
+        - WRONG: Multiple `execute_typescript` calls, each with one tool
+        - RIGHT: One `execute_typescript` call with a script that calls all needed tools
+    - Only `return` and `console.log` data you need, tools could have very large responses.
+    - IMPORTANT: All tool calls are ASYNC. Use await for each call.

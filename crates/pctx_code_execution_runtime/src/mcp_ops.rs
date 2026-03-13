@@ -8,8 +8,7 @@ use rmcp::model::JsonObject;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-use crate::error::McpError;
-use crate::mcp_registry::MCPRegistry;
+use pctx_registry::{MCPRegistry, RegistryError};
 
 /// Call an MCP tool (async op)
 #[op2(async)]
@@ -19,10 +18,10 @@ pub(crate) async fn op_call_mcp_tool(
     #[string] server_name: String,
     #[string] tool_name: String,
     #[serde] args: Option<JsonObject>,
-) -> Result<serde_json::Value, McpError> {
+) -> Result<serde_json::Value, RegistryError> {
     let registry = {
         let borrowed = state.borrow();
         borrowed.borrow::<MCPRegistry>().clone()
     };
-    crate::mcp_registry::call_mcp_tool(&registry, &server_name, &tool_name, args).await
+    pctx_registry::call_mcp_tool(&registry, &server_name, &tool_name, args).await
 }

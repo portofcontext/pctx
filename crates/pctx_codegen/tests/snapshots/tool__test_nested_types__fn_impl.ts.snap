@@ -30,9 +30,8 @@ export type CreateDocumentOutput = {
 export async function createDocument(
   input: CreateDocumentInput,
 ): Promise<CreateDocumentOutput> {
-  return await callMCPTool<CreateDocumentOutput>({
-    serverName: "test_server",
-    toolName: "create_document",
+  return await invokeInternal({
+    name: "test_server__create_document",
     arguments: input,
   });
 }

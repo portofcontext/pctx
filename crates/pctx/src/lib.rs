@@ -175,7 +175,6 @@ pub enum McpCommands {
     /// Start the PCTX MCP server
     #[command(long_about = "Start the PCTX MCP server (exposes /mcp endpoint).")]
     Start(commands::mcp::StartCmd),
-
     /// Start the PCTX MCP server with terminal UI
     #[command(
         long_about = "Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging."

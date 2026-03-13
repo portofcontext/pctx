@@ -1,9 +1,49 @@
 import json
-from enum import IntEnum
+from enum import Enum, IntEnum
 from typing import Any, Literal, TypedDict
 
 from pydantic import BaseModel
 from typing_extensions import NotRequired
+
+from pctx_client._utils import HAS_SEARCH
+
+ToolName = Literal[
+    "execute_bash",
+    "execute_typescript",
+    "get_function_details",
+    "list_functions",
+    "search_functions",
+]
+
+
+ToolDisclosureName = Literal["catalog", "filesystem"]
+
+
+class ToolDisclosure(str, Enum):
+    CATALOG = "catalog"
+    FS = "filesystem"
+    # SIDECAR = "sidecar" # <--- not fully supported by session server yet
+
+    def contains_tool(self, tool_name: ToolName) -> bool:
+        if self == ToolDisclosure.CATALOG:
+            allowed = {
+                "get_function_details",
+                "list_functions",
+                "execute_typescript",
+            }
+            if HAS_SEARCH:
+                allowed.add("search_functions")
+            return tool_name in allowed
+        elif self == ToolDisclosure.FS:
+            return tool_name in {
+                "execute_bash",
+                "execute_typescript",
+            }
+        # elif self == DisclosureStyle.SIDECAR:  # <--- not fully supported by session server yet
+        #     return tool_name == "execute_typescript"
+        else:
+            raise ValueError(f"Unhandled ToolDisclosure variant: {self}")
+
 
 # ------------- Tool Callback Config ------------
 
@@ -161,10 +201,11 @@ class JsonRpcError(JsonRpcBase):
 
 class ExecuteCodeParams(BaseModel):
     code: str
+    disclosure: ToolDisclosure = ToolDisclosure.CATALOG
 
 
 class ExecuteCodeRequest(JsonRpcBase):
-    method: Literal["execute_code"]
+    method: Literal["execute_typescript"]
     params: ExecuteCodeParams
 
 

@@ -114,8 +114,6 @@ response=$(curl -s -X POST http://localhost:8080/mcp \
       "method": "tools/list"
     }')
 
-echo "Response preview: ${response:0:200}..."
-
 # Check that we got tools back
 if echo "$response" | grep -q '"tools"'; then
     echo -e "${GREEN}✓ Successfully listed tools from MCP server${NC}"
@@ -198,7 +196,7 @@ execute_response=$(curl -s -X POST http://localhost:8080/mcp \
       \"id\": 4,
       \"method\": \"tools/call\",
       \"params\": {
-        \"name\": \"execute\",
+        \"name\": \"execute_typescript\",
         \"arguments\": {
           \"code\": \"async function run() { const result = await Memory.createEntities({ entities: [{ name: 'test', entityType: 'item', observations: ['test observation'] }] }); return result; }\"
         }
