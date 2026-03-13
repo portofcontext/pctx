@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.0 (2026-03-13)
 
+<csr-id-11828b1c1187c55d5f13f43dbe198bda59ee6ae9/>
+<csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
+<csr-id-e274f784d1f7041b92b1e21d34dea248a7b47933/>
+
 ### Other
 
  - <csr-id-11828b1c1187c55d5f13f43dbe198bda59ee6ae9/> comment out `mcp dev` command
@@ -17,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 22 commits contributed to the release.
+ - 24 commits contributed to the release.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -28,6 +32,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Move unified descriptions dir to pctx_code_mode ([`2df909b`](https://github.com/portofcontext/pctx/commit/2df909b6c2f2401916ee49cc6ab9b1fae8c1d18c))
+    - Release pctx_code_mode v0.3.0 ([`2257f3d`](https://github.com/portofcontext/pctx/commit/2257f3d7344a887da876fecc3a99499e4d12c634))
     - Specify pctx_registry version ([`7d9e8c2`](https://github.com/portofcontext/pctx/commit/7d9e8c2672d81af4b19ed9a9ec230f79ed4585a3))
     - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
     - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
