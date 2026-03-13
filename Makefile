@@ -43,7 +43,7 @@ test-cli:
 
 # Interactive release workflow
 release:
-	@./release.sh
+	@./scripts/release.sh
 
 # Publish Rust crates to crates.io
 publish-crates:

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.6.0] - 2026-03-13
+
+### Added
+
 - Python `@tool` decorator now parses docstrings (Google, NumPy, reStructuredText, and Epydoc formats) to extract parameter descriptions, return value descriptions, and detailed function descriptions into tool schemas
 - Make code mode config and all tools / descriptions easily configurable from python client
 - `ToolDisclosure` support in python client and unified mcp with `pctx mcp start`
@@ -21,7 +29,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Various `pctx mcp dev` rendering issues.
-
 ## [v0.5.0] - 2026-02-14
 
 ### Added
