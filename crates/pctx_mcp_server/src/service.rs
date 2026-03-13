@@ -4,10 +4,7 @@ use pctx_code_mode::{
     CodeMode,
     config::{Config, ToolDisclosure},
     descriptions,
-    model::{
-        ExecuteBashInput, ExecuteInput, ExecuteOutput, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput,
-    },
+    model::{ExecuteBashInput, ExecuteInput, GetFunctionDetailsInput},
     registry::{PctxRegistry, RegistryAction},
 };
 use rmcp::{
@@ -60,9 +57,13 @@ impl PctxMcpService {
             for (_, tool_set) in self.code_mode.server_tool_sets() {
                 filtered.tools.extend(tool_set.tools.iter().map(|t| {
                     let input_schema: Option<rmcp::model::JsonObject> =
-                        serde_json::from_value(json!(t.input_schema.clone())).unwrap();
+                        serde_json::from_value(json!(t.input_schema.clone()))
+                            .ok()
+                            .flatten();
                     let output_schema: Option<Arc<rmcp::model::JsonObject>> =
-                        serde_json::from_value(json!(t.output_schema.clone())).unwrap();
+                        serde_json::from_value(json!(t.output_schema.clone()))
+                            .ok()
+                            .flatten();
 
                     let mut tool = rmcp::model::Tool::new(
                         t.id(tool_set.name.as_deref()),
@@ -129,35 +130,24 @@ impl PctxMcpService {
         }
     }
 
-    #[tool(
-                                    title = "List Functions",
-        output_schema = rmcp::handler::server::tool::schema_for_type::<ListFunctionsOutput>()
-    )]
+    #[tool(title = "List Functions")]
     async fn list_functions(&self) -> McpResult<CallToolResult> {
         let listed = self.code_mode.list_functions();
-        let res = success_with_structure(&listed.code, &listed);
 
-        Ok(res)
+        Ok(CallToolResult::success(vec![Content::text(listed.code)]))
     }
 
-    #[tool(
-        title = "Get Function Details",
-        output_schema = rmcp::handler::server::tool::schema_for_type::<GetFunctionDetailsOutput>()
-    )]
+    #[tool(title = "Get Function Details")]
     async fn get_function_details(
         &self,
         Parameters(input): Parameters<GetFunctionDetailsInput>,
     ) -> McpResult<CallToolResult> {
         let details = self.code_mode.get_function_details(input);
-        let res = success_with_structure(&details.code, &details);
 
-        Ok(res)
+        Ok(CallToolResult::success(vec![Content::text(details.code)]))
     }
 
-    #[tool(
-        title = "Execute Bash",
-        output_schema = rmcp::handler::server::tool::schema_for_type::<ExecuteOutput>()
-    )]
+    #[tool(title = "Execute Bash")]
     async fn execute_bash(
         &self,
         Parameters(input): Parameters<ExecuteBashInput>,
@@ -195,16 +185,12 @@ impl PctxMcpService {
             rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
         })?;
 
-        let mut res = CallToolResult::success(vec![Content::text(execution_output.markdown())]);
-        res.structured_content = Some(json!(execution_output));
-
-        Ok(res)
+        Ok(CallToolResult::success(vec![Content::text(
+            execution_output.markdown(),
+        )]))
     }
 
-    #[tool(
-        title = "Execute Typescript Code",
-        output_schema = rmcp::handler::server::tool::schema_for_type::<ExecuteOutput>()
-    )]
+    #[tool(title = "Execute Typescript Code")]
     async fn execute_typescript(
         &self,
         Parameters(input): Parameters<ExecuteInput>,
@@ -243,10 +229,9 @@ impl PctxMcpService {
             rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
         })?;
 
-        let mut res = CallToolResult::success(vec![Content::text(execution_output.markdown())]);
-        res.structured_content = Some(json!(execution_output));
-
-        Ok(res)
+        Ok(CallToolResult::success(vec![Content::text(
+            execution_output.markdown(),
+        )]))
     }
 }
 
@@ -332,7 +317,6 @@ impl ServerHandler for PctxMcpService {
 
         info!(
             tool.result.is_error = res.is_error.unwrap_or_default(),
-            tool.result.has_structured_content = res.structured_content.is_some(),
             latency_ms = latency.as_millis(),
             "tools/call - {tool_name}"
         );
@@ -385,13 +369,6 @@ impl ToolOverride {
 
         overrides
     }
-}
-
-fn success_with_structure<V: serde::Serialize>(text: &str, structured: V) -> CallToolResult {
-    let mut res = CallToolResult::success(vec![Content::text(text)]);
-    res.structured_content = Some(json!(structured));
-
-    res
 }
 
 fn service_error_to_mcp(e: ServiceError) -> rmcp::ErrorData {

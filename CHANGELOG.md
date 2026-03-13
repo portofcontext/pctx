@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Centralized tool descriptions and workflows in root of the repo and loaded by the various `pctx` surfaces.
+- Unified MCP server no longer returns structured content, most agent frameworks prioritize this, and the structured content is x2 the number of tokens than just the code-mode code
 
 ### Fixed
 
