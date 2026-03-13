@@ -6,6 +6,7 @@ license = "MIT"
 description = "TypeScript code execution engine for AI agents with tool schemas, sandboxed Deno runtime, and Rust callbacks"
 repository = "https://github.com/portofcontext/pctx"
 readme = "README.md"
+include = ["src/**/*", "descriptions/**/*", "README.md"]
 keywords = ["ai", "typescript", "code-execution", "mcp", "tools"]
 categories = ["development-tools", "api-bindings"]
 
