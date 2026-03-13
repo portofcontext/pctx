@@ -5,13 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 (2026-03-13)
+
+### Other
+
+ - <csr-id-11828b1c1187c55d5f13f43dbe198bda59ee6ae9/> comment out `mcp dev` command
+ - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
+ - <csr-id-e274f784d1f7041b92b1e21d34dea248a7b47933/> optional namespace
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 22 commits contributed to the release.
+ - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Specify pctx_registry version ([`7d9e8c2`](https://github.com/portofcontext/pctx/commit/7d9e8c2672d81af4b19ed9a9ec230f79ed4585a3))
+    - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
+    - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
+    - Add workflow descriptions to unified description folder ([`14dcee1`](https://github.com/portofcontext/pctx/commit/14dcee15437b1de5f246728ccd38564c3b6631f0))
+    - Simplify re-exports & update pctx_code_mode docs ([`6f0dff9`](https://github.com/portofcontext/pctx/commit/6f0dff91d6346ebae5e42ace01521d5653145a16))
+    - Centralize `ToolDisclosure` in `pctx_config` for `mcp start` ([`106bd08`](https://github.com/portofcontext/pctx/commit/106bd08151fbf197e8f00e8a61168a57c555b6eb))
+    - Rename DisclosureStyle -> ToolDisclosure ([`43fde8e`](https://github.com/portofcontext/pctx/commit/43fde8e3d2f38e6327e5b3d65530340ff6fd9275))
+    - Comment out `mcp dev` command ([`11828b1`](https://github.com/portofcontext/pctx/commit/11828b1c1187c55d5f13f43dbe198bda59ee6ae9))
+    - Invoke map for better error msgs ([`5b3970c`](https://github.com/portofcontext/pctx/commit/5b3970c15c1c5900a7d6a1ca6c8bed339baa6f3c))
+    - Support direct tool calls in sidecar style ([`8b5817c`](https://github.com/portofcontext/pctx/commit/8b5817c41d590ec02c32b305254b99c882b33e21))
+    - Add upstream tools to list tool res depending on disclosure style ([`1b52b1f`](https://github.com/portofcontext/pctx/commit/1b52b1f65aab43f9985aeba68b85ceb05ea7213b))
+    - Tool_description txts & dynamic list tools in pctx mcp ([`af2f103`](https://github.com/portofcontext/pctx/commit/af2f103d69838ecb4e5b9095439b3299954375c1))
+    - TypescriptMode ([`887e5b3`](https://github.com/portofcontext/pctx/commit/887e5b3dcc406c946136a2251bed8062d8cc6234))
+    - Unified registry ([`12e0b62`](https://github.com/portofcontext/pctx/commit/12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862))
+    - Optional namespace ([`e274f78`](https://github.com/portofcontext/pctx/commit/e274f784d1f7041b92b1e21d34dea248a7b47933))
+    - Ignore namespace for execute_typescript_simple ([`d82fa4a`](https://github.com/portofcontext/pctx/commit/d82fa4ab96dbdeada6e61437b79077b556650804))
+    - Execute_typescript_simple ([`61b5bf0`](https://github.com/portofcontext/pctx/commit/61b5bf0439415f35b3dd33dd597fb83ef698fb29))
+    - Update readme ([`5ed6bee`](https://github.com/portofcontext/pctx/commit/5ed6bee41c5cc6bb67ce07caaee92b14b8609b38))
+    - Merge pull request #56 from portofcontext/in-memory-fs ([`8b692dd`](https://github.com/portofcontext/pctx/commit/8b692dde566648ff4eae65bee0e5578170d419bf))
+    - Fmt ([`b65a278`](https://github.com/portofcontext/pctx/commit/b65a278af980e8db4acbdeb1cb8f287a78970a2f))
+    - Finish filesystem feature for session client ([`c82ac71`](https://github.com/portofcontext/pctx/commit/c82ac717920ca10069a2ebf802e225a309c0aafc))
+    - Fix merge ([`ae69455`](https://github.com/portofcontext/pctx/commit/ae694559e756fa9aede6053b6d50a71ea5eeeef1))
+</details>
+
 ## 0.2.3 (2026-02-04)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 8 commits contributed to the release.
+ - 10 commits contributed to the release over the course of 7 calendar days.
  - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_executor v0.1.3, pctx_code_mode v0.2.3 ([`910e7bd`](https://github.com/portofcontext/pctx/commit/910e7bdef73344767a59774b1c9f7a990c5ecca4))
     - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`dbe7858`](https://github.com/portofcontext/pctx/commit/dbe78587850bc31d42e24f8132069ce705313351))
     - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`2b9e359`](https://github.com/portofcontext/pctx/commit/2b9e359c8366d1cf50fdf23b49287e77025ecf4e))
     - Release pctx_codegen v0.2.0, pctx_type_check_runtime v0.1.2, pctx_executor v0.1.2, pctx_code_mode v0.2.3 ([`ca2531d`](https://github.com/portofcontext/pctx/commit/ca2531dac6d202d926c55beec03c73496a75e056))
@@ -31,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - Merge pull request #54 from portofcontext/empty-args ([`bf72e21`](https://github.com/portofcontext/pctx/commit/bf72e211d13336baf1f79d89e60c98ba6aa4bf7c))
     - Support for automatic default objects for "all optional" inputs ([`1df03d0`](https://github.com/portofcontext/pctx/commit/1df03d0b5996ec96b64bb3f0d64fc72ef3535108))
     - Upgrade codegen, tests, and dependants to support optional input schemas ([`11f9b86`](https://github.com/portofcontext/pctx/commit/11f9b86f1884a5adfcc27bbc13409eb4faf42467))
+    - Sync with main ([`cc6a0a9`](https://github.com/portofcontext/pctx/commit/cc6a0a90a8dc7d08e0faf108b70b77a96c2b44a2))
 </details>
 
 ## 0.2.2 (2026-01-28)
