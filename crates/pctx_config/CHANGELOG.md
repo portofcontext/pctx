@@ -5,13 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.1.3 (2026-01-28)
+## 0.1.4 (2026-03-13)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 7 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +22,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
+    - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
+    - Merge branch 'main' into ts-sidecar ([`55e15a9`](https://github.com/portofcontext/pctx/commit/55e15a955036b2bec8cdd968775f62785ac35611))
+    - Merge pull request #63 from jamadeo/upgrade-rmcp ([`1fba0e1`](https://github.com/portofcontext/pctx/commit/1fba0e1946138ca59dd86e2b0f48f54ccd5b1d11))
+    - Upgrade rmcp to 1.2.0 ([`68247fd`](https://github.com/portofcontext/pctx/commit/68247fdb05f3b3a3253ad17e25347476d8c0f37a))
+    - Centralize `ToolDisclosure` in `pctx_config` for `mcp start` ([`106bd08`](https://github.com/portofcontext/pctx/commit/106bd08151fbf197e8f00e8a61168a57c555b6eb))
+    - Sync with main ([`cc6a0a9`](https://github.com/portofcontext/pctx/commit/cc6a0a90a8dc7d08e0faf108b70b77a96c2b44a2))
+</details>
+
+## 0.1.3 (2026-01-28)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_config v0.1.3, pctx_code_execution_runtime v0.1.3, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`d89a17a`](https://github.com/portofcontext/pctx/commit/d89a17a1dcf724dd9545c3a59cadae7ba1bfeff7))
     - Remove generic fectch from runtime ([`fdfc800`](https://github.com/portofcontext/pctx/commit/fdfc80069eb561177410fc55909ce422f2450280))
 </details>
 
