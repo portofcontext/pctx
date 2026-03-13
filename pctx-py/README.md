@@ -130,16 +130,36 @@ if __name__ == "__main__":
 
 Code Mode allows AI agents to execute TypeScript code with access to both your custom Python tools and MCP servers. Instead of requiring separate tool calls for each operation, agents can write and execute code that orchestrates multiple function calls, processes data, and returns results - all in a single execution.
 
-The `Pctx` client provides 3 main code mode functions:
+The exact set of code mode tools depends on the selected `ToolDisclosure` described in the section below.
+
+All available `Pctx` code mode functions:
 
 1. **`list_functions()`** - Lists all available functions organized by namespace. LLMs are instructed to call this first to discover what functions are available from your registered tools and MCP servers.
 
 2. **`get_function_details(functions)`** - Returns detailed information about specific functions including parameter types, return values. LLMs are instructed to call this after `list_functions()` to understand the required/optional inputs and outputs of Code Mode functions.
 
-3. **`execute(code)`** - Executes TypeScript code in an isolated Deno sandbox. The code can call any namespaced functions (e.g., `Namespace.functionName()`) discovered via `list_functions()`. Returns the execution result with stdout, stderr, and return value.
+3. **`search_functions(query, top_k)`** - Requires optional dependency `pctx-client[bm25s]`. Searches available functions using BM25s vector search to find the most relevant functions for a given query. LLMs are instructed to call this first to discover what functions are available from your registered tools and MCP servers.
 
-If the optional dependancy `pctx-client[bm25s]` is installed, pctx will also
-provide: 4. **`search_functions(query, top_k)`** - Searches available functions using BM25s vector search to find the most relevant functions for a given query. LLMs are instructed to call this first to discover what functions are available from your registered tools and MCP servers.
+4. **`execute_bash(cmd)`** - Executes provided bash command in a virtual filesystem containing the generated TypeScript code. LLMs us this command to list, search, or otherwise dynamically discover the available functions, and their input/outputs.
+
+5. **`execute_typescript(code)`** - Executes TypeScript code in an isolated Deno sandbox. The code can call any namespaced functions (e.g., `Namespace.functionName()`) discovered via `list_functions()` / `execute_bash(cmd)`. Returns the execution result with stdout, stderr, and return value.
+
+### ToolDisclosure
+
+`ToolDisclosure` is an enum that controls which set of code-mode tools are exposed to the agent and how the agent discovers and invokes upstream tools. Pass it to `execute()`, `langchain_tools()`, `crewai_tools()`, `openai_agents_tools()`, or `pydantic_ai_tools()`.
+
+```python
+from pctx_client import ToolDisclosure
+```
+
+| Value                                | Tools exposed                                                                                               |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `ToolDisclosure.CATALOG` _(default)_ | `list_functions`, `get_function_details`, `execute_typescript` (+ `search_functions` if bm25s is installed) |
+| `ToolDisclosure.FS`                  | `execute_bash`, `execute_typescript`                                                                        |
+
+**`CATALOG`** is the standard discovery-first workflow: the agent lists available functions, inspects their signatures, then calls them through typed TypeScript namespaces (e.g., `await MyNamespace.myFunction({ ... })`).
+
+**`FS`** (filesystem) skips the catalog and lets the agent read tool details directly from the virtual filesystem via `execute_bash` before invoking TypeScript.
 
 ## Defining Tools
 
