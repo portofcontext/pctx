@@ -1,4 +1,4 @@
-use crate::error::RegistryError;
+use crate::{connection_pool::McpConnectionPool, error::RegistryError};
 use pctx_config::server::ServerConfig;
 use rmcp::model::{CallToolRequestParams, JsonObject, RawContent};
 use serde_json::json;
@@ -37,8 +37,22 @@ pub enum RegistryAction {
 
 #[derive(Clone, Default)]
 pub struct PctxRegistry {
+    /// All registered actions keyed by their id. An action is either an MCP
+    /// tool call (identified by server + tool name) or a local Rust callback.
     actions: Arc<RwLock<HashMap<String, RegistryAction>>>,
+    /// Configuration for each registered upstream MCP server, keyed by server
+    /// name. Used by [`invoke`] to look up connection details when dispatching
+    /// an [`RegistryAction::Mcp`] action.
+    ///
+    /// [`invoke`]: PctxRegistry::invoke
     servers: Arc<RwLock<HashMap<String, ServerConfig>>>,
+    /// Connection pool used for upstream MCP calls. By default each registry
+    /// gets its own fresh pool, so connections are scoped to the registry's
+    /// lifetime. Pass a shared pool via [`with_pool`] to reuse connections
+    /// across multiple registries (e.g. for a session-scoped pool).
+    ///
+    /// [`with_pool`]: PctxRegistry::with_pool
+    connection_pool: Arc<McpConnectionPool>,
 }
 
 impl PctxRegistry {
@@ -54,6 +68,15 @@ impl PctxRegistry {
             .keys()
             .map(String::from)
             .collect()
+    }
+
+    /// Replaces the registry's connection pool with the provided one.
+    ///
+    /// Use this to share a session-scoped pool across multiple registries so
+    /// that upstream connections survive across `execute_typescript` calls.
+    pub fn with_pool(mut self, pool: Arc<McpConnectionPool>) -> Self {
+        self.connection_pool = pool;
+        self
     }
 
     pub fn add_mcp(&self, tool_names: &[String], cfg: ServerConfig) -> Result<(), RegistryError> {
@@ -202,34 +225,26 @@ impl PctxRegistry {
                         .clone()
                 };
 
-                let client = match server.connect().await {
-                    Ok(client) => client,
-                    Err(err) => {
+                let client = self
+                    .connection_pool
+                    .get_or_connect(&server)
+                    .await
+                    .map_err(|err| {
                         warn!(
                             server = %mcp_id.sever_name,
                             error = %err,
                             "Could not connect to MCP: initialization failure"
                         );
-                        return Err(RegistryError::Connection(err.to_string()));
-                    }
-                };
-
-                let tool_result = client
-                    .call_tool({
-                        let mut params = CallToolRequestParams::new(mcp_id.tool_name.to_string());
-                        if let Some(args) = args {
-                            params = params.with_arguments(args);
-                        }
-                        params
-                    })
-                    .await
-                    .map_err(|e| {
-                        RegistryError::ToolCall(format!(
-                            "Tool call \"{}\" failed: {e}",
-                            mcp_id.id()
-                        ))
+                        err
                     })?;
-                let _ = client.cancel().await;
+
+                let mut params = CallToolRequestParams::new(mcp_id.tool_name.to_string());
+                if let Some(args) = args {
+                    params = params.with_arguments(args);
+                }
+                let tool_result = client.call_tool(params).await.map_err(|e| {
+                    RegistryError::ToolCall(format!("Tool call \"{}\" failed: {e}", mcp_id.id()))
+                })?;
 
                 // Check if the tool call resulted in an error
                 if tool_result.is_error.unwrap_or(false) {
