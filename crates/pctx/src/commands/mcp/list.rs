@@ -3,8 +3,8 @@ use std::fmt::Display;
 use crate::utils::{
     spinner::Spinner,
     styles::{
-        cargo_styles, fmt_bold, fmt_context, fmt_dimmed, fmt_error_x, fmt_good_check, fmt_header,
-        fmt_literal, fmt_style,
+        fmt_blue_bold, fmt_bold, fmt_cyan_bold, fmt_dimmed, fmt_error_x, fmt_good_check,
+        fmt_green_bold,
     },
 };
 use anyhow::Result;
@@ -26,7 +26,7 @@ impl ListCmd {
             info!("");
             info!(
                 "Run {cmd} to add some to your configuration",
-                cmd = fmt_style("pctx add <NAME> <MCP_URL>", &cargo_styles::LITERAL)
+                cmd = fmt_cyan_bold("pctx add <NAME> <MCP_URL>")
             );
             return Ok(cfg);
         }
@@ -99,8 +99,8 @@ impl UpstreamMcpSummary {
 impl Display for UpstreamMcpSummary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut fields = vec![];
-        let target_field = format!("{}: {}", fmt_literal("Target"), fmt_bold(&self.target));
-        let transport_field = format!("{}: {}", fmt_literal("Transport"), self.transport);
+        let target_field = format!("{}: {}", fmt_cyan_bold("Target"), fmt_bold(&self.target));
+        let transport_field = format!("{}: {}", fmt_cyan_bold("Transport"), self.transport);
 
         if let Some(e) = &self.error {
             fields.extend([fmt_error_x(e), target_field, transport_field]);
@@ -110,17 +110,17 @@ impl Display for UpstreamMcpSummary {
             if let Some(init_res) = &self.init_res {
                 fields.push(format!(
                     "{}: {}",
-                    fmt_literal("Upstream Name"),
+                    fmt_cyan_bold("Upstream Name"),
                     &init_res.server_info.name
                 ));
                 fields.push(format!(
                     "{}: {}",
-                    fmt_literal("Upstream Version"),
+                    fmt_cyan_bold("Upstream Version"),
                     &init_res.server_info.version
                 ));
                 fields.push(format!(
                     "{}: {}",
-                    fmt_literal("Upstream Title"),
+                    fmt_cyan_bold("Upstream Title"),
                     init_res
                         .server_info
                         .title
@@ -136,27 +136,31 @@ impl Display for UpstreamMcpSummary {
                     });
                 fields.push(format!(
                     "{}: {instructions}",
-                    fmt_literal("Upstream Instructions"),
+                    fmt_cyan_bold("Upstream Instructions"),
                 ));
             }
 
             if self.tools.is_empty() {
-                fields.push(format!("{}: {}", fmt_literal("Tools"), fmt_dimmed("none")));
+                fields.push(format!(
+                    "{}: {}",
+                    fmt_cyan_bold("Tools"),
+                    fmt_dimmed("none")
+                ));
             } else {
                 let tool_display = self
                     .tools
                     .iter()
                     .take(5)
-                    .map(|t| fmt_context(t))
+                    .map(|t| fmt_blue_bold(t))
                     .collect::<Vec<String>>()
                     .join(", ");
 
                 fields.push(format!(
                     "{} ({}): {tool_display}{}",
-                    fmt_literal("Tools"),
+                    fmt_cyan_bold("Tools"),
                     self.tools.len(),
                     if self.tools.len() > 5 {
-                        format!(", {}", fmt_context("..."))
+                        format!(", {}", fmt_blue_bold("..."))
                     } else {
                         String::new()
                     }
@@ -177,6 +181,6 @@ impl Display for UpstreamMcpSummary {
             .collect::<Vec<String>>()
             .join("\n");
 
-        write!(f, "{}\n{tree}", fmt_header(&self.name))
+        write!(f, "{}\n{tree}", fmt_green_bold(&self.name))
     }
 }

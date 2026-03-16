@@ -8,7 +8,7 @@ use crate::{
     commands::{USER_CANCELLED, mcp::add::AddCmd},
     utils::{
         prompts,
-        styles::{fmt_bold, fmt_dimmed, fmt_good_check, fmt_literal},
+        styles::{fmt_bold, fmt_cyan_bold, fmt_dimmed, fmt_good_check},
     },
 };
 
@@ -173,7 +173,7 @@ impl InitCmd {
             fmt_good_check(&format!(
                 "{name} configuration created: {path}",
                 name = fmt_bold("pctx"),
-                path = fmt_literal(cfg.path().as_str()),
+                path = fmt_cyan_bold(cfg.path().as_str()),
             ))
         );
 
