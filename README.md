@@ -132,7 +132,7 @@ console.log(`Found ${orders.length} orders`);
 ## Features
 
 - **Code Mode interface**: Tools exposed as code functions for efficient agent interaction. See [Code Mode Guide](docs/code-mode.md).
-- **Upstream MCP server aggregation**: Connect to multiple MCP servers through a single interface. See [Upstream MCP Servers Guide](docs/upstream-mcp-servers.md).
+- **Upstream MCP server aggregation**: Connect to multiple MCP servers through a single interface, with persistent upstream sessions across `execute_typescript` calls. See [Upstream MCP Servers Guide](docs/upstream-mcp-servers.md).
 - **Simple config with CLI**: Create the pctx.json config with a simple CLI. pctx.json manages auth, upstream MCPs, logging, and more. See [Config Guide](docs/config.md).
 - **Secure authentication**: Source secrets from environment variables, system keychain, and external commands. See [Authentication Section](docs/config.md#authentication) in the CLI configuration docs for more details.
 

@@ -158,6 +158,7 @@ Start the PCTX MCP server (exposes /mcp endpoint).
   Default value: `127.0.0.1`
 * `--no-banner` — Don't show the server banner
 * `--stdio` — Serve MCP over stdio instead of HTTP
+* `--stateful-http` — Use stateful MCP sessions (incompatible with --stdio)
 
 
 
@@ -179,6 +180,7 @@ Start the PCTX MCP server in development mode with an interactive terminal UI wi
 
   Default value: `pctx-dev.jsonl`
 * `--stdio` — Serve MCP over stdio instead of HTTP
+* `--stateful-http` — Use stateful HTTP sessions (incompatible with --stdio)
 
 
 
