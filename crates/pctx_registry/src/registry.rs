@@ -8,7 +8,7 @@ use std::{
     pin::Pin,
     sync::{Arc, RwLock},
 };
-use tracing::{info, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 pub type CallbackFn = Arc<
     dyn Fn(
@@ -77,6 +77,39 @@ impl PctxRegistry {
     pub fn with_pool(mut self, pool: Arc<McpConnectionPool>) -> Self {
         self.connection_pool = pool;
         self
+    }
+
+    /// Returns the underlying connection pool shared by this registry.
+    pub fn pool(&self) -> Arc<McpConnectionPool> {
+        self.connection_pool.clone()
+    }
+
+    /// Eagerly opens connections to all registered MCP servers.
+    ///
+    /// Iterates every server config currently held in the registry and calls
+    /// [`McpConnectionPool::get_or_connect`] so that the connections are ready
+    /// before the first tool call arrives. Failures are logged as warnings
+    /// rather than returned as errors so that a single unreachable server does
+    /// not block the others from warming up.
+    pub async fn prewarm_pool(&self) -> Result<(), RegistryError> {
+        let server_configs = self
+            .servers
+            .read()
+            .map_err(|e| {
+                RegistryError::Config(format!(
+                    "Failed obtaining write lock on MCP server registry: {e}"
+                ))
+            })?
+            .clone();
+
+        for server in server_configs.values() {
+            match self.connection_pool.get_or_connect(server).await {
+                Ok(_) => debug!("pool: pre-warmed connection to \"{}\"", &server.name),
+                Err(e) => warn!("pool: pre-warm failed for \"{}\": {e}", &server.name),
+            }
+        }
+
+        Ok(())
     }
 
     pub fn add_mcp(&self, tool_names: &[String], cfg: ServerConfig) -> Result<(), RegistryError> {
@@ -277,5 +310,35 @@ impl PctxRegistry {
                 Ok(val)
             }
         }
+    }
+}
+
+impl std::fmt::Debug for PctxRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let actions: Vec<String> = match self.actions.read() {
+            Ok(a) => a.keys().cloned().collect(),
+            Err(_) => vec!["<locked>".to_string()],
+        };
+        let servers: Vec<String> = match self.servers.read() {
+            Ok(s) => s.keys().cloned().collect(),
+            Err(_) => vec!["<locked>".to_string()],
+        };
+        f.debug_struct("PctxRegistry")
+            .field("actions", &actions)
+            .field("servers", &servers)
+            .finish_non_exhaustive()
+    }
+}
+
+impl std::fmt::Display for PctxRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let actions = self.actions.read();
+        let servers = self.servers.read();
+        let action_count = actions.as_ref().map(|a| a.len()).unwrap_or(0);
+        let server_count = servers.as_ref().map(|s| s.len()).unwrap_or(0);
+        write!(
+            f,
+            "PctxRegistry({action_count} actions, {server_count} servers)"
+        )
     }
 }

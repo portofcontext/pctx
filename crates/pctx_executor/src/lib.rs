@@ -54,7 +54,7 @@ impl ExecuteOptions {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Debug)]
 pub struct ExecuteResult {
     pub success: bool,
 
@@ -72,6 +72,8 @@ pub struct ExecuteResult {
 
     /// Standard error from execution
     pub stderr: String,
+
+    pub registry: PctxRegistry,
 }
 
 #[derive(Debug, Error)]
@@ -145,6 +147,7 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
             output: None,
             stdout: String::new(),
             stderr,
+            registry: options.registry,
         });
     }
 
@@ -171,6 +174,7 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
         } else {
             exec_result.stderr
         },
+        registry: exec_result.registry,
     })
 }
 
@@ -243,6 +247,7 @@ struct InternalExecuteResult {
     pub error: Option<ExecutionError>,
     pub stdout: String,
     pub stderr: String,
+    pub registry: PctxRegistry,
 }
 
 /// Execute TypeScript/JavaScript code with `pctx_runtime`
@@ -291,13 +296,14 @@ async fn execute_code(
                 }),
                 stdout: String::new(),
                 stderr: String::new(),
+                registry: options.registry,
             });
         }
     };
 
     // Build extensions list
     let extensions = vec![pctx_code_execution_runtime::pctx_runtime_snapshot::init(
-        options.registry,
+        options.registry.clone(),
     )];
 
     // Create JsRuntime from `pctx_runtime` snapshot and extension
@@ -334,6 +340,7 @@ async fn execute_code(
                 }),
                 stdout: String::new(),
                 stderr: String::new(),
+                registry: options.registry,
             });
         }
     };
@@ -358,6 +365,7 @@ async fn execute_code(
         mod_id,
         eval_result.err(),
         event_loop_result.err(),
+        options.registry,
     )
 }
 
@@ -367,6 +375,7 @@ fn process_execution_results(
     mod_id: usize,
     eval_err: Option<CoreError>,
     event_loop_err: Option<CoreError>,
+    registry: PctxRegistry,
 ) -> anyhow::Result<InternalExecuteResult> {
     // Check for errors from either future
     let (success, error) = match (eval_err, event_loop_err) {
@@ -469,6 +478,7 @@ fn process_execution_results(
         error,
         stdout: stdout_str,
         stderr: stderr_str,
+        registry,
     })
 }
 

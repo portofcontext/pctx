@@ -18,7 +18,7 @@ type PooledClient = Arc<RunningService<RoleClient, InitializeRequestParams>>;
 /// Drop the pool (or call [`cancel_all`]) to shut down all active connections.
 ///
 /// [`cancel_all`]: McpConnectionPool::cancel_all
-#[derive(Clone, Default)]
+#[derive(Clone, Default, Debug)]
 pub struct McpConnectionPool {
     connections: Arc<RwLock<HashMap<String, PooledClient>>>,
 }

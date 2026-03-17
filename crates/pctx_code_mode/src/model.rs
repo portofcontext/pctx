@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use pctx_registry::PctxRegistry;
 use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::json;
@@ -146,6 +147,11 @@ pub struct ExecuteOutput {
     /// Value returned by executed function
     #[schema(value_type = Object)]
     pub output: Option<serde_json::Value>,
+
+    #[serde(skip)]
+    #[schemars(skip)]
+    #[schema(ignore)]
+    pub registry: PctxRegistry,
 }
 impl ExecuteOutput {
     pub fn markdown(&self) -> String {

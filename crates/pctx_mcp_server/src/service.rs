@@ -1,11 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use pctx_code_mode::{
     CodeMode,
     config::{Config, ToolDisclosure},
     descriptions,
     model::{ExecuteBashInput, ExecuteInput, GetFunctionDetailsInput},
-    registry::{PctxRegistry, RegistryAction},
+    registry::{McpConnectionPool, PctxRegistry, RegistryAction},
 };
 use rmcp::{
     RoleServer, ServerHandler, ServiceError,
@@ -20,8 +23,6 @@ use rmcp::{
 use serde_json::json;
 use tracing::{debug, error, info, instrument};
 
-// Metrics removed - will be added via telemetry support later
-
 type McpResult<T> = Result<T, rmcp::ErrorData>;
 
 #[derive(Clone)]
@@ -32,6 +33,10 @@ pub(crate) struct PctxMcpService {
     pub(crate) code_mode: CodeMode,
     pub(crate) disclosure: ToolDisclosure,
     pub(crate) tool_router: ToolRouter<PctxMcpService>,
+    /// Connection pools keyed by MCP session ID. Allows stateful upstream MCP
+    /// connections (e.g. LSP) to survive across `execute_typescript` calls
+    /// within the same session.
+    pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>,
 }
 
 #[tool_router]
@@ -44,7 +49,15 @@ impl PctxMcpService {
             code_mode,
             disclosure: cfg.disclosure,
             tool_router: Self::tool_router(),
+            pool_cache: Arc::new(Mutex::new(HashMap::new())),
         }
+    }
+
+    fn get_session_id(ctx: RequestContext<RoleServer>) -> Option<String> {
+        ctx.extensions
+            .get::<axum::http::request::Parts>()
+            .and_then(|parts| parts.headers.get("mcp-session-id"))
+            .and_then(|v| v.to_str().ok().map(String::from))
     }
 
     pub(crate) fn list_filtered_tools(&self) -> ListToolsResult {
@@ -94,17 +107,10 @@ impl PctxMcpService {
 
     pub(crate) async fn handle_direct_tool_call(
         &self,
+        session_id: Option<&str>,
         mut req: CallToolRequestParams,
     ) -> McpResult<CallToolResult> {
-        let mut registry = PctxRegistry::default();
-        self.code_mode
-            .add_mcp_servers_to_registry(&mut registry)
-            .map_err(|e| {
-                rmcp::ErrorData::internal_error(
-                    format!("failed building internal MCP registry: {e}"),
-                    None,
-                )
-            })?;
+        let registry = self.get_pctx_registry(session_id).await?;
 
         if let Some(RegistryAction::Mcp(mcp_tool_id)) = registry.get(&req.name) {
             let server = self
@@ -113,7 +119,7 @@ impl PctxMcpService {
                 .iter()
                 .find(|s| s.name == mcp_tool_id.sever_name)
                 .ok_or(rmcp::ErrorData::invalid_params("tool not found", None))?;
-            let client = server.connect().await.map_err(|e| {
+            let client = registry.pool().get_or_connect(server).await.map_err(|e| {
                 rmcp::ErrorData::invalid_request(
                     format!(
                         "failed connecting to upstream MCP at `{}`: {e}",
@@ -124,26 +130,21 @@ impl PctxMcpService {
             })?;
             req.name = mcp_tool_id.tool_name.into();
 
-            client.call_tool(req).await.map_err(service_error_to_mcp)
+            let call_tool_res = client.call_tool(req).await.map_err(service_error_to_mcp);
+
+            self.cache_pool(session_id, registry.pool())?;
+
+            call_tool_res
         } else {
             Err(rmcp::ErrorData::invalid_params("tool not found", None))
         }
     }
 
     #[tool(title = "List Functions")]
-    async fn list_functions(&self, ctx: RequestContext<RoleServer>) -> McpResult<CallToolResult> {
+    async fn list_functions(&self) -> McpResult<CallToolResult> {
         let listed = self.code_mode.list_functions();
 
-        let session_id = ctx
-            .extensions
-            .get::<axum::http::request::Parts>()
-            .and_then(|parts| parts.headers.get("mcp-session-id"))
-            .map(|v| v.to_str().unwrap_or("(non-ascii)").to_owned());
-
-        Ok(CallToolResult::success(vec![Content::text(format!(
-            "session_id: {session_id:?}\n\n{}",
-            listed.code
-        ))]))
+        Ok(CallToolResult::success(vec![Content::text(listed.code)]))
     }
 
     #[tool(title = "Get Function Details")]
@@ -202,11 +203,81 @@ impl PctxMcpService {
     #[tool(title = "Execute Typescript Code")]
     async fn execute_typescript(
         &self,
+        ctx: RequestContext<RoleServer>,
         Parameters(input): Parameters<ExecuteInput>,
+    ) -> McpResult<CallToolResult> {
+        self.handle_execute_typescript(input, Self::get_session_id(ctx))
+            .await
+    }
+
+    async fn get_pctx_registry(&self, session_id: Option<&str>) -> McpResult<PctxRegistry> {
+        let mut registry = self.code_mode.default_registry().map_err(|e| {
+            rmcp::ErrorData::internal_error(format!("Failed to default pctx registry: {e}"), None)
+        })?;
+
+        if let Some(sid) = session_id {
+            let cache_entry = self
+                .pool_cache
+                .lock()
+                .map_err(|e| {
+                    rmcp::ErrorData::internal_error(
+                        format!("Failed obtaining lock on MPC connection pool cache: {e}"),
+                        None,
+                    )
+                })?
+                .get(sid)
+                .cloned();
+
+            if let Some(cached_pool) = cache_entry {
+                info!(session_id =% sid, "MCP pool cache hit");
+
+                registry = registry.with_pool(cached_pool);
+            } else {
+                // Pre-warm connections on the outer async runtime so the spawned tasks
+                // are owned by it rather than the short-lived per-execution runtime.
+                // The inner runtime then hits the fast path in get_or_connect (already
+                // live) and never needs to spawn new connection tasks itself.
+                info!(session_id =% sid, "MCP pool cache missed, prewarming connections...");
+                registry.prewarm_pool().await.map_err(|e| {
+                    rmcp::ErrorData::internal_error(
+                        format!("Failed pre-warming pctx MCP connection pool: {e}"),
+                        None,
+                    )
+                })?;
+            }
+        } else {
+            debug!("No session ID present, skipping MCP pool cache");
+        }
+
+        Ok(registry)
+    }
+
+    fn cache_pool(&self, session_id: Option<&str>, pool: Arc<McpConnectionPool>) -> McpResult<()> {
+        if let Some(sid) = session_id {
+            let mut cache = self.pool_cache.lock().map_err(|e| {
+                rmcp::ErrorData::internal_error(
+                    format!("Failed obtaining lock on MPC connection pool cache: {e}"),
+                    None,
+                )
+            })?;
+            cache.insert(sid.into(), pool);
+            info!(session_id =% sid, "MCP connection pool cached");
+        } else {
+            info!("Not caching MCP connection pool - no session_id");
+        }
+
+        Ok(())
+    }
+
+    async fn handle_execute_typescript(
+        &self,
+        input: ExecuteInput,
+        session_id: Option<String>,
     ) -> McpResult<CallToolResult> {
         // Capture current tracing context to propagate to spawned thread
         let current_span = tracing::Span::current();
 
+        let registry = self.get_pctx_registry(session_id.as_deref()).await?;
         let code_mode = self.code_mode.clone();
         let code = input.code;
         let style = self.disclosure;
@@ -223,7 +294,7 @@ impl PctxMcpService {
 
             rt.block_on(async {
                 code_mode
-                    .execute_typescript(&code, style, None)
+                    .execute_typescript(&code, style, Some(registry))
                     .await
                     .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
             })
@@ -237,6 +308,8 @@ impl PctxMcpService {
             error!("Sandbox execution error: {e}");
             rmcp::ErrorData::internal_error(format!("Execution failed: {e}"), None)
         })?;
+
+        self.cache_pool(session_id.as_deref(), execution_output.registry.pool())?;
 
         Ok(CallToolResult::success(vec![Content::text(
             execution_output.markdown(),
@@ -307,7 +380,9 @@ impl ServerHandler for PctxMcpService {
             {
                 // call tool directly
                 debug!("Calling tool directly in sidecar style");
-                self.handle_direct_tool_call(req).await
+                let session_id = Self::get_session_id(ctx);
+                self.handle_direct_tool_call(session_id.as_deref(), req)
+                    .await
             } else {
                 let tcc = ToolCallContext::new(self, req, ctx);
                 self.tool_router.call(tcc).await
