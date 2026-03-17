@@ -131,10 +131,19 @@ impl PctxMcpService {
     }
 
     #[tool(title = "List Functions")]
-    async fn list_functions(&self) -> McpResult<CallToolResult> {
+    async fn list_functions(&self, ctx: RequestContext<RoleServer>) -> McpResult<CallToolResult> {
         let listed = self.code_mode.list_functions();
 
-        Ok(CallToolResult::success(vec![Content::text(listed.code)]))
+        let session_id = ctx
+            .extensions
+            .get::<axum::http::request::Parts>()
+            .and_then(|parts| parts.headers.get("mcp-session-id"))
+            .map(|v| v.to_str().unwrap_or("(non-ascii)").to_owned());
+
+        Ok(CallToolResult::success(vec![Content::text(format!(
+            "session_id: {session_id:?}\n\n{}",
+            listed.code
+        ))]))
     }
 
     #[tool(title = "Get Function Details")]

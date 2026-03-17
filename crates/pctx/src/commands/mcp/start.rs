@@ -23,6 +23,10 @@ pub struct StartCmd {
     /// Serve MCP over stdio instead of HTTP
     #[arg(long)]
     pub stdio: bool,
+
+    /// Use stateful MCP sessions (incompatible with --stdio)
+    #[arg(long, conflicts_with = "stdio")]
+    pub stateful_http: bool,
 }
 
 impl StartCmd {
@@ -51,12 +55,14 @@ impl StartCmd {
 
         let code_mode = StartCmd::load_code_mode(&cfg).await?;
 
-        let server = PctxMcpServer::new(&self.host, self.port, !self.no_banner, &cfg, code_mode);
-        if self.stdio {
-            server.serve_stdio().await?;
-        } else {
-            server.serve().await?;
-        }
+        let pctx_mcp = PctxMcpServer::new(&cfg, code_mode)
+            .with_banner(!self.no_banner)
+            .with_http_host(&self.host)
+            .with_http_port(self.port)
+            .with_http_stateful(self.stateful_http)
+            .with_stdio(self.stdio);
+
+        pctx_mcp.serve().await?;
 
         info!("Shutting down...");
 

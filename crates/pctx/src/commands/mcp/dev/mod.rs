@@ -58,6 +58,10 @@ pub struct DevCmd {
     /// Serve MCP over stdio instead of HTTP
     #[arg(long)]
     pub stdio: bool,
+
+    /// Use stateful HTTP sessions (incompatible with --stdio)
+    #[arg(long, conflicts_with = "stdio")]
+    pub stateful_http: bool,
 }
 
 impl DevCmd {
@@ -84,8 +88,13 @@ impl DevCmd {
         let (tx, mut rx) = mpsc::unbounded_channel::<AppMessage>();
 
         // Spawn initial server task
-        let (server_handle, shutdown_tx) =
-            spawn_server_task(cfg.clone(), tx.clone(), self.host.clone(), self.port);
+        let (server_handle, shutdown_tx) = spawn_server_task(
+            cfg.clone(),
+            tx.clone(),
+            self.host.clone(),
+            self.port,
+            self.stateful_http,
+        );
 
         // Store server control in Arc<Mutex<>> so we can replace it on config reload
         let server_control: ServerControl =
@@ -153,6 +162,7 @@ impl DevCmd {
             &server_control,
             &self.host,
             self.port,
+            self.stateful_http,
         );
 
         // Cleanup terminal
@@ -199,6 +209,7 @@ fn run_ui(
     server_control: &ServerControl,
     host: &str,
     port: u16,
+    stateful_http: bool,
 ) -> Result<()> {
     let tick_rate = Duration::from_millis(100);
     let mut last_tick = Instant::now();
@@ -395,6 +406,7 @@ fn run_ui(
                                 tx_reload.clone(),
                                 host_clone,
                                 port_clone,
+                                stateful_http,
                             );
 
                             // 4. Store new server control
@@ -463,6 +475,7 @@ fn spawn_server_task(
     tx: mpsc::UnboundedSender<AppMessage>,
     host: String,
     port: u16,
+    stateful_http: bool,
 ) -> (
     tokio::task::JoinHandle<()>,
     tokio::sync::oneshot::Sender<()>,
@@ -484,12 +497,16 @@ fn spawn_server_task(
         };
 
         // Run server with shutdown signal
-        let pctx_mcp = PctxMcpServer::new(&host, port, false, &cfg, code_mode.clone());
+        let pctx_mcp = PctxMcpServer::new(&cfg, code_mode.clone())
+            .with_banner(false)
+            .with_http_host(&host)
+            .with_http_port(port)
+            .with_http_stateful(stateful_http);
 
         tx.send(AppMessage::ServerReady(cfg, code_mode)).ok();
 
         if let Err(e) = pctx_mcp
-            .serve_with_shutdown(async move {
+            .serve_http_with_shutdown(async move {
                 let _ = shutdown_rx.await;
             })
             .await

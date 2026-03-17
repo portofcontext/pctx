@@ -321,7 +321,7 @@ impl App {
 
                 // Re-process all existing logs now that we have server metadata
                 tracing::info!(
-                    "ServerConnected: {} servers available. Re-processing existing logs for tool usage tracking.",
+                    "Server Connected: {} servers available. Re-processing existing logs for tool usage tracking.",
                     self.code_mode.tool_sets().len()
                 );
                 self.reprocess_logs_for_tool_usage();
