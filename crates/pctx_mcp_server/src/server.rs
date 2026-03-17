@@ -81,6 +81,12 @@ impl PctxMcpServer {
     }
 
     pub fn with_stdio(mut self, stdio: bool) -> Self {
+        let global_session = if stdio {
+            Some(uuid::Uuid::new_v4())
+        } else {
+            None
+        };
+        self.service = self.service.with_global_session_id(global_session);
         self.stdio_mode = stdio;
         self
     }

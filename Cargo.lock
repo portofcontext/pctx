@@ -4325,6 +4325,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-opentelemetry",
+ "uuid",
 ]
 
 [[package]]

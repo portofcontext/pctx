@@ -22,6 +22,7 @@ use rmcp::{
 };
 use serde_json::json;
 use tracing::{debug, error, info, instrument};
+use uuid::Uuid;
 
 type McpResult<T> = Result<T, rmcp::ErrorData>;
 
@@ -37,6 +38,7 @@ pub(crate) struct PctxMcpService {
     /// connections (e.g. LSP) to survive across `execute_typescript` calls
     /// within the same session.
     pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>,
+    global_session_id: Option<Uuid>,
 }
 
 #[tool_router]
@@ -50,14 +52,27 @@ impl PctxMcpService {
             disclosure: cfg.disclosure,
             tool_router: Self::tool_router(),
             pool_cache: Arc::new(Mutex::new(HashMap::new())),
+            global_session_id: None,
         }
     }
 
-    fn get_session_id(ctx: RequestContext<RoleServer>) -> Option<String> {
-        ctx.extensions
+    pub(crate) fn with_global_session_id(mut self, id: Option<Uuid>) -> Self {
+        self.global_session_id = id;
+        self
+    }
+
+    fn get_session_id(&self, ctx: RequestContext<RoleServer>) -> Option<String> {
+        let header_id = ctx
+            .extensions
             .get::<axum::http::request::Parts>()
             .and_then(|parts| parts.headers.get("mcp-session-id"))
-            .and_then(|v| v.to_str().ok().map(String::from))
+            .and_then(|v| v.to_str().ok().map(String::from));
+
+        if header_id.is_some() {
+            header_id
+        } else {
+            self.global_session_id.map(|g| g.to_string())
+        }
     }
 
     pub(crate) fn list_filtered_tools(&self) -> ListToolsResult {
@@ -206,7 +221,7 @@ impl PctxMcpService {
         ctx: RequestContext<RoleServer>,
         Parameters(input): Parameters<ExecuteInput>,
     ) -> McpResult<CallToolResult> {
-        self.handle_execute_typescript(input, Self::get_session_id(ctx))
+        self.handle_execute_typescript(input, self.get_session_id(ctx))
             .await
     }
 
@@ -380,7 +395,7 @@ impl ServerHandler for PctxMcpService {
             {
                 // call tool directly
                 debug!("Calling tool directly in sidecar style");
-                let session_id = Self::get_session_id(ctx);
+                let session_id = self.get_session_id(ctx);
                 self.handle_direct_tool_call(session_id.as_deref(), req)
                     .await
             } else {
