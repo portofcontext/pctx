@@ -22,10 +22,7 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use pctx_code_mode::{
-    model::ExecuteInput,
-    registry::{CallbackFn, PctxRegistry},
-};
+use pctx_code_mode::{model::ExecuteInput, registry::CallbackFn};
 use rmcp::{
     ErrorData,
     model::{ErrorCode, JsonRpcMessage, RequestId},
@@ -207,53 +204,67 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
 
     let execution_id = Uuid::new_v4();
 
-    // Setup callbacks if needed
-    let callback_registry = if !code_mode.callbacks().is_empty() {
-        let registry = PctxRegistry::default();
-        for callback_cfg in code_mode.callbacks() {
-            let ws_session_lock_clone = ws_session_lock.clone();
-            let cfg = callback_cfg.clone();
+    // Build registry from the session's MCP servers, reusing the cached pool
+    // if one exists (avoids reconnecting on every execution).
+    let registry = code_mode
+        .default_registry()
+        .map_err(|e| format!("Failed to build registry: {e}"))?;
 
-            let callback: CallbackFn = Arc::new(move |args: Option<serde_json::Value>| {
-                let cfg = cfg.clone();
-                let ws_session_lock_clone = ws_session_lock_clone.clone();
-
-                Box::pin(async move {
-                    let ws_session = ws_session_lock_clone.read().await;
-
-                    let callback_res = ws_session
-                        .execute_callback(ExecuteToolParams {
-                            namespace: cfg.namespace,
-                            name: cfg.name,
-                            args,
-                        })
-                        .await
-                        .map_err(|e| e.to_string())?;
-
-                    Ok(json!(callback_res.output))
-                })
-            });
-
-            if let Err(add_err) = registry.add_callback(&callback_cfg.id(), callback) {
-                let err_res = WsJsonRpcMessage::error(
-                    ErrorData {
-                        code: ErrorCode::INTERNAL_ERROR,
-                        message: format!(
-                            "Failed adding callback `{}` to registry: {add_err}",
-                            callback_cfg.id()
-                        )
-                        .into(),
-                        data: None,
-                    },
-                    req_id.clone(),
-                );
-                let _ = sender.send(err_res);
-            }
+    let registry = match state.backend.get_pool(code_mode_session_id).await {
+        Ok(Some(pool)) => {
+            debug!(session_id =? code_mode_session_id, "MCP pool cache hit");
+            registry.with_pool(pool)
         }
-        Some(registry)
-    } else {
-        None
+        _ => {
+            debug!(session_id =? code_mode_session_id, "MCP pool cache miss, prewarming...");
+            if let Err(e) = registry.prewarm_pool().await {
+                warn!("Failed to prewarm MCP connection pool: {e}");
+            }
+            registry
+        }
     };
+
+    // Add callbacks to the registry
+    for callback_cfg in code_mode.callbacks() {
+        let ws_session_lock_clone = ws_session_lock.clone();
+        let cfg = callback_cfg.clone();
+
+        let callback: CallbackFn = Arc::new(move |args: Option<serde_json::Value>| {
+            let cfg = cfg.clone();
+            let ws_session_lock_clone = ws_session_lock_clone.clone();
+
+            Box::pin(async move {
+                let ws_session = ws_session_lock_clone.read().await;
+
+                let callback_res = ws_session
+                    .execute_callback(ExecuteToolParams {
+                        namespace: cfg.namespace,
+                        name: cfg.name,
+                        args,
+                    })
+                    .await
+                    .map_err(|e| e.to_string())?;
+
+                Ok(json!(callback_res.output))
+            })
+        });
+
+        if let Err(add_err) = registry.add_callback(&callback_cfg.id(), callback) {
+            let err_res = WsJsonRpcMessage::error(
+                ErrorData {
+                    code: ErrorCode::INTERNAL_ERROR,
+                    message: format!(
+                        "Failed adding callback `{}` to registry: {add_err}",
+                        callback_cfg.id()
+                    )
+                    .into(),
+                    data: None,
+                },
+                req_id.clone(),
+            );
+            let _ = sender.send(err_res);
+        }
+    }
 
     let execution_span = tracing::span!(
         tracing::Level::INFO,
@@ -276,20 +287,29 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
             rt.block_on(code_mode_clone.execute_typescript(
                 &code_to_exec,
                 params.disclosure,
-                callback_registry,
+                Some(registry),
             ))
             .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
         })
         .await;
 
         let (msg, execution_res) = match output {
-            Ok(Ok(exec_output)) => (
-                WsJsonRpcMessage::response(
-                    PctxJsonRpcResponse::ExecuteCode(exec_output.clone()),
-                    req_id,
-                ),
-                Ok(exec_output),
-            ),
+            Ok(Ok(exec_output)) => {
+                if let Err(e) = state
+                    .backend
+                    .set_pool(code_mode_session_id, exec_output.registry.pool())
+                    .await
+                {
+                    error!("Failed to cache MCP connection pool: {e}");
+                }
+                (
+                    WsJsonRpcMessage::response(
+                        PctxJsonRpcResponse::ExecuteCode(exec_output.clone()),
+                        req_id,
+                    ),
+                    Ok(exec_output),
+                )
+            }
             Ok(Err(e)) => (
                 WsJsonRpcMessage::error(
                     ErrorData {
