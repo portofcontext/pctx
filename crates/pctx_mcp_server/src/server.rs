@@ -1,10 +1,24 @@
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
+
 use anyhow::Result;
+use futures::Stream;
 use opentelemetry::{global, trace::TraceContextExt};
+use pctx_code_mode::registry::McpConnectionPool;
 use rmcp::{
     ServiceExt,
+    model::{ClientJsonRpcMessage, ServerJsonRpcMessage},
     transport::{
         StreamableHttpServerConfig, stdio,
-        streamable_http_server::{StreamableHttpService, session::local::LocalSessionManager},
+        streamable_http_server::{
+            StreamableHttpService,
+            session::{
+                ServerSseMessage, SessionId, SessionManager,
+                local::{LocalSessionManager, LocalSessionManagerError},
+            },
+        },
     },
 };
 use tabled::{
@@ -34,6 +48,87 @@ use crate::{
         styles::{fmt_cyan, fmt_dimmed},
     },
 };
+
+/// Wraps [`LocalSessionManager`] to cancel cached MCP connection pools when
+/// a session is closed (HTTP DELETE or server-initiated close).
+struct PctxSessionManager {
+    inner: LocalSessionManager,
+    pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>,
+}
+
+impl PctxSessionManager {
+    fn new(pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>) -> Self {
+        Self {
+            inner: LocalSessionManager::default(),
+            pool_cache,
+        }
+    }
+}
+
+impl SessionManager for PctxSessionManager {
+    type Error = LocalSessionManagerError;
+    type Transport = <LocalSessionManager as SessionManager>::Transport;
+
+    async fn create_session(&self) -> Result<(SessionId, Self::Transport), Self::Error> {
+        self.inner.create_session().await
+    }
+
+    async fn initialize_session(
+        &self,
+        id: &SessionId,
+        message: ClientJsonRpcMessage,
+    ) -> Result<ServerJsonRpcMessage, Self::Error> {
+        self.inner.initialize_session(id, message).await
+    }
+
+    async fn close_session(&self, id: &SessionId) -> Result<(), Self::Error> {
+        let pool = self
+            .pool_cache
+            .lock()
+            .ok()
+            .and_then(|mut cache| cache.remove(id.as_ref()));
+        if let Some(pool) = pool {
+            debug!(session_id=%id, "Removed MCP connection pool cache for session");
+            pool.cancel_all().await;
+        }
+        self.inner.close_session(id).await
+    }
+
+    async fn has_session(&self, id: &SessionId) -> Result<bool, Self::Error> {
+        self.inner.has_session(id).await
+    }
+
+    async fn create_stream(
+        &self,
+        id: &SessionId,
+        message: ClientJsonRpcMessage,
+    ) -> Result<impl Stream<Item = ServerSseMessage> + Send + Sync + 'static, Self::Error> {
+        self.inner.create_stream(id, message).await
+    }
+
+    async fn accept_message(
+        &self,
+        id: &SessionId,
+        message: ClientJsonRpcMessage,
+    ) -> Result<(), Self::Error> {
+        self.inner.accept_message(id, message).await
+    }
+
+    async fn create_standalone_stream(
+        &self,
+        id: &SessionId,
+    ) -> Result<impl Stream<Item = ServerSseMessage> + Send + Sync + 'static, Self::Error> {
+        self.inner.create_standalone_stream(id).await
+    }
+
+    async fn resume(
+        &self,
+        id: &SessionId,
+        last_event_id: String,
+    ) -> Result<impl Stream<Item = ServerSseMessage> + Send + Sync + 'static, Self::Error> {
+        self.inner.resume(id, last_event_id).await
+    }
+}
 
 pub struct PctxMcpServer {
     service: PctxMcpService,
@@ -126,10 +221,11 @@ impl PctxMcpServer {
         self.banner();
 
         let mcp_service = self.service.clone();
+        let session_manager = Arc::new(PctxSessionManager::new(self.service.pool_cache.clone()));
 
         let service = StreamableHttpService::new(
             move || Ok(mcp_service.clone()),
-            LocalSessionManager::default().into(),
+            session_manager,
             StreamableHttpServerConfig {
                 stateful_mode: self.stateful_mode,
                 ..Default::default()

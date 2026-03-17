@@ -37,7 +37,7 @@ pub(crate) struct PctxMcpService {
     /// Connection pools keyed by MCP session ID. Allows stateful upstream MCP
     /// connections (e.g. LSP) to survive across `execute_typescript` calls
     /// within the same session.
-    pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>,
+    pub(crate) pool_cache: Arc<Mutex<HashMap<String, Arc<McpConnectionPool>>>>,
     global_session_id: Option<Uuid>,
 }
 
