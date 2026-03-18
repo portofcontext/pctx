@@ -1,4 +1,4 @@
-use crate::error::RegistryError;
+use crate::{connection_pool::McpConnectionPool, error::RegistryError};
 use pctx_config::server::ServerConfig;
 use rmcp::model::{CallToolRequestParams, JsonObject, RawContent};
 use serde_json::json;
@@ -8,7 +8,7 @@ use std::{
     pin::Pin,
     sync::{Arc, RwLock},
 };
-use tracing::{info, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 pub type CallbackFn = Arc<
     dyn Fn(
@@ -37,8 +37,22 @@ pub enum RegistryAction {
 
 #[derive(Clone, Default)]
 pub struct PctxRegistry {
+    /// All registered actions keyed by their id. An action is either an MCP
+    /// tool call (identified by server + tool name) or a local Rust callback.
     actions: Arc<RwLock<HashMap<String, RegistryAction>>>,
+    /// Configuration for each registered upstream MCP server, keyed by server
+    /// name. Used by [`invoke`] to look up connection details when dispatching
+    /// an [`RegistryAction::Mcp`] action.
+    ///
+    /// [`invoke`]: PctxRegistry::invoke
     servers: Arc<RwLock<HashMap<String, ServerConfig>>>,
+    /// Connection pool used for upstream MCP calls. By default each registry
+    /// gets its own fresh pool, so connections are scoped to the registry's
+    /// lifetime. Pass a shared pool via [`with_pool`] to reuse connections
+    /// across multiple registries (e.g. for a session-scoped pool).
+    ///
+    /// [`with_pool`]: PctxRegistry::with_pool
+    connection_pool: Arc<McpConnectionPool>,
 }
 
 impl PctxRegistry {
@@ -54,6 +68,48 @@ impl PctxRegistry {
             .keys()
             .map(String::from)
             .collect()
+    }
+
+    /// Replaces the registry's connection pool with the provided one.
+    ///
+    /// Use this to share a session-scoped pool across multiple registries so
+    /// that upstream connections survive across `execute_typescript` calls.
+    pub fn with_pool(mut self, pool: Arc<McpConnectionPool>) -> Self {
+        self.connection_pool = pool;
+        self
+    }
+
+    /// Returns the underlying connection pool shared by this registry.
+    pub fn pool(&self) -> Arc<McpConnectionPool> {
+        self.connection_pool.clone()
+    }
+
+    /// Eagerly opens connections to all registered MCP servers.
+    ///
+    /// Iterates every server config currently held in the registry and calls
+    /// [`McpConnectionPool::get_or_connect`] so that the connections are ready
+    /// before the first tool call arrives. Failures are logged as warnings
+    /// rather than returned as errors so that a single unreachable server does
+    /// not block the others from warming up.
+    pub async fn prewarm_pool(&self) -> Result<(), RegistryError> {
+        let server_configs = self
+            .servers
+            .read()
+            .map_err(|e| {
+                RegistryError::Config(format!(
+                    "Failed obtaining write lock on MCP server registry: {e}"
+                ))
+            })?
+            .clone();
+
+        for server in server_configs.values() {
+            match self.connection_pool.get_or_connect(server).await {
+                Ok(_) => debug!("pool: pre-warmed connection to \"{}\"", &server.name),
+                Err(e) => warn!("pool: pre-warm failed for \"{}\": {e}", &server.name),
+            }
+        }
+
+        Ok(())
     }
 
     pub fn add_mcp(&self, tool_names: &[String], cfg: ServerConfig) -> Result<(), RegistryError> {
@@ -202,34 +258,26 @@ impl PctxRegistry {
                         .clone()
                 };
 
-                let client = match server.connect().await {
-                    Ok(client) => client,
-                    Err(err) => {
+                let client = self
+                    .connection_pool
+                    .get_or_connect(&server)
+                    .await
+                    .map_err(|err| {
                         warn!(
                             server = %mcp_id.sever_name,
                             error = %err,
                             "Could not connect to MCP: initialization failure"
                         );
-                        return Err(RegistryError::Connection(err.to_string()));
-                    }
-                };
-
-                let tool_result = client
-                    .call_tool({
-                        let mut params = CallToolRequestParams::new(mcp_id.tool_name.to_string());
-                        if let Some(args) = args {
-                            params = params.with_arguments(args);
-                        }
-                        params
-                    })
-                    .await
-                    .map_err(|e| {
-                        RegistryError::ToolCall(format!(
-                            "Tool call \"{}\" failed: {e}",
-                            mcp_id.id()
-                        ))
+                        err
                     })?;
-                let _ = client.cancel().await;
+
+                let mut params = CallToolRequestParams::new(mcp_id.tool_name.to_string());
+                if let Some(args) = args {
+                    params = params.with_arguments(args);
+                }
+                let tool_result = client.call_tool(params).await.map_err(|e| {
+                    RegistryError::ToolCall(format!("Tool call \"{}\" failed: {e}", mcp_id.id()))
+                })?;
 
                 // Check if the tool call resulted in an error
                 if tool_result.is_error.unwrap_or(false) {
@@ -262,5 +310,35 @@ impl PctxRegistry {
                 Ok(val)
             }
         }
+    }
+}
+
+impl std::fmt::Debug for PctxRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let actions: Vec<String> = match self.actions.read() {
+            Ok(a) => a.keys().cloned().collect(),
+            Err(_) => vec!["<locked>".to_string()],
+        };
+        let servers: Vec<String> = match self.servers.read() {
+            Ok(s) => s.keys().cloned().collect(),
+            Err(_) => vec!["<locked>".to_string()],
+        };
+        f.debug_struct("PctxRegistry")
+            .field("actions", &actions)
+            .field("servers", &servers)
+            .finish_non_exhaustive()
+    }
+}
+
+impl std::fmt::Display for PctxRegistry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let actions = self.actions.read();
+        let servers = self.servers.read();
+        let action_count = actions.as_ref().map(|a| a.len()).unwrap_or(0);
+        let server_count = servers.as_ref().map(|s| s.len()).unwrap_or(0);
+        write!(
+            f,
+            "PctxRegistry({action_count} actions, {server_count} servers)"
+        )
     }
 }

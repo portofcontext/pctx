@@ -29,7 +29,7 @@ futures = "0.3"
 utoipa = { workspace = true, features = ["axum_extras"] }
 utoipa-swagger-ui = { version = "9", features = ["axum"] }
 url = { workspace = true }
-uuid = { version = "1", features = ["v4", "serde"] }
+uuid = { workspace = true }
 chrono = { workspace = true }
 
 # Serialization

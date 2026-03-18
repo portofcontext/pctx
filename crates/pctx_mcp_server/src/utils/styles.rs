@@ -1,10 +1,7 @@
-use anstyle::{Color, RgbColor, Style};
-
-// Brand colors
-const SECONDARY: RgbColor = RgbColor(24, 66, 137); // #184289
+use anstyle::{Color, Style};
 
 pub(crate) fn fmt_cyan(msg: &str) -> String {
-    let style = Style::new().fg_color(Some(Color::Rgb(SECONDARY)));
+    let style = Style::new().fg_color(Some(Color::Ansi(anstyle::AnsiColor::BrightCyan)));
     format!("{style}{msg}{style:#}")
 }
 

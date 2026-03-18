@@ -4313,6 +4313,7 @@ dependencies = [
  "anstyle",
  "anyhow",
  "axum",
+ "futures",
  "opentelemetry",
  "pctx_code_mode",
  "rmcp",
@@ -4325,6 +4326,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-opentelemetry",
+ "uuid",
 ]
 
 [[package]]

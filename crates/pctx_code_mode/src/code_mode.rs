@@ -387,13 +387,14 @@ impl CodeMode {
     }
 
     // --------------- Utilities ---------------
-    pub fn add_mcp_servers_to_registry(&self, registry: &mut PctxRegistry) -> Result<()> {
+    pub fn default_registry(&self) -> Result<PctxRegistry> {
+        let registry = PctxRegistry::default();
+
         for (cfg, tool_set) in self.server_tool_sets() {
             let tool_names: Vec<String> = tool_set.tools.iter().map(|t| t.name.clone()).collect();
             registry.add_mcp(&tool_names, cfg.clone())?;
         }
-
-        Ok(())
+        Ok(registry)
     }
 
     // --------------- Code-Mode Tools ---------------
@@ -553,6 +554,7 @@ export default result;"#,
             stdout: bash_stdout,
             stderr: bash_stderr,
             output: None,
+            registry: Default::default(),
         })
     }
 
@@ -564,8 +566,11 @@ export default result;"#,
         disclosure: ToolDisclosure,
         registry: Option<PctxRegistry>,
     ) -> Result<ExecuteOutput> {
-        let mut registry = registry.unwrap_or_default();
-        self.add_mcp_servers_to_registry(&mut registry)?;
+        let registry: PctxRegistry = if let Some(r) = registry {
+            r
+        } else {
+            self.default_registry()?
+        };
 
         // Format for logging only
         let formatted_code = pctx_codegen::format::format_ts(code);
@@ -685,6 +690,7 @@ export default result;"#,
             stdout: execution_res.stdout,
             stderr: execution_res.stderr,
             output: execution_res.output,
+            registry: execution_res.registry,
         })
     }
 }

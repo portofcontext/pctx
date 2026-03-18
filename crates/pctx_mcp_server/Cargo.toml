@@ -21,6 +21,7 @@ rmcp = { workspace = true, features = [
 axum = { workspace = true, features = ["macros"] }
 tower = { workspace = true }
 tower-http = { workspace = true, features = ["trace", "request-id"] }
+uuid = { workspace = true }
 
 # Telemetry
 tracing = { workspace = true }
@@ -32,6 +33,7 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt", "signal"] }
 anyhow = { workspace = true }
+futures = "0.3"
 tabled = { version = "0.17", features = ["ansi"] }
 terminal_size = "0.4"
 anstyle = "1"
