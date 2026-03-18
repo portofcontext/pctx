@@ -29,8 +29,8 @@ async fn test_exec_code_only() {
     .await;
 
     // Receive response
-    let response: serde_json::Value = ws.receive_json().await;
-
+    let mut response: serde_json::Value = ws.receive_json().await;
+    response["result"].as_object_mut().unwrap().remove("trace");
     assert_serde_eq!(
         response,
         json!({
@@ -75,8 +75,8 @@ async fn test_exec_code_console_output() {
     .await;
 
     // Receive response
-    let response: serde_json::Value = ws.receive_json().await;
-
+    let mut response: serde_json::Value = ws.receive_json().await;
+    response["result"].as_object_mut().unwrap().remove("trace");
     assert_serde_eq!(
         response,
         json!({
@@ -328,7 +328,8 @@ async fn test_exec_callbacks(#[case] code: &str, #[case] disclosure: &str) {
     .await;
 
     // Receive the execute_code response
-    let response: serde_json::Value = ws.receive_json().await;
+    let mut response: serde_json::Value = ws.receive_json().await;
+    response["result"].as_object_mut().unwrap().remove("trace");
     assert_serde_eq!(
         response,
         json!({
@@ -441,7 +442,7 @@ async fn test_explore_virtual_fs_with_bash() {
         .await
         .json();
 
-    assert_eq!(response["success"], true);
+    assert_eq!(response["exit_code"], 0);
     let stdout = response["stdout"].as_str().unwrap();
 
     // Should list README.md and TestMath namespace folder (no system dirs!)
@@ -470,7 +471,7 @@ async fn test_explore_virtual_fs_with_bash() {
         .await
         .json();
 
-    assert_eq!(response["success"], true);
+    assert_eq!(response["exit_code"], 0);
     let readme = response["stdout"].as_str().unwrap();
 
     // README should contain function listings
@@ -504,7 +505,7 @@ async fn test_explore_virtual_fs_with_bash() {
         .await
         .json();
 
-    assert_eq!(response["success"], true);
+    assert_eq!(response["exit_code"], 0);
     let grep_result = response["stdout"].as_str().unwrap();
 
     assert!(
@@ -520,7 +521,7 @@ async fn test_explore_virtual_fs_with_bash() {
         .await
         .json();
 
-    assert_eq!(response["success"], true);
+    assert_eq!(response["exit_code"], 0);
     let types = response["stdout"].as_str().unwrap();
 
     // Should contain function signature with types
@@ -541,7 +542,7 @@ async fn test_explore_virtual_fs_with_bash() {
         .await
         .json();
 
-    assert_eq!(response["success"], true);
+    assert_eq!(response["exit_code"], 0);
     let tools_list = response["stdout"].as_str().unwrap();
 
     // Should list individual tool files
@@ -589,7 +590,7 @@ async fn test_bash_exploration_then_typescript_execution() {
         .await
         .json();
 
-    assert_eq!(ls_response["success"], true);
+    assert_eq!(ls_response["exit_code"], 0);
     let files_found = ls_response["stdout"].as_str().unwrap();
     assert!(files_found.contains("README.md"));
     assert!(files_found.contains("TestMath"));
@@ -603,7 +604,7 @@ async fn test_bash_exploration_then_typescript_execution() {
         .await
         .json();
 
-    assert_eq!(readme_response["success"], true);
+    assert_eq!(readme_response["exit_code"], 0);
     let readme = readme_response["stdout"].as_str().unwrap();
     assert!(readme.contains("## TestMath"));
 
@@ -615,7 +616,7 @@ async fn test_bash_exploration_then_typescript_execution() {
         .await
         .json();
 
-    assert_eq!(grep_response["success"], true);
+    assert_eq!(grep_response["exit_code"], 0);
     let math_functions = grep_response["stdout"].as_str().unwrap();
     assert!(math_functions.contains("add"));
     assert!(math_functions.contains("multiply"));
@@ -628,7 +629,7 @@ async fn test_bash_exploration_then_typescript_execution() {
         .await
         .json();
 
-    assert_eq!(types_response["success"], true);
+    assert_eq!(types_response["exit_code"], 0);
     let types = types_response["stdout"].as_str().unwrap();
     assert!(types.contains("function add"));
 
@@ -717,7 +718,8 @@ async fn test_bash_exploration_then_typescript_execution() {
     .await;
 
     // Receive final result
-    let response: serde_json::Value = ws.receive_json().await;
+    let mut response: serde_json::Value = ws.receive_json().await;
+    response["result"].as_object_mut().unwrap().remove("trace");
     assert_serde_eq!(
         response,
         json!({

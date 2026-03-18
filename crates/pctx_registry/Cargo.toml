@@ -17,6 +17,8 @@ thiserror = { workspace = true }
 rmcp = { workspace = true }
 tokio = { workspace = true }
 deno_error = { workspace = true }
+serde = { workspace = true }
+
 
 [lints]
 workspace = true

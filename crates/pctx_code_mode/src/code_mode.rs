@@ -684,6 +684,7 @@ export default result;"#,
             stderr: execution_res.stderr,
             output: execution_res.output,
             registry: execution_res.registry,
+            trace: execution_res.trace,
         })
     }
 }

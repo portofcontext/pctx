@@ -134,7 +134,7 @@ impl PctxMcpService {
                 .iter()
                 .find(|s| s.name == mcp_tool_id.sever_name)
                 .ok_or(rmcp::ErrorData::invalid_params("tool not found", None))?;
-            let client = registry.pool().get_or_connect(server).await.map_err(|e| {
+            let (client, _cached) = registry.pool().get_or_connect(server).await.map_err(|e| {
                 rmcp::ErrorData::invalid_request(
                     format!(
                         "failed connecting to upstream MCP at `{}`: {e}",

@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+pub use pctx_executor::events::*;
 use pctx_registry::PctxRegistry;
 use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -7,7 +8,7 @@ use serde_json::json;
 use utoipa::ToSchema;
 
 // -------------- List Functions --------------
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ListFunctionsOutput {
     /// Available functions
     pub functions: Vec<ListedFunction>,
@@ -89,13 +90,13 @@ impl<'de> Deserialize<'de> for FunctionId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetFunctionDetailsOutput {
     pub functions: Vec<FunctionDetails>,
 
     pub code: String,
 }
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct FunctionDetails {
     #[serde(flatten)]
     pub listed: ListedFunction,
@@ -162,7 +163,7 @@ impl Display for ExecuteBashOutput {
 #[deprecated(note = "Use `ExecuteTypescriptOutput` instead")]
 pub type ExecuteOutput = ExecuteTypescriptOutput;
 
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteTypescriptOutput {
     /// Success of executed code
     pub success: bool,
@@ -171,12 +172,13 @@ pub struct ExecuteTypescriptOutput {
     /// Standard error of executed code
     pub stderr: String,
     /// Value returned by executed function
-    #[schema(value_type = Option<Object>)]
     pub output: Option<serde_json::Value>,
 
+    /// Trace of events during execution
+    pub trace: ExecutionTrace,
+
+    /// Registry used in execution
     #[serde(skip)]
-    #[schemars(skip)]
-    #[schema(ignore)]
     pub registry: PctxRegistry,
 }
 impl ExecuteTypescriptOutput {

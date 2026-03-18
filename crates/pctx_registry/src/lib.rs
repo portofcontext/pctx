@@ -1,5 +1,6 @@
 pub mod connection_pool;
 mod error;
+pub mod events;
 pub mod registry;
 
 pub use connection_pool::McpConnectionPool;
