@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `pctx mcp start --stateful-http`: HTTP mode now supports stateful upstream sessions scoped to the MCP session ID. The connection pool is created on the first request and reused for the lifetime of the HTTP session, then torn down when the client sends a `DELETE`.
 - `pctx mcp start --stdio`: When running as a stdio MCP server (e.g. in Claude Desktop), a single global session is used for the entire process lifetime — upstream MCP servers connect once and stay connected until `pctx` exits.
 - Session server (`pctx start`): upstream connection pools are now scoped per code mode session — created on first use and cleaned up when the session is deleted.
+- `ExecuteTypescriptOutput` now includes a `trace` field: a structured record of everything that happened during the execution — the type-check phase, each upstream MCP tool call (including whether the client was served from the connection pool cache), and each callback invocation — all with start/end timestamps.
 
 ### Changed
 
