@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+pub use pctx_executor::events::*;
 use pctx_registry::PctxRegistry;
 use schemars::{JsonSchema, json_schema};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -7,7 +8,7 @@ use serde_json::json;
 use utoipa::ToSchema;
 
 // -------------- List Functions --------------
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct ListFunctionsOutput {
     /// Available functions
     pub functions: Vec<ListedFunction>,
@@ -89,13 +90,13 @@ impl<'de> Deserialize<'de> for FunctionId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct GetFunctionDetailsOutput {
     pub functions: Vec<FunctionDetails>,
 
     pub code: String,
 }
-#[derive(Debug, Serialize, Deserialize, JsonSchema, ToSchema)]
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct FunctionDetails {
     #[serde(flatten)]
     pub listed: ListedFunction,
@@ -118,10 +119,13 @@ pub struct ExecuteBashInput {
     pub command: String,
 }
 
+#[deprecated(note = "Use `ExecuteTypescriptInput` instead")]
+pub type ExecuteInput = ExecuteTypescriptInput;
+
 #[allow(clippy::doc_markdown)]
 #[derive(Debug, Default, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
 #[serde(default)]
-pub struct ExecuteInput {
+pub struct ExecuteTypescriptInput {
     /// Typescript code to execute.
     ///
     /// REQUIRED FORMAT:
@@ -137,7 +141,30 @@ pub struct ExecuteInput {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, ToSchema)]
-pub struct ExecuteOutput {
+pub struct ExecuteBashOutput {
+    /// Exit code of the bash command
+    pub exit_code: i64,
+    /// Standard output of executed bash command
+    pub stdout: String,
+    /// Standard error of executed bash command
+    pub stderr: String,
+}
+
+impl Display for ExecuteBashOutput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Exit Code: {}\n\n# STDOUT\n{}\n\n# STDERR\n{}",
+            &self.exit_code, &self.stdout, &self.stdout
+        )
+    }
+}
+
+#[deprecated(note = "Use `ExecuteTypescriptOutput` instead")]
+pub type ExecuteOutput = ExecuteTypescriptOutput;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecuteTypescriptOutput {
     /// Success of executed code
     pub success: bool,
     /// Standard output of executed code
@@ -145,15 +172,16 @@ pub struct ExecuteOutput {
     /// Standard error of executed code
     pub stderr: String,
     /// Value returned by executed function
-    #[schema(value_type = Object)]
     pub output: Option<serde_json::Value>,
 
+    /// Trace of events during execution
+    pub trace: ExecutionTrace,
+
+    /// Registry used in execution
     #[serde(skip)]
-    #[schemars(skip)]
-    #[schema(ignore)]
     pub registry: PctxRegistry,
 }
-impl ExecuteOutput {
+impl ExecuteTypescriptOutput {
     pub fn markdown(&self) -> String {
         format!(
             "Code Executed Successfully: {success}
@@ -177,9 +205,9 @@ impl ExecuteOutput {
         )
     }
 }
-impl Display for ExecuteOutput {
+impl Display for ExecuteTypescriptOutput {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", json!(&self))
+        write!(f, "{}", self.markdown())
     }
 }
 

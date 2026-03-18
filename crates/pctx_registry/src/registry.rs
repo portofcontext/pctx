@@ -1,4 +1,10 @@
-use crate::{connection_pool::McpConnectionPool, error::RegistryError};
+use crate::{
+    connection_pool::McpConnectionPool,
+    error::RegistryError,
+    events::{
+        CallbackInvocationEvent, EventOutcome, McpToolCallEvent, RegistryEvent, RegistryTrace,
+    },
+};
 use pctx_config::server::ServerConfig;
 use rmcp::model::{CallToolRequestParams, JsonObject, RawContent};
 use serde_json::json;
@@ -7,6 +13,7 @@ use std::{
     future::Future,
     pin::Pin,
     sync::{Arc, RwLock},
+    time::SystemTime,
 };
 use tracing::{debug, info, instrument, warn};
 
@@ -53,6 +60,14 @@ pub struct PctxRegistry {
     ///
     /// [`with_pool`]: PctxRegistry::with_pool
     connection_pool: Arc<McpConnectionPool>,
+    /// Append-only log of every [`invoke`] call: inputs, outputs, and timing.
+    ///
+    /// All clones of this registry share the same log. Use [`trace`] to
+    /// obtain a handle for reading or passing to other components.
+    ///
+    /// [`invoke`]: PctxRegistry::invoke
+    /// [`trace`]: PctxRegistry::trace
+    trace: RegistryTrace,
 }
 
 impl PctxRegistry {
@@ -84,6 +99,11 @@ impl PctxRegistry {
         self.connection_pool.clone()
     }
 
+    /// Returns the trace shared by all clones of this registry.
+    pub fn trace(&self) -> &RegistryTrace {
+        &self.trace
+    }
+
     /// Eagerly opens connections to all registered MCP servers.
     ///
     /// Iterates every server config currently held in the registry and calls
@@ -106,7 +126,7 @@ impl PctxRegistry {
             match self.connection_pool.get_or_connect(server).await {
                 Ok(_) => debug!("pool: pre-warmed connection to \"{}\"", &server.name),
                 Err(e) => warn!("pool: pre-warm failed for \"{}\": {e}", &server.name),
-            }
+            };
         }
 
         Ok(())
@@ -235,11 +255,30 @@ impl PctxRegistry {
 
         match action {
             RegistryAction::Callback(callback_fn) => {
-                callback_fn(args.map(|a| json!(a))).await.map_err(|e| {
+                let args_json = args.as_ref().map(|a| json!(a));
+                let started_at = SystemTime::now();
+
+                let result = callback_fn(args.map(|a| json!(a))).await.map_err(|e| {
                     RegistryError::ExecutionError(format!(
                         "Failed calling callback with id \"{id}\": {e}",
                     ))
-                })
+                });
+
+                self.trace
+                    .push(RegistryEvent::CallbackInvocation(CallbackInvocationEvent {
+                        id: id.to_string(),
+                        args: args_json,
+                        outcome: match &result {
+                            Ok(v) => EventOutcome::Success { output: v.clone() },
+                            Err(e) => EventOutcome::Error {
+                                message: e.to_string(),
+                            },
+                        },
+                        started_at,
+                        ended_at: SystemTime::now(),
+                    }));
+
+                result
             }
 
             RegistryAction::Mcp(mcp_id) => {
@@ -258,7 +297,10 @@ impl PctxRegistry {
                         .clone()
                 };
 
-                let client = self
+                let args_json = args.as_ref().map(|a| json!(a));
+                let started_at = SystemTime::now();
+
+                let (client, cached_client) = self
                     .connection_pool
                     .get_or_connect(&server)
                     .await
@@ -277,37 +319,59 @@ impl PctxRegistry {
                 }
                 let tool_result = client.call_tool(params).await.map_err(|e| {
                     RegistryError::ToolCall(format!("Tool call \"{}\" failed: {e}", mcp_id.id()))
-                })?;
+                });
 
-                // Check if the tool call resulted in an error
-                if tool_result.is_error.unwrap_or(false) {
-                    return Err(RegistryError::ToolCall(format!(
-                        "Tool call \"{}\" failed",
-                        mcp_id.id()
-                    )));
-                }
+                let result = (|| -> Result<serde_json::Value, RegistryError> {
+                    let tool_result = tool_result?;
 
-                // Prefer structuredContent if available, otherwise use content array
-                let has_structured = tool_result.structured_content.is_some();
-                let val = if let Some(structured) = tool_result.structured_content {
-                    structured
-                } else if let Some(RawContent::Text(text_content)) =
-                    tool_result.content.first().map(|a| &**a)
-                {
-                    // Try to parse as JSON, fallback to string value
-                    serde_json::from_str(&text_content.text)
-                        .or_else(|_| Ok(serde_json::Value::String(text_content.text.clone())))
-                        .map_err(|e: serde_json::Error| {
-                            RegistryError::ToolCall(format!("Failed to parse content: {e}"))
-                        })?
-                } else {
-                    // Return the whole content array as JSON
-                    json!(tool_result.content)
-                };
+                    // Check if the tool call resulted in an error
+                    if tool_result.is_error.unwrap_or(false) {
+                        return Err(RegistryError::ToolCall(format!(
+                            "Tool call \"{}\" failed",
+                            mcp_id.id()
+                        )));
+                    }
 
-                info!(structured_content = has_structured, result =? &val, "Tool result");
+                    // Prefer structuredContent if available, otherwise use content array
+                    let has_structured = tool_result.structured_content.is_some();
+                    let val = if let Some(structured) = tool_result.structured_content {
+                        structured
+                    } else if let Some(RawContent::Text(text_content)) =
+                        tool_result.content.first().map(|a| &**a)
+                    {
+                        // Try to parse as JSON, fallback to string value
+                        serde_json::from_str(&text_content.text)
+                            .or_else(|_| Ok(serde_json::Value::String(text_content.text.clone())))
+                            .map_err(|e: serde_json::Error| {
+                                RegistryError::ToolCall(format!("Failed to parse content: {e}"))
+                            })?
+                    } else {
+                        // Return the whole content array as JSON
+                        json!(tool_result.content)
+                    };
 
-                Ok(val)
+                    info!(structured_content = has_structured, result =? &val, "Tool result");
+
+                    Ok(val)
+                })();
+
+                self.trace
+                    .push(RegistryEvent::McpToolCall(McpToolCallEvent {
+                        server: mcp_id.sever_name.clone(),
+                        tool: mcp_id.tool_name.clone(),
+                        cached_client,
+                        args: args_json,
+                        outcome: match &result {
+                            Ok(v) => EventOutcome::Success { output: v.clone() },
+                            Err(e) => EventOutcome::Error {
+                                message: e.to_string(),
+                            },
+                        },
+                        started_at,
+                        ended_at: SystemTime::now(),
+                    }));
+
+                result
             }
         }
     }

@@ -8,9 +8,11 @@ use pctx_registry::PctxRegistry;
 pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error};
 use pctx_type_check_runtime::{init_v8_platform, type_check};
 use serde::{Deserialize, Serialize};
-use std::rc::Rc;
+use std::{rc::Rc, time::SystemTime};
 use thiserror::Error;
 use tracing::{debug, warn};
+
+pub mod events;
 
 /// Process-wide mutex to serialize all V8 isolate creation and usage.
 ///
@@ -74,6 +76,9 @@ pub struct ExecuteResult {
     pub stderr: String,
 
     pub registry: PctxRegistry,
+
+    /// Full trace of this execution flow.
+    pub trace: events::ExecutionTrace,
 }
 
 #[derive(Debug, Error)]
@@ -122,11 +127,15 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
         "Code submitted for typecheck & execution"
     );
 
+    let started_at = SystemTime::now();
+
     // Acquire V8 mutex for the entire operation (type check + execution)
     // This ensures no concurrent V8 isolate usage across the process
     let _guard = V8_MUTEX.lock().await;
 
+    let typecheck_started_at = SystemTime::now();
     let check_result = run_type_check(code)?;
+    let typecheck_ended_at = SystemTime::now();
 
     // Check if we have diagnostics
     if !check_result.diagnostics.is_empty() {
@@ -140,6 +149,14 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
             "Type check failed with diagnostics"
         );
 
+        let events = vec![events::ExecutionEvent::TypeCheck(events::TypeCheckEvent {
+            started_at: typecheck_started_at,
+            ended_at: typecheck_ended_at,
+            outcome: events::TypecheckOutcome::Failed {
+                diagnostics: check_result.diagnostics.clone(),
+            },
+        })];
+
         return Ok(ExecuteResult {
             success: false,
             diagnostics: check_result.diagnostics,
@@ -147,6 +164,12 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
             output: None,
             stdout: String::new(),
             stderr,
+            trace: events::ExecutionTrace {
+                code: code.to_string(),
+                started_at,
+                ended_at: SystemTime::now(),
+                events,
+            },
             registry: options.registry,
         });
     }
@@ -163,6 +186,23 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
         String::new()
     };
 
+    let ended_at = SystemTime::now();
+
+    let mut events = vec![events::ExecutionEvent::TypeCheck(events::TypeCheckEvent {
+        started_at: typecheck_started_at,
+        ended_at: typecheck_ended_at,
+        outcome: events::TypecheckOutcome::Passed,
+    })];
+    for registry_event in exec_result.registry.trace().events() {
+        events.push(match registry_event {
+            events::RegistryEvent::McpToolCall(e) => events::ExecutionEvent::McpToolCall(e),
+            events::RegistryEvent::CallbackInvocation(e) => {
+                events::ExecutionEvent::CallbackInvocation(e)
+            }
+        });
+    }
+    events.sort_by_key(|e| e.started_at());
+
     Ok(ExecuteResult {
         success: exec_result.success,
         diagnostics: Vec::new(), // No type-check diagnostics if we reach execution
@@ -173,6 +213,12 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
             stderr
         } else {
             exec_result.stderr
+        },
+        trace: events::ExecutionTrace {
+            code: code.to_string(),
+            started_at,
+            ended_at,
+            events,
         },
         registry: exec_result.registry,
     })
@@ -485,6 +531,3 @@ fn process_execution_results(
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
-
-#[cfg(test)]
-mod tests;

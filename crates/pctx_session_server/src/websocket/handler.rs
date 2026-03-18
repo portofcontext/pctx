@@ -22,7 +22,7 @@ use futures::{
     SinkExt, StreamExt,
     stream::{SplitSink, SplitStream},
 };
-use pctx_code_mode::{model::ExecuteInput, registry::CallbackFn};
+use pctx_code_mode::{model::ExecuteTypescriptInput, registry::CallbackFn};
 use rmcp::{
     ErrorData,
     model::{ErrorCode, JsonRpcMessage, RequestId},
@@ -340,7 +340,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                 code_mode_session_id,
                 execution_id,
                 code_mode,
-                ExecuteInput {
+                ExecuteTypescriptInput {
                     code: params.code.clone(),
                 },
                 execution_res,

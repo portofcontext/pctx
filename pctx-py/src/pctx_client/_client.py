@@ -19,8 +19,9 @@ from pctx_client.descriptions import get_tool_description
 from pctx_client.exceptions import ConnectionError, SessionError
 from pctx_client.models import (
     ExecuteBashInput,
-    ExecuteInput,
-    ExecuteOutput,
+    ExecuteBashOutput,
+    ExecuteTypescriptInput,
+    ExecuteTypescriptOutput,
     GetFunctionDetailsInput,
     GetFunctionDetailsOutput,
     ListedFunction,
@@ -307,7 +308,7 @@ class Pctx:
         self,
         code: str,
         disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
-    ) -> ExecuteOutput:
+    ) -> ExecuteTypescriptOutput:
         """
         Execute TypeScript code that calls namespaced functions.
 
@@ -320,7 +321,7 @@ class Pctx:
                 namespace prefix (e.g., 'Weather.getCurrentWeather()').
 
         Returns:
-            ExecuteOutput: An object containing execution results with attributes:
+            ExecuteTypescriptOutput: An object containing execution results with attributes:
                 - result: The value returned from the run() function
                 - logs: Array of console.log() outputs
                 - markdown(): Method to format output as markdown
@@ -365,7 +366,7 @@ class Pctx:
         self,
         code: str,
         disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
-    ) -> ExecuteOutput:
+    ) -> ExecuteTypescriptOutput:
         """Deprecated alias for execute_typescript."""
         warnings.warn(
             "execute() is deprecated, use execute_typescript() instead",
@@ -374,7 +375,7 @@ class Pctx:
         )
         return await self.execute_typescript(code, disclosure=disclosure)
 
-    async def execute_bash(self, command: str) -> ExecuteOutput:
+    async def execute_bash(self, command: str) -> ExecuteBashOutput:
         """
         Execute a bash command in the virtual filesystem.
 
@@ -385,7 +386,7 @@ class Pctx:
             command: Bash command to execute (e.g., "ls /", "cat /README.md", "grep -r 'function' /")
 
         Returns:
-            ExecuteOutput with success status, stdout, stderr, and optional output
+            ExecuteBashOutput with exit code, stdout, and stderr
 
         Raises:
             SessionError: If not connected to a session
@@ -408,7 +409,7 @@ class Pctx:
             "/code-mode/execute-bash", json={"command": command}
         )
         response.raise_for_status()
-        return ExecuteOutput.model_validate(response.json())
+        return ExecuteBashOutput.model_validate(response.json())
 
     # ========== Registrations ==========
 
@@ -591,7 +592,7 @@ class Pctx:
             description: str = get_tool_description(
                 "execute_typescript", disclosure=disclosure, overrides=descriptions
             )
-            args_schema: type[BaseModel] = ExecuteInput
+            args_schema: type[BaseModel] = ExecuteTypescriptInput
 
             def _run(_self, code: str) -> str:
                 return run_async(

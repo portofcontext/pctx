@@ -4,11 +4,11 @@ use axum::{Json, extract::State, http::StatusCode};
 use pctx_code_mode::{
     CodeMode,
     model::{
-        CallbackConfig, ExecuteBashInput, ExecuteOutput, GetFunctionDetailsInput,
+        CallbackConfig, ExecuteBashInput, ExecuteBashOutput, GetFunctionDetailsInput,
         GetFunctionDetailsOutput, ListFunctionsOutput,
     },
 };
-use tracing::{error, info};
+use tracing::info;
 use uuid::Uuid;
 
 use crate::extractors::CodeModeSession;
@@ -330,7 +330,7 @@ pub(crate) async fn register_servers<B: PctxSessionBackend>(
     ),
     request_body = ExecuteBashInput,
     responses(
-        (status = 200, description = "Bash command executed successfully", body = ExecuteOutput),
+        (status = 200, description = "Bash command executed successfully", body = ExecuteBashOutput),
         (status = 404, description = "Session not found", body = ErrorData),
         (status = 500, description = "Internal server error", body = ErrorData)
     )
@@ -339,7 +339,7 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
     State(state): State<AppState<B>>,
     CodeModeSession(session_id): CodeModeSession,
     Json(request): Json<ExecuteBashInput>,
-) -> ApiResult<Json<ExecuteOutput>> {
+) -> ApiResult<Json<ExecuteBashOutput>> {
     info!(
         session_id =? session_id,
         command =? request.command,
@@ -360,12 +360,9 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
             },
         ))?;
 
-    let command = request.command.clone();
-    let execution_id = uuid::Uuid::new_v4();
-
     // Clone for the blocking task
     let code_mode_clone = code_mode.clone();
-    let command_clone = command.clone();
+    let bash_command = request.command.clone();
 
     // Execute bash command in blocking context
     let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
@@ -374,7 +371,7 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
             .build()
             .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
 
-        rt.block_on(code_mode_clone.execute_bash(&command_clone))
+        rt.block_on(code_mode_clone.execute_bash(&bash_command))
             .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
     })
     .await;
@@ -402,21 +399,6 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
             ));
         }
     };
-
-    // Post-execution hook
-    if let Err(e) = state
-        .backend
-        .post_execution(
-            session_id,
-            execution_id,
-            code_mode,
-            pctx_code_mode::model::ExecuteInput { code: command },
-            Ok(exec_output.clone()),
-        )
-        .await
-    {
-        error!("Failed to post_execution hook: {e}");
-    }
 
     Ok(Json(exec_output))
 }

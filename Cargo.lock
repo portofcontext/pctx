@@ -4336,6 +4336,7 @@ dependencies = [
  "deno_error",
  "pctx_config",
  "rmcp",
+ "serde",
  "serde_json",
  "thiserror 2.0.17",
  "tokio",

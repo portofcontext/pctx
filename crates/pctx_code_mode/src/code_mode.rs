@@ -12,8 +12,8 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     Error, Result,
     model::{
-        CallbackConfig, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
-        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
+        CallbackConfig, ExecuteBashOutput, ExecuteTypescriptOutput, FunctionDetails,
+        GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
     },
 };
 
@@ -480,7 +480,7 @@ impl CodeMode {
 
     /// Execute bash commands directly in the virtual filesystem
     #[instrument(skip(self), ret(Display), err)]
-    pub async fn execute_bash(&self, command: &str) -> Result<ExecuteOutput> {
+    pub async fn execute_bash(&self, command: &str) -> Result<ExecuteBashOutput> {
         debug!(command = %command, "Executing bash command");
 
         // Wrap bash command in async IIFE and export the result
@@ -509,7 +509,7 @@ export default result;"#,
 
         // Extract stdout and stderr from the bash result object
         // The output field contains the result object: { stdout, stderr, exitCode }
-        let (bash_stdout, bash_stderr, exit_code) = if execution_res.success {
+        let (stdout, stderr, exit_code) = if execution_res.success {
             if let Some(output_value) = &execution_res.output {
                 if let Some(result_obj) = output_value.as_object() {
                     let stdout = result_obj
@@ -538,23 +538,16 @@ export default result;"#,
             (String::new(), execution_res.stderr.clone(), 1)
         };
 
-        let success = execution_res.success && exit_code == 0;
-
-        if success {
+        if exit_code == 0 {
             debug!("Bash execution completed successfully");
         } else {
-            warn!(
-                "Bash execution failed with exit code {}: {}",
-                exit_code, bash_stderr
-            );
+            warn!("Bash execution failed with exit code {exit_code}: {stderr}");
         }
 
-        Ok(ExecuteOutput {
-            success,
-            stdout: bash_stdout,
-            stderr: bash_stderr,
-            output: None,
-            registry: Default::default(),
+        Ok(ExecuteBashOutput {
+            exit_code,
+            stdout,
+            stderr,
         })
     }
 
@@ -565,7 +558,7 @@ export default result;"#,
         code: &str,
         disclosure: ToolDisclosure,
         registry: Option<PctxRegistry>,
-    ) -> Result<ExecuteOutput> {
+    ) -> Result<ExecuteTypescriptOutput> {
         let registry: PctxRegistry = if let Some(r) = registry {
             r
         } else {
@@ -685,12 +678,13 @@ export default result;"#,
             warn!("TypeScript execution failed: {:?}", execution_res.stderr);
         }
 
-        Ok(ExecuteOutput {
+        Ok(ExecuteTypescriptOutput {
             success: execution_res.success,
             stdout: execution_res.stdout,
             stderr: execution_res.stderr,
             output: execution_res.output,
             registry: execution_res.registry,
+            trace: execution_res.trace,
         })
     }
 }

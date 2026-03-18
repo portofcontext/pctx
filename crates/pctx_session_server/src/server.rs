@@ -24,7 +24,7 @@ use crate::{
     routes, websocket,
 };
 use pctx_code_mode::model::{
-    CallbackConfig, ExecuteBashInput, ExecuteOutput, FunctionDetails, GetFunctionDetailsInput,
+    CallbackConfig, ExecuteBashInput, ExecuteBashOutput, FunctionDetails, GetFunctionDetailsInput,
     GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
 };
 
@@ -55,7 +55,7 @@ use pctx_code_mode::model::{
             FunctionDetails,
             // Execute bash
             ExecuteBashInput,
-            ExecuteOutput,
+            ExecuteBashOutput,
             // Tool registration
             RegisterToolsRequest,
             CallbackConfig,

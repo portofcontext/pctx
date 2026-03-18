@@ -1,5 +1,5 @@
 use axum::{Json, http::StatusCode, response::IntoResponse};
-use pctx_code_mode::{config, model::ExecuteOutput};
+use pctx_code_mode::{config, model::ExecuteTypescriptOutput};
 use serde::{Deserialize, Serialize};
 use tracing::{error, warn};
 use utoipa::ToSchema;
@@ -141,7 +141,7 @@ pub struct ExecuteTypescriptParams {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum PctxJsonRpcResponse {
-    ExecuteCode(ExecuteOutput),
+    ExecuteCode(ExecuteTypescriptOutput),
     ExecuteTool(ExecuteToolResult),
 }
 

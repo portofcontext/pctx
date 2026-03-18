@@ -34,14 +34,20 @@ impl McpConnectionPool {
     /// Uses double-checked locking so connections to different servers are
     /// established concurrently. If two tasks race to connect to the same
     /// server, one wins and the other's connection is immediately cancelled.
-    pub async fn get_or_connect(&self, cfg: &ServerConfig) -> Result<PooledClient, RegistryError> {
+    ///
+    /// The second element of the returned tuple is `true` when the connection
+    /// was served from the cache (no new transport was established).
+    pub async fn get_or_connect(
+        &self,
+        cfg: &ServerConfig,
+    ) -> Result<(PooledClient, bool), RegistryError> {
         // Fast path: return cached live connection under read lock.
         {
             let connections = self.connections.read().await;
             if let Some(client) = connections.get(&cfg.name) {
                 if !client.is_closed() {
                     debug!(server = %cfg.name, "Reusing cached upstream connection");
-                    return Ok(client.clone());
+                    return Ok((client.clone(), true));
                 }
                 debug!(server = %cfg.name, "Cached connection is closed, reconnecting");
             }
@@ -59,11 +65,11 @@ impl McpConnectionPool {
                 // Another task won the race — cancel ours (Drop will handle it)
                 // and return theirs.
                 debug!(server = %cfg.name, "Lost connection race, using existing");
-                return Ok(existing.clone());
+                return Ok((existing.clone(), true));
             }
         }
         connections.insert(cfg.name.clone(), new_client.clone());
-        Ok(new_client)
+        Ok((new_client, false))
     }
 
     /// Cancels and removes all active upstream connections.
