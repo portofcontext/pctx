@@ -41,11 +41,7 @@ pub trait PctxSessionBackend: Clone + Send + Sync + 'static {
     }
 
     /// Caches an MCP connection pool for a session.
-    async fn set_pool(
-        &self,
-        _session_id: Uuid,
-        _pool: Arc<McpConnectionPool>,
-    ) -> Result<()> {
+    async fn set_pool(&self, _session_id: Uuid, _pool: Arc<McpConnectionPool>) -> Result<()> {
         Ok(())
     }
 
