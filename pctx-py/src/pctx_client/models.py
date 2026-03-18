@@ -1,4 +1,5 @@
 import json
+import warnings
 from enum import Enum, IntEnum
 from typing import Any, Literal, TypedDict
 
@@ -133,7 +134,7 @@ class GetFunctionDetailsOutput(BaseModel):
     code: str
 
 
-class ExecuteInput(BaseModel):
+class ExecuteTypescriptInput(BaseModel):
     code: str
 
 
@@ -141,7 +142,7 @@ class ExecuteBashInput(BaseModel):
     command: str
 
 
-class ExecuteOutput(BaseModel):
+class ExecuteTypescriptOutput(BaseModel):
     """Output from executing TypeScript code"""
 
     success: bool
@@ -150,21 +151,30 @@ class ExecuteOutput(BaseModel):
     output: Any | None = None
 
     def markdown(self) -> str:
-        # For bash commands, output is None - just show stdout/stderr directly
-        if self.output is None:
-            if self.stderr:
-                return f"ERROR:\n{self.stderr}"
-            if self.stdout:
-                return self.stdout
-            return "Command executed successfully (no output)"
-
-        # For TypeScript execution, show everything including return value
         return f"""Code Executed Successfully: {self.success}
 
 # Return Value
 ```json
 {json.dumps(self.output)}
 ```
+
+# STDOUT
+{self.stdout}
+
+# STDERR
+{self.stderr}
+"""
+
+
+class ExecuteBashOutput(BaseModel):
+    """Output from executing bash command"""
+
+    exit_code: int
+    stdout: str
+    stderr: str
+
+    def markdown(self) -> str:
+        return f"""Exit Code: {self.exit_code}
 
 # STDOUT
 {self.stdout}
@@ -210,7 +220,7 @@ class ExecuteCodeRequest(JsonRpcBase):
 
 
 class ExecuteCodeResponse(JsonRpcBase):
-    result: ExecuteOutput
+    result: ExecuteTypescriptOutput
 
 
 class ExecuteToolParams(BaseModel):
@@ -230,3 +240,24 @@ class ExecuteToolResult(BaseModel):
 
 class ExecuteToolResponse(JsonRpcBase):
     result: ExecuteToolResult
+
+
+# -------------- Deprecation warnings & backwards compat classes --------------
+
+
+def __getattr__(name: str) -> object:
+    if name == "ExecuteInput":
+        warnings.warn(
+            "ExecuteInput is deprecated, use ExecuteTypescriptInput instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return ExecuteTypescriptInput
+    if name == "ExecuteOutput":
+        warnings.warn(
+            "ExecuteOutput is deprecated, use ExecuteTypescriptOutput instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return ExecuteTypescriptOutput
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

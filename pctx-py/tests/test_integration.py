@@ -635,8 +635,8 @@ async def test_execute_bash_virtual_filesystem():
         async with Pctx(tools=[add_numbers, greet]) as pctx:
             # Test 1: List files in SDK directory (cwd is /sdk/)
             output = await pctx.execute_bash("ls")
-            print(output)
-            assert output.success, "ls command should succeed"
+            print(output.markdown())
+            assert output.exit_code == 0, "ls command should succeed"
             assert "README.md" in output.stdout, "Should have README.md"
             assert "Tools" in output.stdout, "Should have Tools namespace folder"
             assert "bin" not in output.stdout, "Should NOT have system bin dir"
@@ -644,8 +644,8 @@ async def test_execute_bash_virtual_filesystem():
 
             # Test 2: Read the README
             output = await pctx.execute_bash("cat README.md")
-            print(output.stdout)
-            assert output.success, "cat command should succeed"
+            print(output.markdown())
+            assert output.exit_code == 0, "cat command should succeed"
             assert "TypeScript SDK" in output.stdout, "README should have header"
             assert "## Tools" in output.stdout, "README should list Tools namespace"
             assert "addNumbers" in output.stdout, (
@@ -655,14 +655,14 @@ async def test_execute_bash_virtual_filesystem():
 
             # Test 3: Grep for specific content
             output = await pctx.execute_bash("grep 'add two numbers' README.md")
-            assert output.success, "grep command should succeed"
+            assert output.exit_code == 0, "grep command should succeed"
             assert "add two numbers" in output.stdout, (
                 "Should find the addNumbers description"
             )
 
             # Test 4: List files in Tools namespace directory
             output = await pctx.execute_bash("ls Tools/")
-            assert output.success, "Should list Tools namespace directory"
+            assert output.exit_code == 0, "Should list Tools namespace directory"
             assert "addNumbers.d.ts" in output.stdout, (
                 "Should have addNumbers.d.ts file"
             )
@@ -670,7 +670,7 @@ async def test_execute_bash_virtual_filesystem():
 
             # Test 5: Read individual function TypeScript definition file
             output = await pctx.execute_bash("cat Tools/addNumbers.d.ts")
-            assert output.success, "Should read TypeScript definitions"
+            assert output.exit_code == 0, "Should read TypeScript definitions"
             assert "function addNumbers" in output.stdout, (
                 "Should have addNumbers function signature"
             )
@@ -680,12 +680,12 @@ async def test_execute_bash_virtual_filesystem():
 
             # Test 6: Test command that should fail
             output = await pctx.execute_bash("cat nonexistent.txt")
-            assert not output.success, "Should fail for nonexistent file"
+            assert not output.exit_code == 0, "Should fail for nonexistent file"
             assert len(output.stderr) > 0, "Should have error message in stderr"
 
             # Test 7: Complex pipe command to find function files
             output = await pctx.execute_bash("ls Tools/ | grep '.d.ts'")
-            assert output.success, "Pipe command should succeed"
+            assert output.exit_code == 0, "Pipe command should succeed"
             assert "addNumbers.d.ts" in output.stdout, "Should find .d.ts files"
             assert "greet.d.ts" in output.stdout, "Should find .d.ts files"
 
@@ -711,12 +711,12 @@ async def test_bash_then_typescript_workflow():
         async with Pctx(tools=[multiply]) as pctx:
             # Step 1: Use bash to discover available functions (cwd is /sdk/)
             output = await pctx.execute_bash("cat README.md")
-            assert output.success, "Should read README"
+            assert output.exit_code == 0, "Should read README"
             assert "multiply" in output.stdout, "Should find multiply function"
 
             # Step 2: Read the individual function TypeScript definition to understand the signature
             output = await pctx.execute_bash("cat Tools/multiply.d.ts")
-            assert output.success, "Should read TypeScript definitions"
+            assert output.exit_code == 0, "Should read TypeScript definitions"
             assert "function multiply" in output.stdout, (
                 "Should have multiply signature"
             )

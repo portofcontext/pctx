@@ -21,7 +21,7 @@ from pctx_client.models import (
     ExecuteCodeParams,
     ExecuteCodeRequest,
     ExecuteCodeResponse,
-    ExecuteOutput,
+    ExecuteTypescriptOutput,
     ExecuteToolRequest,
     ExecuteToolResponse,
     ExecuteToolResult,
@@ -112,7 +112,7 @@ class WebSocketClient:
         code: str,
         disclosure: ToolDisclosure = ToolDisclosure.CATALOG,
         timeout: float = 30.0,
-    ) -> ExecuteOutput:
+    ) -> ExecuteTypescriptOutput:
         """
         Execute code via WebSocket instead of REST.
 
@@ -122,7 +122,7 @@ class WebSocketClient:
             timeout: Timeout in seconds (default 30)
 
         Returns:
-            ExecuteOutput with success, stdout, stderr, and output
+            ExecuteTypescriptOutput with success, stdout, stderr, and output
 
         Raises:
             TimeoutError: If execution times out
@@ -150,7 +150,7 @@ class WebSocketClient:
 
             # Wait for response with timeout
             result = await asyncio.wait_for(future, timeout=timeout)
-            return ExecuteOutput.model_validate(result)
+            return ExecuteTypescriptOutput.model_validate(result)
         except asyncio.TimeoutError:
             self._pending_executions.pop(request_id, None)
             raise TimeoutError(f"Code execution timed out after {timeout}s")
