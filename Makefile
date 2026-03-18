@@ -17,9 +17,11 @@ help:
 	@echo "  make build-python            - Build Python package (resolves symlinks before build)"
 	@echo ""
 
-# Generate CLI and Python documentation
+# Generate CLI, OAS, and Python documentation
 docs:
 	@./scripts/generate-cli-docs.sh
+	@echo ""
+	@./scripts/generate-openapi.sh
 	@echo ""
 	@echo "Building Python Sphinx documentation..."
 	@cd pctx-py && uv run sphinx-build -b html docs docs/_build/html

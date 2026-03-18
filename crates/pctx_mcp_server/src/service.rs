@@ -7,7 +7,7 @@ use pctx_code_mode::{
     CodeMode,
     config::{Config, ToolDisclosure},
     descriptions,
-    model::{ExecuteBashInput, ExecuteInput, GetFunctionDetailsInput},
+    model::{ExecuteBashInput, ExecuteTypescriptInput, GetFunctionDetailsInput},
     registry::{McpConnectionPool, PctxRegistry, RegistryAction},
 };
 use rmcp::{
@@ -211,7 +211,7 @@ impl PctxMcpService {
         })?;
 
         Ok(CallToolResult::success(vec![Content::text(
-            execution_output.markdown(),
+            execution_output.to_string(),
         )]))
     }
 
@@ -219,7 +219,7 @@ impl PctxMcpService {
     async fn execute_typescript(
         &self,
         ctx: RequestContext<RoleServer>,
-        Parameters(input): Parameters<ExecuteInput>,
+        Parameters(input): Parameters<ExecuteTypescriptInput>,
     ) -> McpResult<CallToolResult> {
         self.handle_execute_typescript(input, self.get_session_id(ctx))
             .await
@@ -286,7 +286,7 @@ impl PctxMcpService {
 
     async fn handle_execute_typescript(
         &self,
-        input: ExecuteInput,
+        input: ExecuteTypescriptInput,
         session_id: Option<String>,
     ) -> McpResult<CallToolResult> {
         // Capture current tracing context to propagate to spawned thread
