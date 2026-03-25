@@ -1,9 +1,10 @@
 import json
 import warnings
+from datetime import datetime, timedelta, timezone
 from enum import Enum, IntEnum
-from typing import Any, Literal, TypedDict
+from typing import Annotated, Any, Literal, TypedDict
 
-from pydantic import BaseModel
+from pydantic import BaseModel, BeforeValidator, Field
 from typing_extensions import NotRequired
 
 from pctx_client._utils import HAS_SEARCH
@@ -142,6 +143,118 @@ class ExecuteBashInput(BaseModel):
     command: str
 
 
+class _SystemTime(BaseModel):
+    secs_since_epoch: int
+    nanos_since_epoch: int
+
+
+def _parse_system_time(value: Any) -> datetime:
+    if isinstance(value, dict):
+        st = _SystemTime.model_validate(value)
+        return datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(
+            seconds=st.secs_since_epoch,
+            microseconds=st.nanos_since_epoch // 1000,
+        )
+    return value
+
+
+# Rust SystemTime deserializes to a UTC datetime (microsecond precision; sub-µs nanoseconds truncated)
+SystemTime = Annotated[datetime, BeforeValidator(_parse_system_time)]
+
+
+class Diagnostic(BaseModel):
+    """A single TypeScript type-checking diagnostic"""
+
+    message: str
+    line: int | None = None
+    column: int | None = None
+    severity: str
+    code: int | None = None
+
+
+class TypecheckOutcomePassed(BaseModel):
+    type: Literal["passed"]
+
+    def is_success(self) -> bool:
+        return True
+
+
+class TypecheckOutcomeFailed(BaseModel):
+    type: Literal["failed"]
+    diagnostics: list[Diagnostic]
+
+    def is_success(self) -> bool:
+        return False
+
+
+TypecheckOutcome = Annotated[
+    TypecheckOutcomePassed | TypecheckOutcomeFailed,
+    Field(discriminator="type"),
+]
+
+
+class TypeCheckEvent(BaseModel):
+    type: Literal["type_check"]
+    started_at: SystemTime
+    ended_at: SystemTime
+    outcome: TypecheckOutcome
+
+
+class EventOutcomeSuccess(BaseModel):
+    type: Literal["success"]
+    output: Any | None = None
+
+    def is_success(self) -> bool:
+        return True
+
+
+class EventOutcomeError(BaseModel):
+    type: Literal["error"]
+    message: str
+
+    def is_success(self) -> bool:
+        return False
+
+
+EventOutcome = Annotated[
+    EventOutcomeSuccess | EventOutcomeError,
+    Field(discriminator="type"),
+]
+
+
+class McpToolCallEvent(BaseModel):
+    type: Literal["mcp_tool_call"]
+    server: str
+    tool: str
+    cached_client: bool
+    args: Any | None = None
+    outcome: EventOutcome
+    started_at: SystemTime
+    ended_at: SystemTime
+
+
+class CallbackInvocationEvent(BaseModel):
+    type: Literal["callback_invocation"]
+    id: str
+    args: Any | None = None
+    outcome: EventOutcome
+    started_at: SystemTime
+    ended_at: SystemTime
+
+
+ExecutionEvent = Annotated[
+    TypeCheckEvent | McpToolCallEvent | CallbackInvocationEvent,
+    Field(discriminator="type"),
+]
+
+
+class ExecutionTrace(BaseModel):
+    code: str
+    started_at: SystemTime
+    ended_at: SystemTime
+    events: list[ExecutionEvent]
+
+
 class ExecuteTypescriptOutput(BaseModel):
     """Output from executing TypeScript code"""
 
@@ -149,6 +262,7 @@ class ExecuteTypescriptOutput(BaseModel):
     stdout: str
     stderr: str
     output: Any | None = None
+    trace: ExecutionTrace
 
     def markdown(self) -> str:
         return f"""Code Executed Successfully: {self.success}
