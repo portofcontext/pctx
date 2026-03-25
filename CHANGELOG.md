@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.7.0] - 2026-03-25
+
+### Added
+
 - Upstream MCP connection pooling: PCTX now maintains persistent connections to upstream MCP servers across `execute_typescript` calls, so stateful upstream servers (e.g. LSP servers, database connections) see a continuous session rather than disconnected requests.
 - `pctx mcp start --stateful-http`: HTTP mode now supports stateful upstream sessions scoped to the MCP session ID. The connection pool is created on the first request and reused for the lifetime of the HTTP session, then torn down when the client sends a `DELETE`.
 - `pctx mcp start --stdio`: When running as a stdio MCP server (e.g. in Claude Desktop), a single global session is used for the entire process lifetime — upstream MCP servers connect once and stay connected until `pctx` exits.
@@ -18,7 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
-
 ## [v0.6.0] - 2026-03-13
 
 ### Added
