@@ -5,6 +5,32 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.0 (2026-03-25)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 6 commits contributed to the release over the course of 8 calendar days.
+ - 12 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Manual version bumps ([`594b9eb`](https://github.com/portofcontext/pctx/commit/594b9ebb2934fe61d81c9c168d3d2a874529a4c9))
+    - Merge pull request #66 from portofcontext/registry-audit-log ([`267473b`](https://github.com/portofcontext/pctx/commit/267473bc7615b438ae13c1ecd61b4be5dfacc231))
+    - Merge pull request #65 from portofcontext/62-question-intended-approach-for-stateful-upstream-mcp-tools-eg-lsp-mcp-start_lsp---open_document ([`0f2ded4`](https://github.com/portofcontext/pctx/commit/0f2ded4e8b5bef930ad2b84bf6a399c2b74aa095))
+    - Execution event trace ([`52efa39`](https://github.com/portofcontext/pctx/commit/52efa391590fb5945b2654cf992147b43b95b6e7))
+    - Decouple execute bash/typescript types ([`56bae2d`](https://github.com/portofcontext/pctx/commit/56bae2d7259aca1b6cdda15be0d64690a03153a5))
+    - Unified mcp (http) connection pool caching ([`2636de8`](https://github.com/portofcontext/pctx/commit/2636de8d77dcd8a5a364aa706120f358f5cddaa3))
+</details>
+
 ## 0.3.0 (2026-03-13)
 
 <csr-id-11828b1c1187c55d5f13f43dbe198bda59ee6ae9/>
@@ -21,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 24 commits contributed to the release.
+ - 25 commits contributed to the release.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -32,6 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_code_mode v0.3.0 ([`f62beb9`](https://github.com/portofcontext/pctx/commit/f62beb9a36f7644d19e96763bafba64ea53ff7ec))
     - Move unified descriptions dir to pctx_code_mode ([`2df909b`](https://github.com/portofcontext/pctx/commit/2df909b6c2f2401916ee49cc6ab9b1fae8c1d18c))
     - Release pctx_code_mode v0.3.0 ([`2257f3d`](https://github.com/portofcontext/pctx/commit/2257f3d7344a887da876fecc3a99499e4d12c634))
     - Specify pctx_registry version ([`7d9e8c2`](https://github.com/portofcontext/pctx/commit/7d9e8c2672d81af4b19ed9a9ec230f79ed4585a3))

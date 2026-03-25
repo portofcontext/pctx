@@ -4206,7 +4206,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_code_mode"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow",
  "futures",
@@ -4282,7 +4282,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_executor"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "deno_core",
  "deno_resolver",
@@ -4331,7 +4331,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_registry"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "deno_error",
  "pctx_config",
