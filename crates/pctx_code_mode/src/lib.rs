@@ -34,7 +34,7 @@
 //!     code_mode.add_callback(&callback)?;
 //!
 //!     // 3. Register callback functions that execute when tools are called
-//!     let registry = PctxRegistry::default();
+//!     let registry = code_mode.default_registry()?;
 //!     registry.add_callback(&callback.id(), Arc::new(|args: Option<serde_json::Value>| {
 //!         Box::pin(async move {
 //!             let name = args.as_ref()
