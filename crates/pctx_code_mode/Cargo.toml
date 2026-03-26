@@ -12,7 +12,7 @@ categories = ["development-tools", "api-bindings"]
 
 [dependencies]
 # local
-pctx_config = { version = "^0.1.4", path = "../pctx_config" }
+pctx_config = { version = "^0.1.5", path = "../pctx_config" }
 pctx_codegen = { version = "^0.3.0", path = "../pctx_codegen" }
 pctx_executor = { version = "^0.2.1", path = "../pctx_executor" }
 pctx_registry = { version = "^0.1.1", path = "../pctx_registry" }

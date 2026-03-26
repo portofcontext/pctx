@@ -5,13 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.1.5 (2026-03-26)
+
+### Bug Fixes
+
+ - <csr-id-4eca9c76b4b486445988991191fbf5b5e3d3395c/> use builder API for StreamableHttpClientTransportConfig
+   rmcp 1.3.0 added #[non_exhaustive] to StreamableHttpClientTransportConfig,
+   breaking struct literal construction from external crates. Switch to the
+   ::with_uri() builder which is semantically identical and compatible with
+   both current and future rmcp versions.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 13 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #68 from wpfleger96/fix/rmcp-non-exhaustive-compat ([`4330173`](https://github.com/portofcontext/pctx/commit/433017333e9f6c61ac14795d1bd998a545873a5e))
+    - Use builder API for StreamableHttpClientTransportConfig ([`4eca9c7`](https://github.com/portofcontext/pctx/commit/4eca9c76b4b486445988991191fbf5b5e3d3395c))
+</details>
+
 ## 0.1.4 (2026-03-13)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 7 commits contributed to the release.
+ - 8 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.0, pctx_config v0.1.4, pctx_registry v0.1.0, pctx_code_execution_runtime v0.2.0, pctx_type_check_runtime v0.1.3, pctx_executor v0.2.0, pctx_code_mode v0.3.0 ([`f80514b`](https://github.com/portofcontext/pctx/commit/f80514b0057cbba2015fc059e08e98b9252eacbf))
     - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
     - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
     - Merge branch 'main' into ts-sidecar ([`55e15a9`](https://github.com/portofcontext/pctx/commit/55e15a955036b2bec8cdd968775f62785ac35611))

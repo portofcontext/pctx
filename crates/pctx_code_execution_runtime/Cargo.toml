@@ -14,7 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 pctx_registry = { version = "^0.1.0", path = "../pctx_registry" }
-pctx_config = { version = "^0.1.4", path = "../pctx_config" }
+pctx_config = { version = "^0.1.5", path = "../pctx_config" }
 deno_core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -27,7 +27,7 @@ tracing = { workspace = true }
 tokio = { workspace = true, features = ["time"] }
 
 [build-dependencies]
-pctx_config = { version = "^0.1.4", path = "../pctx_config" }
+pctx_config = { version = "^0.1.5", path = "../pctx_config" }
 deno_core = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }

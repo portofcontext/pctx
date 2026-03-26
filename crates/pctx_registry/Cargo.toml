@@ -10,7 +10,7 @@ keywords = ["mcp", "registry", "pctx"]
 categories = ["development-tools"]
 
 [dependencies]
-pctx_config = { version = "^0.1.4", path = "../pctx_config" }
+pctx_config = { version = "^0.1.5", path = "../pctx_config" }
 serde_json = { workspace = true }
 tracing = { workspace = true }
 thiserror = { workspace = true }
