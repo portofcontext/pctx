@@ -169,10 +169,7 @@ impl ServerConfig {
 
                 let transport = StreamableHttpClientTransport::with_client(
                     reqwest_client,
-                    StreamableHttpClientTransportConfig {
-                        uri: http_cfg.url.as_str().into(),
-                        ..Default::default()
-                    },
+                    StreamableHttpClientTransportConfig::with_uri(http_cfg.url.as_str()),
                 );
                 match init_request.serve(transport).await {
                     Ok(c) => Ok(c),
