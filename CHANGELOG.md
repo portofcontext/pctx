@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.7.1] - 2026-03-27
+
+### Added
+
+- Optional session server metadata system
+
+### Changed
+
+### Fixed
 ## [v0.7.0] - 2026-03-25
 
 ### Added
