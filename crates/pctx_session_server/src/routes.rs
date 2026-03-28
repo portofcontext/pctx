@@ -61,7 +61,10 @@ pub(crate) async fn create_session<B: PctxSessionBackend>(
         .await
         .context("Failed inserting code mode session into backend")?;
 
-    state.metadata.on_session_created(session_id).await;
+    state
+        .metadata
+        .on_session_created(session_id, &state.env)
+        .await;
 
     info!(
         session_id =? session_id,
@@ -108,7 +111,10 @@ pub(crate) async fn close_session<B: PctxSessionBackend>(
         ));
     }
 
-    state.metadata.on_session_closed(session_id).await;
+    state
+        .metadata
+        .on_session_closed(session_id, &state.env)
+        .await;
 
     info!(session_id =? session_id, "Closed CodeMode session");
 

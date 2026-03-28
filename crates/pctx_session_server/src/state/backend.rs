@@ -104,10 +104,10 @@ impl PctxSessionBackend for LocalBackend {
 
     async fn delete(&self, session_id: Uuid) -> Result<bool> {
         let deleted = self.sessions.write().await.remove(&session_id);
-        if deleted.is_some() {
-            if let Some(pool) = self.pools.write().await.remove(&session_id) {
-                pool.cancel_all().await;
-            }
+        if deleted.is_some()
+            && let Some(pool) = self.pools.write().await.remove(&session_id)
+        {
+            pool.cancel_all().await;
         }
         Ok(deleted.is_some())
     }

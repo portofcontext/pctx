@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use crate::{
     LocalBackend,
@@ -15,6 +15,10 @@ pub struct AppState<B: PctxSessionBackend> {
     pub ws_manager: Arc<WsManager>,
     pub backend: Arc<B>,
     pub metadata: Arc<dyn SessionMetadata>,
+    /// Snapshot of the process environment at server startup, passed opaquely
+    /// to [`SessionMetadata`] hooks. Implementations read whatever keys they
+    /// need; the `pctx` binary has no opinion on their contents.
+    pub env: Arc<HashMap<String, String>>,
 }
 
 impl<B: PctxSessionBackend> AppState<B> {
@@ -23,6 +27,7 @@ impl<B: PctxSessionBackend> AppState<B> {
             ws_manager: Arc::default(),
             backend: Arc::new(backend),
             metadata: Arc::new(NoopMetadata),
+            env: Arc::new(std::env::vars().collect()),
         }
     }
 

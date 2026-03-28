@@ -210,18 +210,15 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
         .default_registry()
         .map_err(|e| format!("Failed to build registry: {e}"))?;
 
-    let registry = match state.backend.get_pool(code_mode_session_id).await {
-        Ok(Some(pool)) => {
-            debug!(session_id =? code_mode_session_id, "MCP pool cache hit");
-            registry.with_pool(pool)
+    let registry = if let Ok(Some(pool)) = state.backend.get_pool(code_mode_session_id).await {
+        debug!(session_id =? code_mode_session_id, "MCP pool cache hit");
+        registry.with_pool(pool)
+    } else {
+        debug!(session_id =? code_mode_session_id, "MCP pool cache miss, prewarming...");
+        if let Err(e) = registry.prewarm_pool().await {
+            warn!("Failed to prewarm MCP connection pool: {e}");
         }
-        _ => {
-            debug!(session_id =? code_mode_session_id, "MCP pool cache miss, prewarming...");
-            if let Err(e) = registry.prewarm_pool().await {
-                warn!("Failed to prewarm MCP connection pool: {e}");
-            }
-            registry
-        }
+        registry
     };
 
     // Add callbacks to the registry

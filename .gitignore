@@ -31,3 +31,5 @@ uv.lock
 pctx-py/docs/_build/
 pctx-py/docs/_static/
 pctx-py/docs/_templates/
+
+target/
