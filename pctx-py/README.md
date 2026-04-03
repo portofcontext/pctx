@@ -554,6 +554,11 @@ p = Pctx(tools=[custom_function], servers=servers)
 pip install pctx-client[langchain]
 ```
 
+- `claude_agent_sdk`: Export pctx's CodeMode tools as [Claude Agent SDK tools](https://platform.claude.com/docs/en/agent-sdk/python#tool)
+```bash
+pip install pctx-client[claude]
+```
+
 - `crewai`: Export pctx's Code Mode tools as [CrewAI tools](https://docs.crewai.com/en/concepts/tools)
 
 ```bash
