@@ -6,7 +6,7 @@ Main client for executing code with both MCP tools and local Python tools.
 
 import asyncio
 import warnings
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from httpx import AsyncClient
@@ -37,6 +37,7 @@ if TYPE_CHECKING:
     try:
         from agents import FunctionTool
         from bm25s import BM25
+        from claude_agent_sdk import SdkMcpTool as ClaudeSdkMcpTool
         from crewai.tools import BaseTool as CrewAiBaseTool
         from langchain_core.tools import BaseTool as LangchainBaseTool
         from pydantic_ai.tools import Tool as PydanticAITool
@@ -822,6 +823,92 @@ class Pctx:
                     "get_function_details", overrides=descriptions
                 ),
             ),
+        ]
+
+        # filter according to disclosure
+        return [t for t in all_tools if disclosure.contains_tool(t.name)]
+
+
+    def claude_agent_sdk_tools(
+        self,
+        disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
+        descriptions: dict[ToolName, str] | None = None,
+    ) -> "list[ClaudeSdkMcpTool]":
+        """
+        Expose PCTX tools as Claude Agent SDK tools
+
+        Args:
+            disclosure: Controls which tools are exposed and how function context is
+                provided to the model. CATALOG (default) exposes list_functions,
+                get_function_details, and execute_typescript — the agent discovers
+                and retrieves function signatures before executing. FS exposes
+                execute_bash and execute_typescript — the agent browses the virtual
+                filesystem directly.
+            descriptions: Optional custom descriptions to override defaults.
+
+        Requires the 'claude' extra to be installed:
+            pip install pctx[claude]
+
+        Raises:
+            ImportError: If claude is not installed.
+
+        Examples:
+            >>> tools = pctx.claude_agent_sdk_tools()  # default: catalog
+            >>> tools = pctx.claude_agent_sdk_tools(disclosure="filesystem")
+            >>> tools = pctx.claude_agent_sdk_tools(descriptions={"execute_typescript": "Custom"})
+        """
+        disclosure = ToolDisclosure(disclosure)
+        try:
+            from claude_agent_sdk import tool as claude_tool
+        except ImportError as e:
+            raise ImportError(
+                "Claude Agent SDK is not installed. Install it with: pip install pctx[claude]"
+            ) from e
+        
+        def _text_content_block(val: str) -> dict:
+            return {"content": [{"type": "text", "text": val}]}
+
+        # build all tools
+        @claude_tool("execute_bash", get_tool_description("execute_bash", overrides=descriptions), ExecuteBashInput.model_json_schema())
+        async def execute_bash(args: dict[str, Any]) -> str:
+            tool_input = ExecuteBashInput(**args)
+            bash_out = await self.execute_bash(tool_input.command)
+            return _text_content_block(bash_out.markdown())
+
+        @claude_tool("execute_typescript", get_tool_description("execute_typescript", disclosure=disclosure, overrides=descriptions), ExecuteTypescriptInput.model_json_schema())
+        async def execute_typescript(args: dict[str, Any]) -> str:
+            tool_input = ExecuteTypescriptInput(**args)
+            exec_out = await self.execute_typescript(tool_input.code, disclosure=disclosure)
+            return _text_content_block(exec_out.markdown())
+
+        @claude_tool("list_functions", get_tool_description("list_functions", overrides=descriptions), {"type": "object"})
+        async def list_functions(_args: dict[str, Any]) -> str:
+            listed = await self.list_functions()
+            return _text_content_block(listed.code)
+        
+        @claude_tool("get_function_details", get_tool_description("get_function_details", overrides=descriptions), GetFunctionDetailsInput.model_json_schema())
+        async def get_function_details(args: dict[str, Any]) -> str:
+            tool_input = GetFunctionDetailsInput(**args)
+            details = await self.get_function_details(tool_input.functions)
+            return _text_content_block(details.code)
+        
+        class SearchFunctionsInput(BaseModel):
+            query: str
+            k: int = 10
+        
+        @claude_tool("search_functions", get_tool_description("search_functions", overrides=descriptions), SearchFunctionsInput.model_json_schema())
+        async def search_functions(args: dict[str, Any]) -> str:
+            print(f"Claude fn called search_functions: {args}")
+            tool_input = SearchFunctionsInput(**args)
+            functions = await self.search_functions(tool_input.query, tool_input.k)
+            return _text_content_block(self._search_functions_result_to_string(functions))
+
+        all_tools = [
+            execute_bash,
+            execute_typescript,
+            list_functions,
+            search_functions,
+            get_function_details,
         ]
 
         # filter according to disclosure
