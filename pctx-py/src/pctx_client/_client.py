@@ -828,7 +828,6 @@ class Pctx:
         # filter according to disclosure
         return [t for t in all_tools if disclosure.contains_tool(t.name)]
 
-
     def claude_agent_sdk_tools(
         self,
         disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
@@ -864,44 +863,70 @@ class Pctx:
             raise ImportError(
                 "Claude Agent SDK is not installed. Install it with: pip install pctx[claude]"
             ) from e
-        
+
         def _text_content_block(val: str) -> dict:
             return {"content": [{"type": "text", "text": val}]}
 
         # build all tools
-        @claude_tool("execute_bash", get_tool_description("execute_bash", overrides=descriptions), ExecuteBashInput.model_json_schema())
+        @claude_tool(
+            "execute_bash",
+            get_tool_description("execute_bash", overrides=descriptions),
+            ExecuteBashInput.model_json_schema(),
+        )
         async def execute_bash(args: dict[str, Any]) -> str:
             tool_input = ExecuteBashInput(**args)
             bash_out = await self.execute_bash(tool_input.command)
             return _text_content_block(bash_out.markdown())
 
-        @claude_tool("execute_typescript", get_tool_description("execute_typescript", disclosure=disclosure, overrides=descriptions), ExecuteTypescriptInput.model_json_schema())
+        @claude_tool(
+            "execute_typescript",
+            get_tool_description(
+                "execute_typescript", disclosure=disclosure, overrides=descriptions
+            ),
+            ExecuteTypescriptInput.model_json_schema(),
+        )
         async def execute_typescript(args: dict[str, Any]) -> str:
             tool_input = ExecuteTypescriptInput(**args)
-            exec_out = await self.execute_typescript(tool_input.code, disclosure=disclosure)
+            exec_out = await self.execute_typescript(
+                tool_input.code, disclosure=disclosure
+            )
             return _text_content_block(exec_out.markdown())
 
-        @claude_tool("list_functions", get_tool_description("list_functions", overrides=descriptions), {"type": "object"})
+        @claude_tool(
+            "list_functions",
+            get_tool_description("list_functions", overrides=descriptions),
+            {"type": "object"},
+        )
         async def list_functions(_args: dict[str, Any]) -> str:
             listed = await self.list_functions()
             return _text_content_block(listed.code)
-        
-        @claude_tool("get_function_details", get_tool_description("get_function_details", overrides=descriptions), GetFunctionDetailsInput.model_json_schema())
+
+        @claude_tool(
+            "get_function_details",
+            get_tool_description("get_function_details", overrides=descriptions),
+            GetFunctionDetailsInput.model_json_schema(),
+        )
         async def get_function_details(args: dict[str, Any]) -> str:
             tool_input = GetFunctionDetailsInput(**args)
             details = await self.get_function_details(tool_input.functions)
             return _text_content_block(details.code)
-        
+
         class SearchFunctionsInput(BaseModel):
             query: str
             k: int = 10
-        
-        @claude_tool("search_functions", get_tool_description("search_functions", overrides=descriptions), SearchFunctionsInput.model_json_schema())
+
+        @claude_tool(
+            "search_functions",
+            get_tool_description("search_functions", overrides=descriptions),
+            SearchFunctionsInput.model_json_schema(),
+        )
         async def search_functions(args: dict[str, Any]) -> str:
             print(f"Claude fn called search_functions: {args}")
             tool_input = SearchFunctionsInput(**args)
             functions = await self.search_functions(tool_input.query, tool_input.k)
-            return _text_content_block(self._search_functions_result_to_string(functions))
+            return _text_content_block(
+                self._search_functions_result_to_string(functions)
+            )
 
         all_tools = [
             execute_bash,

@@ -27,12 +27,11 @@ async def run_agent():
             prompt="You are a helpful assistant, use tools when you need to access real-time information, you must use the tools mcp not websearch. What is the weather & time in SF?",
             options=ClaudeAgentOptions(
                 mcp_servers={"tools": mcp},
-                allowed_tools=[f"mcp__tools__{t.name}" for t in claude_tools]
+                allowed_tools=[f"mcp__tools__{t.name}" for t in claude_tools],
             ),
         ):
             print(message)
 
 
 if __name__ == "__main__":
-
     asyncio.run(run_agent())
