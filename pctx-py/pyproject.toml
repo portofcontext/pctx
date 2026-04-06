@@ -34,25 +34,20 @@ requires = ["uv_build>=0.9.13,<0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
+docs = [
+    "sphinx",
+    "sphinx-autobuild",
+    "sphinx-rtd-theme",
+    "myst_parser",
+    "tomli",
+]
 dev = [
     "ruff>=0.14.7",
     "pytest>=8.0.0",
     "pytest-asyncio>=0.24.0",
     "ipython>=8.26",
     "litellm>=1.80.8",
-    # Test dependencies for tool converters
-    "langchain>=1.1.2",
     "langchain-openai>=0.3.0",
-    "crewai>=1.6.1",
-    "openai-agents>=0.12.0",
-    "pydantic-ai>=1.60.0",
-    "claude-agent-sdk>=0.1.55",
-    "bm25s[stem]>=0.2.12",
-    "sphinx",
-    "sphinx-autobuild",
-    "sphinx-rtd-theme",
-    "myst_parser",
-    "tomli",
     "mcp>=1.25.0",
 ]
 

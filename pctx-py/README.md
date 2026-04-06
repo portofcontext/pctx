@@ -578,3 +578,25 @@ pip install pctx-client[pydantic-ai]
 ```
 
 **pctx can easily be integrated into any agent framework by wrapping the 3 Code Mode tools available on the `Pctx` class with the frameworks tools, see [`Pctx().langchain_tools()`](./src/pctx_client/_client.py) for the langchain implementation**
+
+## Local Development
+
+### Install from source
+
+```bash
+git clone https://github.com/portofcontext/pctx
+cd pctx/pctx-py
+uv sync --group dev --all-extras
+```
+
+### Run tests
+
+```bash
+uv run pytest
+```
+
+Integration tests require a running pctx server and are skipped by default. To include them:
+
+```bash
+uv run pytest --integration
+```

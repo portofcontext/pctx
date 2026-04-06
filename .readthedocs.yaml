@@ -9,14 +9,9 @@ build:
     python: "3.10"
   jobs:
     post_create_environment:
-      # Install poetry
-      # https://python-poetry.org/docs/#installing-manually
-      - pip install poetry
+      - pip install uv
     post_install:
-      # Install dependencies with 'docs' dependency group
-      # https://python-poetry.org/docs/managing-dependencies/#dependency-groups
-      # VIRTUAL_ENV needs to be set manually for now, see #11150
-      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH poetry install --directory=pctx-py
+      - VIRTUAL_ENV=$READTHEDOCS_VIRTUALENV_PATH uv sync --directory pctx-py --group docs
 
 sphinx:
   configuration: pctx-py/docs/conf.py
