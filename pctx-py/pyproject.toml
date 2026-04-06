@@ -21,6 +21,7 @@ crewai = ["crewai>=1.6.1"]
 openai = ["openai-agents>=0.12.0"]
 pydantic-ai = ["pydantic-ai>=1.60.0"]
 bm25s = ["bm25s[stem]>=0.2.12"]
+claude = ["claude-agent-sdk>=0.1.55"]
 
 [project.urls]
 "Homepage" = "https://github.com/portofcontext/pctx"
@@ -45,6 +46,7 @@ dev = [
     "crewai>=1.6.1",
     "openai-agents>=0.12.0",
     "pydantic-ai>=1.60.0",
+    "claude-agent-sdk>=0.1.55",
     "bm25s[stem]>=0.2.12",
     "sphinx",
     "sphinx-autobuild",

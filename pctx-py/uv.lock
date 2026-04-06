@@ -732,6 +732,24 @@ wheels = [
 ]
 
 [[package]]
+name = "claude-agent-sdk"
+version = "0.1.55"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "anyio" },
+    { name = "mcp" },
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/fe/3c/ed4b3918071c24bf249608cf0b0da451cbcd8e1b96ab1f95cd2d27f0cecc/claude_agent_sdk-0.1.55.tar.gz", hash = "sha256:d171f7eeaa6e5e2e95acea55e95c143ab6b23f5bf9e1c54a7c74842fcb7bb710", size = 121663, upload-time = "2026-04-03T00:36:53.647Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/92/da/847233b5b2cfa492985bce7de1d7c3f68065308fae1f692e0632206c4547/claude_agent_sdk-0.1.55-py3-none-macosx_11_0_arm64.whl", hash = "sha256:70fa9f20f9b3a632d25d2666b533505a754d36429a4ad91a465eee87ac5798f7", size = 58391088, upload-time = "2026-04-03T00:36:56.808Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/73/0347a89b9a4e8f3b7f606558ff2680eee3c1a723531fe8940d6aeebcb966/claude_agent_sdk-0.1.55-py3-none-macosx_11_0_x86_64.whl", hash = "sha256:01c4ed18aa3dd38a5c1a37fc5a775549abc9d6658bad65a69e36dafbbecd3e29", size = 60260265, upload-time = "2026-04-03T00:36:59.939Z" },
+    { url = "https://files.pythonhosted.org/packages/41/1a/9a496f69cc59d327e4e3e8b972ef3147af2de4aaaa2245a5c84e82dacc3c/claude_agent_sdk-0.1.55-py3-none-manylinux_2_17_aarch64.whl", hash = "sha256:329cb0d8369ccf1f69442058a1e02e22767d5304b08920e1486cd3773e2cb70e", size = 71728118, upload-time = "2026-04-03T00:37:03.17Z" },
+    { url = "https://files.pythonhosted.org/packages/b4/55/70e8d1fad8c872cf4fa18e5bd9fbe1545a1f8cc8a9773833c1b6367b5037/claude_agent_sdk-0.1.55-py3-none-manylinux_2_17_x86_64.whl", hash = "sha256:eb7d92443722bab90f6eccccad11f415c21f081343614287de67baa4c5fbae03", size = 71841263, upload-time = "2026-04-03T00:37:06.677Z" },
+    { url = "https://files.pythonhosted.org/packages/81/ff/260c39b32f823eed1f91dbd77e1a6c235d4dd6aecc18f8b86e0f4007fad2/claude_agent_sdk-0.1.55-py3-none-win_amd64.whl", hash = "sha256:d03d6668b63ec8c130f07e803ea9784d73905676bc0617955f1fef7dd263b664", size = 73961125, upload-time = "2026-04-03T00:37:09.977Z" },
+]
+
+[[package]]
 name = "click"
 version = "8.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1385,6 +1403,7 @@ wheels = [
 name = "griffelib"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/06/eccbd311c9e2b3ca45dbc063b93134c57a1ccc7607c5e545264ad092c4a9/griffelib-2.0.0.tar.gz", hash = "sha256:e504d637a089f5cab9b5daf18f7645970509bf4f53eda8d79ed71cce8bd97934", size = 166312, upload-time = "2026-03-23T21:06:55.954Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/51/c936033e16d12b627ea334aaaaf42229c37620d0f15593456ab69ab48161/griffelib-2.0.0-py3-none-any.whl", hash = "sha256:01284878c966508b6d6f1dbff9b6fa607bc062d8261c5c7253cb285b06422a7f", size = 142004, upload-time = "2026-02-09T19:09:40.561Z" },
 ]
@@ -3320,7 +3339,7 @@ wheels = [
 
 [[package]]
 name = "pctx-client"
-version = "0.3.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "docstring-parser" },
@@ -3332,6 +3351,9 @@ dependencies = [
 [package.optional-dependencies]
 bm25s = [
     { name = "bm25s", extra = ["stem"] },
+]
+claude = [
+    { name = "claude-agent-sdk" },
 ]
 crewai = [
     { name = "crewai" },
@@ -3349,6 +3371,7 @@ pydantic-ai = [
 [package.dev-dependencies]
 dev = [
     { name = "bm25s", extra = ["stem"] },
+    { name = "claude-agent-sdk" },
     { name = "crewai" },
     { name = "ipython", version = "8.38.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "ipython", version = "9.10.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -3375,6 +3398,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "bm25s", extras = ["stem"], marker = "extra == 'bm25s'", specifier = ">=0.2.12" },
+    { name = "claude-agent-sdk", marker = "extra == 'claude'", specifier = ">=0.1.55" },
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=1.6.1" },
     { name = "docstring-parser", specifier = ">=0.17.0" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -3384,11 +3408,12 @@ requires-dist = [
     { name = "pydantic-ai", marker = "extra == 'pydantic-ai'", specifier = ">=1.60.0" },
     { name = "websockets", specifier = ">=15.0.1" },
 ]
-provides-extras = ["langchain", "crewai", "openai", "pydantic-ai", "bm25s"]
+provides-extras = ["langchain", "crewai", "openai", "pydantic-ai", "bm25s", "claude"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "bm25s", extras = ["stem"], specifier = ">=0.2.12" },
+    { name = "claude-agent-sdk", specifier = ">=0.1.55" },
     { name = "crewai", specifier = ">=1.6.1" },
     { name = "ipython", specifier = ">=8.26" },
     { name = "langchain", specifier = ">=1.1.2" },
