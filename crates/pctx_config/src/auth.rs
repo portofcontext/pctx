@@ -16,16 +16,32 @@ pub enum AuthConfig {
     Headers {
         headers: IndexMap<String, SecretString>,
     },
-    // TODO: support OAuth client credentials flow?
-    // /// OAuth 2.1 Client Credentials Flow (machine-to-machine)
-    // #[serde(rename = "oauth_client_credentials")]
-    // OAuthClientCredentials {
-    //     client_id: SecretString,
-    //     client_secret: SecretString,
-    //     token_url: url::Url,
-    //     #[serde(skip_serializing_if = "Option::is_none")]
-    //     scope: Option<String>,
-    // },
+    /// OAuth 2.1 Authorization Code + PKCE flow.
+    ///
+    /// All actual credentials (access token, refresh token, `client_id` /
+    /// `client_secret`, token endpoint) live in the system keychain under
+    /// `token_ref`; only non-secret metadata is persisted in `pctx.json`.
+    /// `token_ref` is opaque — pctx generates one when the user runs
+    /// `pctx mcp add` against an OAuth-protected server.
+    #[serde(rename = "oauth")]
+    OAuth {
+        /// Keychain key holding the JSON-serialized [`crate::oauth2::TokenBundle`].
+        token_ref: SecretString,
+        /// Scopes that were granted at authorization time. Persisted so that
+        /// `pctx mcp add` can re-authorize without prompting again, and so
+        /// that observers reading `pctx.json` can see what access pctx has.
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        scopes: Vec<String>,
+    },
+}
+
+impl AuthConfig {
+    /// Default keychain ref pctx uses for a server's OAuth token bundle.
+    /// Stable so that re-running `pctx mcp add` for the same name overwrites
+    /// the same entry instead of leaking old ones.
+    pub fn default_oauth_token_ref(server_name: &str) -> SecretString {
+        SecretString::new_plain(&format!("oauth:{server_name}"))
+    }
 }
 
 /// A string that may contain 0 or more embedded secrets
