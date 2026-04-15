@@ -1,7 +1,9 @@
 use anyhow::Result;
 use camino::Utf8PathBuf;
 use clap::Parser;
+use pctx_code_mode::{ExecutorPool, PoolConfig};
 use pctx_session_server::{AppState, start_server};
+use std::sync::Arc;
 use tabled::{
     Table,
     builder::Builder,
@@ -13,7 +15,7 @@ use tabled::{
     },
 };
 use terminal_size::terminal_size;
-use tracing::info;
+use tracing::{info, warn};
 use url::Url;
 
 use crate::utils::styles::fmt_dimmed;
@@ -23,11 +25,11 @@ const LOGO: &str = include_str!("../../../../assets/ascii-logo.txt");
 #[derive(Debug, Clone, Parser)]
 pub struct StartCmd {
     /// Port to listen on
-    #[arg(short, long, default_value = "8080")]
+    #[arg(short, long, default_value = "8080", env = "PCTX_PORT")]
     pub port: u16,
 
     /// Host address to bind to (use 0.0.0.0 for external access)
-    #[arg(long, default_value = "127.0.0.1")]
+    #[arg(long, default_value = "127.0.0.1", env = "PCTX_HOST")]
     pub host: String,
 
     /// Path to session storage directory
@@ -42,6 +44,12 @@ pub struct StartCmd {
     #[arg(long = "allowed-origin")]
     pub allowed_origins: Vec<Url>,
 
+    /// Number of worker processes in the executor pool.
+    /// Defaults to the number of logical CPUs, capped at 8.
+    /// Set to 0 to disable the pool and run in-process.
+    #[arg(long, env = "PCTX_WORKERS")]
+    pub workers: Option<usize>,
+
     /// Don't show the server banner
     #[arg(long)]
     pub no_banner: bool,
@@ -49,7 +57,28 @@ pub struct StartCmd {
 
 impl StartCmd {
     pub(crate) async fn handle(&self) -> Result<()> {
-        let state = AppState::new_local();
+        let worker_count = self.workers.unwrap_or_else(default_workers);
+        let state = if worker_count == 0 {
+            info!("Executor pool disabled (--workers 0), running in-process");
+            AppState::new_local()
+        } else {
+            match PoolConfig::from_current_exe(worker_count) {
+                Ok(pool_cfg) => match ExecutorPool::new(pool_cfg).await {
+                    Ok(pool) => {
+                        info!("Executor pool ready ({worker_count} workers)");
+                        AppState::new_local().with_executor_pool(Arc::new(pool))
+                    }
+                    Err(e) => {
+                        warn!("Failed to start executor pool, falling back to in-process execution: {e}");
+                        AppState::new_local()
+                    }
+                },
+                Err(e) => {
+                    warn!("Could not locate worker binary, falling back to in-process execution: {e}");
+                    AppState::new_local()
+                }
+            }
+        };
 
         self.print_banner();
 
@@ -132,4 +161,11 @@ impl StartCmd {
 
         info!("pctx agent server listening at {rest_url}...");
     }
+}
+
+/// Default worker count: logical CPUs, capped at 8.
+fn default_workers() -> usize {
+    std::thread::available_parallelism()
+        .map(|n| n.get().min(8))
+        .unwrap_or(4)
 }

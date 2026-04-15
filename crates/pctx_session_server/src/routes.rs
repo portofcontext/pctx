@@ -370,45 +370,21 @@ pub(crate) async fn execute_bash<B: PctxSessionBackend>(
             },
         ))?;
 
-    // Clone for the blocking task
-    let code_mode_clone = code_mode.clone();
-    let bash_command = request.command.clone();
+    let code_mode = state.attach_pool(code_mode);
 
-    // Execute bash command in blocking context
-    let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
-
-        rt.block_on(code_mode_clone.execute_bash(&bash_command))
-            .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-    })
-    .await;
-
-    let exec_output = match output {
-        Ok(Ok(result)) => result,
-        Ok(Err(e)) => {
-            return Err(ApiError::new(
+    let exec_output = code_mode
+        .execute_bash(&request.command)
+        .await
+        .map_err(|e| {
+            ApiError::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 ErrorData {
                     code: ErrorCode::Execution,
                     message: format!("Bash execution failed: {e}"),
                     details: None,
                 },
-            ));
-        }
-        Err(e) => {
-            return Err(ApiError::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                ErrorData {
-                    code: ErrorCode::Internal,
-                    message: format!("Task join failed: {e}"),
-                    details: None,
-                },
-            ));
-        }
-    };
+            )
+        })?;
 
     Ok(Json(exec_output))
 }

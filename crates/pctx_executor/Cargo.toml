@@ -9,6 +9,10 @@ repository = "https://github.com/portofcontext/pctx"
 keywords = ["typescript", "executor", "pctx"]
 categories = ["development-tools"]
 
+[[bin]]
+name = "pctx_worker"
+path = "src/bin/worker.rs"
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -20,6 +24,9 @@ pctx_deno_transpiler = { version = "^0.1.1", path = "../pctx_deno_transpiler" }
 pctx_code_execution_runtime = { version = "^0.2.0", path = "../pctx_code_execution_runtime" }
 pctx_registry = { version = "^0.1.1", path = "../pctx_registry" }
 pctx_type_check_runtime = { version = "^0.1.3", path = "../pctx_type_check_runtime" }
+pctx_config = { version = "^0.1.5", path = "../pctx_config" }
+tokio = { workspace = true, features = ["rt", "io-util", "sync", "process", "macros"] }
+uuid = { workspace = true }
 tempfile = "3"
 regex = "1"
 thiserror = { workspace = true }
