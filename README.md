@@ -16,6 +16,13 @@ The open source framework to connect AI agents to tools and mcp with [Code Mode]
 
 </div>
 
+<div align="center">
+<br>
+<sub>— &nbsp; T R U S T E D &nbsp; B Y &nbsp; —</sub>
+<br><br>
+<a href="https://goose-docs.ai/docs/guides/managing-tools/code-mode/"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/block-logo-white.png"><img src=".github/assets/block-logo.png" alt="Block" height="22"></picture></a> &nbsp;&nbsp;&nbsp;&nbsp; <a href="https://www.sentient.xyz"><picture><source media="(prefers-color-scheme: dark)" srcset=".github/assets/sentient-logo-white.svg"><img src=".github/assets/sentient-logo.svg" alt="Sentient" height="22"></picture></a>
+</div>
+
 ## Install
 
 ```bash
