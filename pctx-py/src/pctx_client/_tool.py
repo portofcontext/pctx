@@ -52,8 +52,8 @@ class BaseTool(BaseModel):
         ),
     )
 
-    _input_validator: Draft202012Validator | None = PrivateAttr(default=None)
-    _output_validator: Draft202012Validator | None = PrivateAttr(default=None)
+    _input_validator: Draft202012Validator | None = PrivateAttr(default=None)  # ty: ignore[invalid-type-form]
+    _output_validator: Draft202012Validator | None = PrivateAttr(default=None)  # ty: ignore[invalid-type-form]
 
     @model_validator(mode="after")
     def _compile_schema_validators(self) -> "BaseTool":
@@ -130,7 +130,7 @@ class BaseTool(BaseModel):
 
         docstring = parse_docstring(textwrap.dedent(description or func.__doc__ or ""))
 
-        name_ = name or func.__name__
+        name_ = name or func.__name__  # ty: ignore[unresolved-attribute]
 
         if input_schema is None:
             in_schema = infer_input_model(f"{name_}_Input", func, docstring=docstring)

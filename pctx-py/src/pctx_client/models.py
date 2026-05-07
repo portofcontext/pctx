@@ -26,7 +26,7 @@ class ToolDisclosure(str, Enum):
     FS = "filesystem"
     # SIDECAR = "sidecar" # <--- not fully supported by session server yet
 
-    def contains_tool(self, tool_name: ToolName) -> bool:
+    def contains_tool(self, tool_name: str) -> bool:
         if self == ToolDisclosure.CATALOG:
             allowed = {
                 "get_function_details",

@@ -50,6 +50,7 @@ dev = [
     "litellm>=1.80.8",
     "langchain-openai>=0.3.0",
     "mcp>=1.25.0",
+    "ty>=0.0.34",
 ]
 
 [tool.ruff.lint.pydocstyle]

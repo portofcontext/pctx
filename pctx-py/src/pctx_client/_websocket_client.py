@@ -78,7 +78,7 @@ class WebSocketClient:
         try:
             headers = {
                 "x-code-mode-session": code_mode_session,
-                "x-pctx-api-key": self._api_key,
+                "x-pctx-api-key": self._api_key or "",
             }
             self.ws = await websockets.connect(self.url, additional_headers=headers)
         except Exception as e:
@@ -143,7 +143,7 @@ class WebSocketClient:
         request = ExecuteCodeRequest(
             id=request_id,
             method="execute_typescript",
-            params=ExecuteCodeParams(code=code, style=disclosure),
+            params=ExecuteCodeParams(code=code, disclosure=disclosure),
         )
 
         try:

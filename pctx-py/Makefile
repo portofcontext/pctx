@@ -1,4 +1,4 @@
-.PHONY: help install test test-integration format build docs
+.PHONY: help install test test-integration fmt lint typecheck check build docs
 
 # Default target - show help when running just 'make'
 .DEFAULT_GOAL := help
@@ -7,17 +7,20 @@ help:
 	@echo "pctx-py dev scripts"
 	@echo ""
 	@echo "Available targets:"
-	@echo "  make install          - Install dev dependencies and all extras with uv"
+	@echo "  make install          - Install all dependency groups and all extras with uv"
 	@echo "  make test             - Run Python client tests"
 	@echo "  make test-integration - Run Python client tests with integration testing"
-	@echo "  make format           - Format and lint Python code with ruff"
+	@echo "  make fmt           - Format and auto-fix lints with ruff"
+	@echo "  make lint             - Lint Python code with ruff"
+	@echo "  make typecheck        - Type-check Python code with ty"
+	@echo "  make check            - Run lint, typecheck, and tests"
 	@echo "  make build            - Build Python package (resolves symlinks before build)"
 	@echo "  make docs             - Build Python Sphinx documentation"
 	@echo ""
 
-# Install with dev deps and all extras
+# Install with all dependency groups (dev, docs) and all extras
 install:
-	@uv sync --all-extras
+	@uv sync --all-extras --all-groups
 
 # Run Python client tests
 test:
@@ -27,8 +30,19 @@ test:
 test-integration:
 	@uv run pytest tests/ --integration -v
 
-format:
+fmt:
 	@uv run ruff format . && uv run ruff check . --fix
+
+# Lint with ruff (no auto-fix)
+lint:
+	@uv run ruff check .
+
+# Type-check with ty
+typecheck:
+	@uv run ty check src
+
+# Run lint, typecheck, and tests
+check: lint typecheck test
 
 # Build Python package (resolves _tool_descriptions/data symlink before build, restores after)
 build:
