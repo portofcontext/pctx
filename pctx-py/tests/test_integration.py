@@ -77,7 +77,7 @@ async def test_search_functions():
             """Greet someone with a custom greeting"""
             return f"{greeting}, {name}!"
 
-        @tool("foo_bar", namespace="namespaced_with_underscore")
+        @tool(name="foo_bar", namespace="namespaced_with_underscore")
         def namespaced_fn(val: str) -> str:
             return f"Hello {val}"
 

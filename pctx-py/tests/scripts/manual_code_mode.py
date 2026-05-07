@@ -22,13 +22,13 @@ def search_logs(query: str = "", level: str = "info", limit: int = 100) -> list[
     ]
 
 
-@tool("add", namespace="my_math")
+@tool(name="add", namespace="my_math")
 def add(a: float, b: float) -> float:
     """adds two numbers"""
     return a + b
 
 
-@tool("subtract", namespace="my_math")
+@tool(name="subtract", namespace="my_math")
 def subtract(a: float, b: float) -> float:
     """subtracts b from a"""
     return a - b
@@ -39,7 +39,7 @@ class MultiplyOutput(BaseModel):
     result: float
 
 
-@tool("multiply", namespace="my_math")
+@tool(name="multiply", namespace="my_math")
 def multiply(a: float, b: float) -> MultiplyOutput:
     """multiplies a and b"""
     return MultiplyOutput(message=f"Show your work! {a} * {b} = {a * b}", result=a * b)

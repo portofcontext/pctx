@@ -48,7 +48,7 @@ def test_registration_basic_async_function() -> None:
 def test_registration_custom_name() -> None:
     """Test tool registration with custom name"""
 
-    @tool("custom_name")
+    @tool(name="custom_name")
     def my_function() -> str:
         """Function with custom name"""
         return "result"
@@ -60,7 +60,7 @@ def test_registration_custom_name() -> None:
 def test_registration_custom_description() -> None:
     """Test tool registration with custom description"""
 
-    @tool("tool_name", description="Custom description here")
+    @tool(name="tool_name", description="Custom description here")
     def my_function() -> str:
         """Original docstring"""
         return "result"
@@ -136,7 +136,7 @@ def test_registration_no_docstring() -> None:
 def test_registration_custom_description_overrides_docstring() -> None:
     """Test that custom description overrides docstring"""
 
-    @tool("func", description="Custom")
+    @tool(name="func", description="Custom")
     def with_docstring() -> str:
         """Original docstring"""
         return "result"
@@ -165,37 +165,56 @@ def test_registration_multipletools_independent() -> None:
     assert tool_two.description == "Second tool"
 
 
-def test_registration_error_too_many_arguments() -> None:
-    """Test that providing too many arguments raises ValueError"""
+def test_direct_call_positional_fn_with_kwargs() -> None:
+    """``tool(fn, name=..., input_schema=...)`` — positional callable plus
+    keyword overrides — applies the overrides without going through the
+    decorator-factory branch."""
 
-    with pytest.raises(ValueError, match="Too many arguments"):
+    class Args(BaseModel):
+        x: int
 
-        @tool("name", "extra_arg")
-        def bad_function() -> str:
-            return "result"
+    def my_func(**kwargs) -> int:
+        return kwargs["x"] + 100
+
+    built = tool(
+        my_func,
+        name="custom",
+        namespace="explicit",
+        description="Adds 100 to x",
+        input_schema=Args,
+        output_schema={"type": "integer"},
+    )
+
+    assert isinstance(built, Tool)
+    assert built.name == "custom"
+    assert built.namespace == "explicit"
+    assert built.description == "Adds 100 to x"
+    assert built.input_schema is Args
+    assert built.output_json_schema() == {"type": "integer"}
+    assert built.invoke(x=5) == 105
+
+
+def test_registration_error_too_many_positional_arguments() -> None:
+    """Passing more than one positional arg raises Python's own TypeError."""
+
+    with pytest.raises(TypeError):
+        tool("name", "extra_arg")  # type: ignore[call-overload]
+
+
+def test_registration_error_name_as_positional_rejected() -> None:
+    """``name`` is keyword-only — passing it positionally is a TypeError."""
+
+    with pytest.raises(TypeError):
+        # Strings used to be a valid first positional arg; under the new
+        # signature the only positional arg is the decorated callable.
+        tool("custom_name")  # type: ignore[call-overload]
 
 
 def test_registration_error_invalid_first_argument() -> None:
-    """Test that invalid first argument raises ValueError"""
+    """A non-callable, non-None first positional argument raises TypeError."""
 
-    with pytest.raises(
-        ValueError, match="must be a string or a callable with a __name__"
-    ):
-        tool(123)  # type: ignore
-
-
-def test_registration_error_callable_without_name() -> None:
-    """Test that callable without __name__ raises ValueError"""
-
-    class CallableWithoutName:
-        def __call__(self) -> str:
-            return "result"
-
-    obj = CallableWithoutName()
-    with pytest.raises(
-        ValueError, match="must be a string or a callable with a __name__"
-    ):
-        tool(obj)  # type: ignore
+    with pytest.raises(TypeError, match="must be the decorated callable"):
+        tool(123)  # type: ignore[call-overload]
 
 
 # ============================================================================
@@ -674,7 +693,7 @@ def test_input_schema_dict_skips_inference() -> None:
         "additionalProperties": False,
     }
 
-    @tool("from_dict", input_schema=schema)
+    @tool(name="from_dict", input_schema=schema)
     def from_dict(**kwargs) -> int:
         return kwargs["x"] + 1
 
@@ -688,7 +707,7 @@ def test_input_schema_dict_rejects_invalid_input() -> None:
     """Dict-defined input_schema validates via jsonschema and rejects bad input."""
 
     @tool(
-        "add_one",
+        name="add_one",
         input_schema={
             "type": "object",
             "properties": {"x": {"type": "integer"}},
@@ -710,8 +729,8 @@ def test_input_schema_dict_malformed_raises_at_construction() -> None:
 
     with pytest.raises(jsonschema.SchemaError):
 
-        @tool("bad", input_schema={"type": "not-a-real-type"})
-        def bad(**kwargs) -> int:
+        @tool(name="bad", input_schema={"type": "not-a-real-type"})
+        def bad(**kwargs) -> int:  # pyright: ignore[reportUnusedFunction]
             return 0
 
 
@@ -721,7 +740,7 @@ def test_input_schema_pydantic_model_skips_inference() -> None:
     class Args(BaseModel):
         y: float
 
-    @tool("from_model", input_schema=Args)
+    @tool(name="from_model", input_schema=Args)
     def from_model(**kwargs) -> float:
         return kwargs["y"] * 2
 
@@ -738,7 +757,7 @@ def test_input_schema_pydantic_model_rejects_invalid_input() -> None:
     class Args(BaseModel):
         y: float
 
-    @tool("from_model", input_schema=Args)
+    @tool(name="from_model", input_schema=Args)
     def from_model(**kwargs) -> float:
         return kwargs["y"] * 2
 
@@ -757,7 +776,7 @@ def test_input_schema_explicit_overrides_signature() -> None:
 
     # Function signature says `n: int`, but we pass an unrelated schema.
     # The explicit schema wins; signature inference is skipped entirely.
-    @tool("search", input_schema=schema)
+    @tool(name="search", input_schema=schema)
     def search(n: int = 0, **kwargs) -> str:
         return kwargs.get("q", "")
 
@@ -769,7 +788,7 @@ async def test_input_schema_dict_async() -> None:
     """Explicit JSON Schema dict works for async tools too."""
 
     @tool(
-        "add_one_async",
+        name="add_one_async",
         input_schema={
             "type": "object",
             "properties": {"x": {"type": "integer"}},
@@ -795,7 +814,7 @@ def test_input_schema_with_custom_name_and_namespace() -> None:
         "required": ["n"],
     }
 
-    @tool("add_one", namespace="math", input_schema=schema)
+    @tool(name="add_one", namespace="math", input_schema=schema)
     def named(**kwargs) -> int:
         return kwargs["n"] + 1
 
@@ -816,7 +835,7 @@ def test_output_schema_dict_skips_inference() -> None:
     schema: dict = {"type": "integer", "minimum": 0}
 
     # Function annotation says `str`, but explicit dict overrides it.
-    @tool("returns_int", output_schema=schema)
+    @tool(name="returns_int", output_schema=schema)
     def returns_int() -> str:
         return 42  # type: ignore[return-value]
 
@@ -828,7 +847,7 @@ def test_output_schema_dict_rejects_invalid_output() -> None:
     """Dict-defined output_schema validates via jsonschema and rejects bad output."""
 
     @tool(
-        "produces",
+        name="produces",
         output_schema={"type": "string", "minLength": 3},
     )
     def produces(value):
@@ -848,7 +867,7 @@ def test_output_schema_dict_malformed_raises_at_construction() -> None:
 
     with pytest.raises(jsonschema.SchemaError):
 
-        @tool("bad_out", output_schema={"type": "not-a-real-type"})
+        @tool(name="bad_out", output_schema={"type": "not-a-real-type"})
         def _bad_out() -> int:  # pyright: ignore[reportUnusedFunction]
             return 0
 
@@ -860,7 +879,7 @@ def test_output_schema_pydantic_model_skips_inference() -> None:
         value: int
         label: str
 
-    @tool("returns_model", output_schema=Result)
+    @tool(name="returns_model", output_schema=Result)
     def returns_model() -> dict:
         return {"value": 1, "label": "one"}
 
@@ -880,7 +899,7 @@ def test_output_schema_pydantic_model_rejects_invalid_output() -> None:
     class Result(BaseModel):
         value: int
 
-    @tool("returns_model", output_schema=Result)
+    @tool(name="returns_model", output_schema=Result)
     def returns_model(payload):
         return payload
 
@@ -892,7 +911,7 @@ def test_output_schema_overrides_return_annotation() -> None:
     """When output_schema is provided, the function's return annotation is ignored."""
 
     # Function annotated as -> int, but explicit schema says string.
-    @tool("override", output_schema={"type": "string"})
+    @tool(name="override", output_schema={"type": "string"})
     def override() -> int:
         return "hello"  # type: ignore[return-value]
 
@@ -903,7 +922,7 @@ def test_output_schema_overrides_return_annotation() -> None:
 def test_output_schema_plain_python_type() -> None:
     """A plain python type (e.g. int) passed as output_schema works via TypeAdapter."""
 
-    @tool("counter", output_schema=int)
+    @tool(name="counter", output_schema=int)
     def counter(n):
         return n
 
@@ -917,7 +936,7 @@ def test_output_schema_plain_python_type() -> None:
 async def test_output_schema_dict_async() -> None:
     """Explicit output JSON Schema works for async tools too."""
 
-    @tool("async_int", output_schema={"type": "integer"})
+    @tool(name="async_int", output_schema={"type": "integer"})
     async def async_int(n):
         return n
 
@@ -932,7 +951,7 @@ def test_input_and_output_schema_both_explicit() -> None:
     """Both schemas can be explicit dicts at once."""
 
     @tool(
-        "echo",
+        name="echo",
         input_schema={
             "type": "object",
             "properties": {"msg": {"type": "string"}},

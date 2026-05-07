@@ -1,9 +1,9 @@
-"""Tests for create_input_schema"""
+"""Tests for infer_input_model"""
 
 import pytest
 from pydantic import BaseModel, ValidationError
 
-from pctx_client._tool import create_input_schema
+from pctx_client._tool import infer_input_model
 
 
 def test_simple_function_signature():
@@ -12,7 +12,7 @@ def test_simple_function_signature():
     def add(a: int, b: int) -> int:
         return a + b
 
-    Model = create_input_schema("AddModel", add)
+    Model = infer_input_model("AddModel", add)
 
     # Test valid input
     instance = Model(a=5, b=10)
@@ -34,7 +34,7 @@ def test_function_with_defaults():
     def greet(name: str, greeting: str = "Hello") -> str:
         return f"{greeting}, {name}!"
 
-    Model = create_input_schema("GreetModel", greet)
+    Model = infer_input_model("GreetModel", greet)
 
     # Test with all parameters
     instance1 = Model(name="Alice", greeting="Hi")
@@ -53,7 +53,7 @@ def test_function_without_type_hints():
     def no_types(x, y=5):
         return x + y
 
-    Model = create_input_schema("NoTypesModel", no_types)
+    Model = infer_input_model("NoTypesModel", no_types)
 
     # Should work with Any type
     instance = Model(x="test", y=10)
@@ -67,7 +67,7 @@ def test_function_with_args_kwargs():
     def flexible(a: int, *args, b: str = "default", **kwargs) -> None:
         pass
 
-    Model = create_input_schema("FlexibleModel", flexible)
+    Model = infer_input_model("FlexibleModel", flexible)
 
     # Only 'a' and 'b' should be in the model
     instance = Model(a=42, b="test")
@@ -91,7 +91,7 @@ def test_function_with_only_args():
     def only_args(*args: int) -> None:
         pass
 
-    Model = create_input_schema("OnlyArgsModel", only_args)
+    Model = infer_input_model("OnlyArgsModel", only_args)
 
     # Model should have no fields
     schema = Model.model_json_schema()
@@ -108,7 +108,7 @@ def test_function_with_only_kwargs():
     def only_kwargs(**kwargs: str) -> None:
         pass
 
-    Model = create_input_schema("OnlyKwargsModel", only_kwargs)
+    Model = infer_input_model("OnlyKwargsModel", only_kwargs)
 
     # Model should have no fields
     schema = Model.model_json_schema()
@@ -125,7 +125,7 @@ def test_function_with_positional_only_and_args():
     def mixed(a: int, b: str, /, c: float = 1.0, *args) -> None:
         pass
 
-    Model = create_input_schema("MixedModel", mixed)
+    Model = infer_input_model("MixedModel", mixed)
 
     # Should include regular params but not args
     schema = Model.model_json_schema()
@@ -146,7 +146,7 @@ def test_complex_types():
     def process(items: list[str], count: int = 0) -> None:
         pass
 
-    Model = create_input_schema("ProcessModel", process)
+    Model = infer_input_model("ProcessModel", process)
 
     instance = Model(items=["a", "b", "c"], count=3)
     assert getattr(instance, "items") == ["a", "b", "c"]
@@ -163,7 +163,7 @@ def test_model_is_basemodel():
     def dummy(x: int) -> None:
         pass
 
-    Model = create_input_schema("DummyModel", dummy)
+    Model = infer_input_model("DummyModel", dummy)
 
     assert issubclass(Model, BaseModel)
     assert getattr(Model, "__name__") == "DummyModel"
@@ -175,7 +175,7 @@ def test_model_json_schema():
     def example(name: str, age: int, active: bool = True) -> None:
         pass
 
-    Model = create_input_schema("ExampleModel", example)
+    Model = infer_input_model("ExampleModel", example)
 
     schema = Model.model_json_schema()
     assert "properties" in schema
@@ -192,7 +192,7 @@ def test_async_function_signature():
         """Fetches data from a URL"""
         return f"Data from {url}"
 
-    Model = create_input_schema("FetchModel", fetch_data)
+    Model = infer_input_model("FetchModel", fetch_data)
 
     # Test with all parameters
     instance1 = Model(url="https://example.com", timeout=60)
@@ -226,7 +226,7 @@ def test_nested_pydantic_model():
     ) -> None:
         pass
 
-    Model = create_input_schema("UserModel", create_user)
+    Model = infer_input_model("UserModel", create_user)
 
     # Test with valid nested models
     address_data = Address(street="123 Main St", city="Boston", zipcode="02101")
@@ -269,7 +269,7 @@ def test_tuple_type_annotation():
     ) -> None:
         pass
 
-    Model = create_input_schema("CoordinatesModel", process_coordinates)
+    Model = infer_input_model("CoordinatesModel", process_coordinates)
 
     # Test with valid tuples
     instance1 = Model(point=(10, 20), color=(100, 150, 200))
