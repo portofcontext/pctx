@@ -26,6 +26,7 @@ from pctx_client.models import (
     GetFunctionDetailsOutput,
     ListedFunction,
     ListFunctionsOutput,
+    SearchFunctionsInput,
     ServerConfig,
     ToolConfig,
     ToolDisclosure,
@@ -615,6 +616,7 @@ class Pctx:
             description: str = get_tool_description(
                 "search_functions", overrides=descriptions
             )
+            args_schema: type[BaseModel] = SearchFunctionsInput
 
             def _run(_self, query: str, k: int = 10) -> str:
                 return self._search_functions_result_to_string(
@@ -910,10 +912,6 @@ class Pctx:
             tool_input = GetFunctionDetailsInput(**args)
             details = await self.get_function_details(tool_input.functions)
             return _text_content_block(details.code)
-
-        class SearchFunctionsInput(BaseModel):
-            query: str
-            k: int = 10
 
         @claude_tool(
             "search_functions",
