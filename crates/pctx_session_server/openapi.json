@@ -12,7 +12,9 @@
   "paths": {
     "/code-mode/execute-bash": {
       "post": {
-        "tags": ["CodeMode"],
+        "tags": [
+          "CodeMode"
+        ],
         "summary": "Execute a bash command",
         "operationId": "execute_bash",
         "parameters": [
@@ -72,7 +74,9 @@
     },
     "/code-mode/functions/details": {
       "post": {
-        "tags": ["CodeMode"],
+        "tags": [
+          "CodeMode"
+        ],
         "summary": "Get detailed information about a specific function",
         "operationId": "get_function_details",
         "parameters": [
@@ -132,7 +136,9 @@
     },
     "/code-mode/functions/list": {
       "post": {
-        "tags": ["CodeMode"],
+        "tags": [
+          "CodeMode"
+        ],
         "summary": "List all available code mode functions from both server and tool registrations",
         "operationId": "list_functions",
         "parameters": [
@@ -172,7 +178,9 @@
     },
     "/code-mode/session/close": {
       "post": {
-        "tags": ["CodeMode"],
+        "tags": [
+          "CodeMode"
+        ],
         "summary": "Close a `CodeMode` session",
         "operationId": "close_session",
         "parameters": [
@@ -222,7 +230,9 @@
     },
     "/code-mode/session/create": {
       "post": {
-        "tags": ["CodeMode"],
+        "tags": [
+          "CodeMode"
+        ],
         "summary": "Create a new `CodeMode` session",
         "operationId": "create_session",
         "responses": {
@@ -251,7 +261,9 @@
     },
     "/health": {
       "get": {
-        "tags": ["health"],
+        "tags": [
+          "health"
+        ],
         "summary": "Health check endpoint",
         "operationId": "health",
         "responses": {
@@ -270,7 +282,9 @@
     },
     "/register/servers": {
       "post": {
-        "tags": ["registration"],
+        "tags": [
+          "registration"
+        ],
         "summary": "Register MCP servers dynamically at runtime",
         "operationId": "register_servers",
         "parameters": [
@@ -320,7 +334,9 @@
     },
     "/register/tools": {
       "post": {
-        "tags": ["registration"],
+        "tags": [
+          "registration"
+        ],
         "summary": "Register tools that will be called via WebSocket callbacks",
         "operationId": "register_tools",
         "parameters": [
@@ -383,17 +399,25 @@
     "schemas": {
       "CallbackConfig": {
         "type": "object",
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "properties": {
           "description": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "input_schema": {},
           "name": {
             "type": "string"
           },
           "namespace": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "output_schema": {}
         }
@@ -401,7 +425,9 @@
       "CloseSessionResponse": {
         "type": "object",
         "description": "Response after closing a `CodeMode` session",
-        "required": ["success"],
+        "required": [
+          "success"
+        ],
         "properties": {
           "success": {
             "type": "boolean"
@@ -411,7 +437,9 @@
       "CreateSessionResponse": {
         "type": "object",
         "description": "Response after creating a new `CodeMode` session",
-        "required": ["session_id"],
+        "required": [
+          "session_id"
+        ],
         "properties": {
           "session_id": {
             "type": "string"
@@ -420,17 +448,27 @@
       },
       "ErrorCode": {
         "type": "string",
-        "enum": ["invalid_session", "internal", "execution"]
+        "enum": [
+          "invalid_session",
+          "internal",
+          "execution"
+        ]
       },
       "ErrorData": {
         "type": "object",
-        "required": ["code", "message"],
+        "required": [
+          "code",
+          "message"
+        ],
         "properties": {
           "code": {
             "$ref": "#/components/schemas/ErrorCode"
           },
           "details": {
-            "type": ["string", "null"]
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "message": {
             "type": "string"
@@ -449,7 +487,11 @@
       },
       "ExecuteBashOutput": {
         "type": "object",
-        "required": ["exit_code", "stdout", "stderr"],
+        "required": [
+          "exit_code",
+          "stdout",
+          "stderr"
+        ],
         "properties": {
           "exit_code": {
             "type": "integer",
@@ -473,7 +515,11 @@
           },
           {
             "type": "object",
-            "required": ["input_type", "output_type", "types"],
+            "required": [
+              "input_type",
+              "output_type",
+              "types"
+            ],
             "properties": {
               "input_type": {
                 "type": "string",
@@ -493,7 +539,9 @@
       },
       "GetFunctionDetailsInput": {
         "type": "object",
-        "required": ["functions"],
+        "required": [
+          "functions"
+        ],
         "properties": {
           "functions": {
             "type": "array",
@@ -506,7 +554,10 @@
       },
       "GetFunctionDetailsOutput": {
         "type": "object",
-        "required": ["functions", "code"],
+        "required": [
+          "functions",
+          "code"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -522,7 +573,10 @@
       "HealthResponse": {
         "type": "object",
         "description": "Health check response",
-        "required": ["status", "version"],
+        "required": [
+          "status",
+          "version"
+        ],
         "properties": {
           "status": {
             "type": "string"
@@ -534,7 +588,10 @@
       },
       "ListFunctionsOutput": {
         "type": "object",
-        "required": ["functions", "code"],
+        "required": [
+          "functions",
+          "code"
+        ],
         "properties": {
           "code": {
             "type": "string"
@@ -550,10 +607,16 @@
       },
       "ListedFunction": {
         "type": "object",
-        "required": ["namespace", "name"],
+        "required": [
+          "namespace",
+          "name"
+        ],
         "properties": {
           "description": {
-            "type": ["string", "null"],
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "Function description"
           },
           "name": {
@@ -569,7 +632,9 @@
       "RegisterMcpServersRequest": {
         "type": "object",
         "description": "Request to register MCP servers",
-        "required": ["servers"],
+        "required": [
+          "servers"
+        ],
         "properties": {
           "servers": {
             "type": "array",
@@ -580,7 +645,10 @@
       "RegisterMcpServersResponse": {
         "type": "object",
         "description": "Response after registering MCP servers",
-        "required": ["registered", "failed"],
+        "required": [
+          "registered",
+          "failed"
+        ],
         "properties": {
           "failed": {
             "type": "array",
@@ -597,7 +665,9 @@
       "RegisterToolsRequest": {
         "type": "object",
         "description": "Request to register tools",
-        "required": ["tools"],
+        "required": [
+          "tools"
+        ],
         "properties": {
           "tools": {
             "type": "array",
@@ -610,7 +680,9 @@
       "RegisterToolsResponse": {
         "type": "object",
         "description": "Response to registering tools",
-        "required": ["registered"],
+        "required": [
+          "registered"
+        ],
         "properties": {
           "registered": {
             "type": "integer",
