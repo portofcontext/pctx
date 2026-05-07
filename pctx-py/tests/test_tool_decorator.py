@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import jsonschema
 import pytest
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from pctx_client import Tool, tool
 from pctx_client._tool import AsyncTool
@@ -656,3 +657,149 @@ def test_docstring_parsing_formats(docstring_format: str, docstring_text: str) -
     assert "description" in output_schema
     assert "Euclidean distance" in output_schema["description"]
     assert "floating point" in output_schema["description"]
+
+
+# ============================================================================
+# SECTION: EXPLICIT input_schema (skips signature inference)
+# ============================================================================
+
+
+def test_input_schema_dict_skips_inference() -> None:
+    """An explicit JSON Schema dict is used as-is and signature is not inspected."""
+
+    schema: dict = {
+        "type": "object",
+        "properties": {"x": {"type": "integer"}},
+        "required": ["x"],
+        "additionalProperties": False,
+    }
+
+    @tool("from_dict", input_schema=schema)
+    def from_dict(**kwargs) -> int:
+        return kwargs["x"] + 1
+
+    assert isinstance(from_dict, Tool)
+    # Schema is the exact dict the user passed, not derived from the signature.
+    assert from_dict.input_json_schema() == schema
+    assert from_dict.invoke(x=4) == 5
+
+
+def test_input_schema_dict_rejects_invalid_input() -> None:
+    """Dict-defined input_schema validates via jsonschema and rejects bad input."""
+
+    @tool(
+        "add_one",
+        input_schema={
+            "type": "object",
+            "properties": {"x": {"type": "integer"}},
+            "required": ["x"],
+        },
+    )
+    def add_one(**kwargs) -> int:
+        return kwargs["x"] + 1
+
+    with pytest.raises(jsonschema.ValidationError):
+        add_one.invoke(x="not-an-int")
+
+    with pytest.raises(jsonschema.ValidationError):
+        add_one.invoke()  # missing required `x`
+
+
+def test_input_schema_dict_malformed_raises_at_construction() -> None:
+    """A malformed JSON Schema is rejected when the tool is built, not on first call."""
+
+    with pytest.raises(jsonschema.SchemaError):
+
+        @tool("bad", input_schema={"type": "not-a-real-type"})
+        def bad(**kwargs) -> int:
+            return 0
+
+
+def test_input_schema_pydantic_model_skips_inference() -> None:
+    """An explicit Pydantic BaseModel class is used as-is, ignoring the signature."""
+
+    class Args(BaseModel):
+        y: float
+
+    @tool("from_model", input_schema=Args)
+    def from_model(**kwargs) -> float:
+        return kwargs["y"] * 2
+
+    assert from_model.input_schema is Args
+    schema = from_model.input_json_schema()
+    assert schema is not None
+    assert schema["properties"] == {"y": {"title": "Y", "type": "number"}}
+    assert from_model.invoke(y=1.5) == 3.0
+
+
+def test_input_schema_pydantic_model_rejects_invalid_input() -> None:
+    """Pydantic-defined input_schema raises pydantic.ValidationError on bad input."""
+
+    class Args(BaseModel):
+        y: float
+
+    @tool("from_model", input_schema=Args)
+    def from_model(**kwargs) -> float:
+        return kwargs["y"] * 2
+
+    with pytest.raises(ValidationError):
+        from_model.invoke(y="not-a-float")
+
+
+def test_input_schema_explicit_overrides_signature() -> None:
+    """When input_schema is provided, the function's own annotations are ignored."""
+
+    schema: dict = {
+        "type": "object",
+        "properties": {"q": {"type": "string"}},
+        "required": ["q"],
+    }
+
+    # Function signature says `n: int`, but we pass an unrelated schema.
+    # The explicit schema wins; signature inference is skipped entirely.
+    @tool("search", input_schema=schema)
+    def search(n: int = 0, **kwargs) -> str:
+        return kwargs.get("q", "")
+
+    assert search.input_json_schema() == schema
+    assert search.invoke(q="hello") == "hello"
+
+
+async def test_input_schema_dict_async() -> None:
+    """Explicit JSON Schema dict works for async tools too."""
+
+    @tool(
+        "add_one_async",
+        input_schema={
+            "type": "object",
+            "properties": {"x": {"type": "integer"}},
+            "required": ["x"],
+        },
+    )
+    async def add_one(**kwargs) -> int:
+        return kwargs["x"] + 1
+
+    assert isinstance(add_one, AsyncTool)
+    assert await add_one.ainvoke(x=4) == 5
+
+    with pytest.raises(jsonschema.ValidationError):
+        await add_one.ainvoke(x="bad")
+
+
+def test_input_schema_with_custom_name_and_namespace() -> None:
+    """Explicit input_schema composes with custom name + namespace."""
+
+    schema: dict = {
+        "type": "object",
+        "properties": {"n": {"type": "integer"}},
+        "required": ["n"],
+    }
+
+    @tool("add_one", namespace="math", input_schema=schema)
+    def named(**kwargs) -> int:
+        return kwargs["n"] + 1
+
+    assert named.name == "add_one"
+    assert named.namespace == "math"
+    assert named.input_json_schema() == schema
+    assert named.invoke(n=2) == 3

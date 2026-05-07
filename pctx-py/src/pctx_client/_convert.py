@@ -1,6 +1,8 @@
 from collections.abc import Callable
 from typing import Any, overload
 
+from pydantic import BaseModel
+
 from pctx_client._tool import AsyncTool, Tool
 
 
@@ -10,6 +12,7 @@ def tool(
     *args: Any,
     namespace: str = "tools",
     description: str | None = None,
+    input_schema: type[BaseModel] | dict[str, Any] | None = None,
 ) -> Callable[[Callable], Tool | AsyncTool]: ...
 @overload
 def tool(
@@ -17,6 +20,7 @@ def tool(
     *args: Any,
     namespace: str = "tools",
     description: str | None = None,
+    input_schema: type[BaseModel] | dict[str, Any] | None = None,
 ) -> Tool | AsyncTool: ...
 
 
@@ -25,6 +29,7 @@ def tool(
     *args: Any,
     namespace: str = "tools",
     description: str | None = None,
+    input_schema: type[BaseModel] | dict[str, Any] | None = None,
 ) -> Tool | AsyncTool | Callable[[Callable], Tool | AsyncTool]:
     """
     Decorator that converts a function into a Tool or AsyncTool instance.
@@ -33,11 +38,15 @@ def tool(
     - @tool - Uses function name as tool name
     - @tool("custom_name") - Uses custom name for the tool
     - @tool(namespace="custom", description="...") - With additional options
+    - @tool(input_schema=MyModel) or @tool(input_schema={...}) - Override
+      signature inference with an explicit Pydantic model or JSON Schema dict
 
     Args:
         name_or_callable: Either a custom tool name (str) or the function to wrap (Callable)
         namespace: The namespace the tool belongs to (default: "tools")
         description: Optional description override (default: uses function docstring)
+        input_schema: Optional explicit input schema. When provided, signature
+            inference is skipped and this schema is used directly.
 
     Returns:
         Either a Tool/AsyncTool instance or a decorator function that creates one
@@ -51,6 +60,10 @@ def tool(
         >>> @tool("custom_name", namespace="math")
         ... def add_two(x: int) -> int:
         ...     return x + 2
+
+        >>> @tool(input_schema={"type": "object", "properties": {"x": {"type": "integer"}}, "required": ["x"]})
+        ... def from_jsonschema(**kwargs) -> int:
+        ...     return kwargs["x"] + 1
     """
 
     def _crate_tool_factory(tool_name: str) -> Callable[[Callable], Tool | AsyncTool]:
@@ -65,13 +78,12 @@ def tool(
         """
 
         def _tool_factory(fn: Callable) -> Tool | AsyncTool:
-            tool_desc = description
-
             return Tool.from_func(
                 func=fn,
                 name=tool_name,
                 namespace=namespace,
-                description=tool_desc,
+                description=description,
+                input_schema=input_schema,
             )
 
         return _tool_factory

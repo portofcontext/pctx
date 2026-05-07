@@ -10,6 +10,7 @@ import json
 import uuid
 from typing import Any, Union
 
+import jsonschema
 import pydantic
 import websockets
 from websockets.asyncio.client import ClientConnection
@@ -233,7 +234,7 @@ class WebSocketClient:
             return ExecuteToolResponse(
                 id=req.id, result=ExecuteToolResult(output=output)
             )
-        except pydantic.ValidationError as e:
+        except (pydantic.ValidationError, jsonschema.ValidationError) as e:
             return JsonRpcError(
                 id=req.id,
                 error=ErrorData(

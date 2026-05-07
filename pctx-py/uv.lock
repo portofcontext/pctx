@@ -3344,6 +3344,7 @@ source = { editable = "." }
 dependencies = [
     { name = "docstring-parser" },
     { name = "httpx" },
+    { name = "jsonschema" },
     { name = "pydantic" },
     { name = "websockets" },
 ]
@@ -3398,6 +3399,7 @@ requires-dist = [
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=1.6.1" },
     { name = "docstring-parser", specifier = ">=0.17.0" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jsonschema", specifier = ">=4.26.0" },
     { name = "langchain", marker = "extra == 'langchain'", specifier = ">=1.1.2" },
     { name = "openai-agents", marker = "extra == 'openai'", specifier = ">=0.12.0" },
     { name = "pydantic", specifier = ">=2.7.2" },

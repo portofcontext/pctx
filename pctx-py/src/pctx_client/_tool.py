@@ -7,13 +7,16 @@ from typing import Annotated, Any, get_type_hints
 
 from docstring_parser import Docstring
 from docstring_parser import parse as parse_docstring
+from jsonschema import Draft202012Validator
 from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PrivateAttr,
     SkipValidation,
     TypeAdapter,
     create_model,
+    model_validator,
 )
 
 
@@ -33,16 +36,42 @@ class BaseTool(BaseModel):
     Longer-form text which instructs the model how/why/when to use the tool.
     """
 
-    input_schema: Annotated[type[BaseModel] | None, SkipValidation] = Field(
-        default=None, description="The tool schema."
+    input_schema: Annotated[
+        type[BaseModel] | dict[str, Any] | None, SkipValidation
+    ] = Field(
+        default=None,
+        description="The tool input schema. Either a Pydantic BaseModel class or a JSON Schema dict.",
     )
 
     output_schema: Annotated[Any | None, SkipValidation] = Field(
         default=None, description="The return type schema."
     )
 
+    _input_validator: Draft202012Validator | None = PrivateAttr(default=None)
+
+    @model_validator(mode="after")
+    def _compile_input_validator(self) -> "BaseTool":
+        """
+        When ``input_schema`` is a JSON Schema dict, validate it against the
+        Draft 2020-12 metaschema and cache a compiled validator on the
+        instance so per-call ``validate_input`` doesn't recompile.
+
+        Raises:
+            jsonschema.SchemaError: If the provided dict is not a valid
+                JSON Schema.
+        """
+        if isinstance(self.input_schema, dict):
+            Draft202012Validator.check_schema(self.input_schema)
+            self._input_validator = Draft202012Validator(self.input_schema)
+        return self
+
     def validate_input(self, obj: Any):
-        if self.input_schema is not None:
+        if self.input_schema is None:
+            return
+        if isinstance(self.input_schema, dict):
+            assert self._input_validator is not None
+            self._input_validator.validate(obj)
+        else:
             self.input_schema.model_validate(obj)
 
     def validate_output(self, obj: Any):
@@ -53,7 +82,8 @@ class BaseTool(BaseModel):
     def input_json_schema(self) -> dict[str, Any] | None:
         if self.input_schema is None:
             return None
-
+        if isinstance(self.input_schema, dict):
+            return self.input_schema
         return self.input_schema.model_json_schema()
 
     def output_json_schema(self) -> dict[str, Any] | None:
@@ -70,19 +100,25 @@ class BaseTool(BaseModel):
         name: str | None = None,
         namespace: str = "tools",
         description: str | None = None,
+        input_schema: type[BaseModel] | dict[str, Any] | None = None,
     ) -> "Tool | AsyncTool":
         """
         Creates a tool from a given function.
+
+        If ``input_schema`` is provided (either a Pydantic BaseModel class or a
+        JSON Schema dict), it is used as-is and signature inference is skipped.
+        Otherwise the schema is inferred from the function signature.
         """
 
         docstring = parse_docstring(textwrap.dedent(description or func.__doc__ or ""))
 
         name_ = name or func.__name__
 
-        in_schema = create_input_schema(f"{name_}_Input", func, docstring=docstring)
-        out_schema = create_output_schema(func, docstring=docstring)
+        if input_schema is None:
+            in_schema = create_input_schema(f"{name_}_Input", func, docstring=docstring)
+            input_schema = None if is_empty_schema(in_schema) else in_schema
 
-        input_schema = None if is_empty_schema(in_schema) else in_schema
+        out_schema = create_output_schema(func, docstring=docstring)
         output_schema = out_schema
 
         # Create concrete tool classes based on sync vs async

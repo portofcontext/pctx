@@ -11,6 +11,7 @@ requires-python = ">=3.10,<3.15"
 dependencies = [
     "docstring-parser>=0.17.0",
     "httpx>=0.28.1",
+    "jsonschema>=4.26.0",
     "pydantic>=2.7.2",
     "websockets>=15.0.1",
 ]
