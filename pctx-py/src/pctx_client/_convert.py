@@ -13,6 +13,7 @@ def tool(
     namespace: str = "tools",
     description: str | None = None,
     input_schema: type[BaseModel] | dict[str, Any] | None = None,
+    output_schema: Any | None = None,
 ) -> Callable[[Callable], Tool | AsyncTool]: ...
 @overload
 def tool(
@@ -21,6 +22,7 @@ def tool(
     namespace: str = "tools",
     description: str | None = None,
     input_schema: type[BaseModel] | dict[str, Any] | None = None,
+    output_schema: Any | None = None,
 ) -> Tool | AsyncTool: ...
 
 
@@ -30,6 +32,7 @@ def tool(
     namespace: str = "tools",
     description: str | None = None,
     input_schema: type[BaseModel] | dict[str, Any] | None = None,
+    output_schema: Any | None = None,
 ) -> Tool | AsyncTool | Callable[[Callable], Tool | AsyncTool]:
     """
     Decorator that converts a function into a Tool or AsyncTool instance.
@@ -40,6 +43,9 @@ def tool(
     - @tool(namespace="custom", description="...") - With additional options
     - @tool(input_schema=MyModel) or @tool(input_schema={...}) - Override
       signature inference with an explicit Pydantic model or JSON Schema dict
+    - @tool(output_schema={...}) or @tool(output_schema=MyModel) - Override
+      return-annotation inference with an explicit JSON Schema dict or
+      Python type / typing construct
 
     Args:
         name_or_callable: Either a custom tool name (str) or the function to wrap (Callable)
@@ -47,6 +53,8 @@ def tool(
         description: Optional description override (default: uses function docstring)
         input_schema: Optional explicit input schema. When provided, signature
             inference is skipped and this schema is used directly.
+        output_schema: Optional explicit output schema. When provided, return-
+            annotation inference is skipped and this schema is used directly.
 
     Returns:
         Either a Tool/AsyncTool instance or a decorator function that creates one
@@ -84,6 +92,7 @@ def tool(
                 namespace=namespace,
                 description=description,
                 input_schema=input_schema,
+                output_schema=output_schema,
             )
 
         return _tool_factory

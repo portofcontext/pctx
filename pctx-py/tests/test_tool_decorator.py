@@ -803,3 +803,153 @@ def test_input_schema_with_custom_name_and_namespace() -> None:
     assert named.namespace == "math"
     assert named.input_json_schema() == schema
     assert named.invoke(n=2) == 3
+
+
+# ============================================================================
+# SECTION: EXPLICIT output_schema (skips return-annotation inference)
+# ============================================================================
+
+
+def test_output_schema_dict_skips_inference() -> None:
+    """An explicit JSON Schema dict for output is used as-is."""
+
+    schema: dict = {"type": "integer", "minimum": 0}
+
+    # Function annotation says `str`, but explicit dict overrides it.
+    @tool("returns_int", output_schema=schema)
+    def returns_int() -> str:
+        return 42  # type: ignore[return-value]
+
+    assert returns_int.output_json_schema() == schema
+    assert returns_int.invoke() == 42
+
+
+def test_output_schema_dict_rejects_invalid_output() -> None:
+    """Dict-defined output_schema validates via jsonschema and rejects bad output."""
+
+    @tool(
+        "produces",
+        output_schema={"type": "string", "minLength": 3},
+    )
+    def produces(value):
+        return value
+
+    assert produces.invoke(value="hello") == "hello"
+
+    with pytest.raises(jsonschema.ValidationError):
+        produces.invoke(value=123)  # not a string
+
+    with pytest.raises(jsonschema.ValidationError):
+        produces.invoke(value="hi")  # too short
+
+
+def test_output_schema_dict_malformed_raises_at_construction() -> None:
+    """A malformed output JSON Schema is rejected when the tool is built."""
+
+    with pytest.raises(jsonschema.SchemaError):
+
+        @tool("bad_out", output_schema={"type": "not-a-real-type"})
+        def _bad_out() -> int:  # pyright: ignore[reportUnusedFunction]
+            return 0
+
+
+def test_output_schema_pydantic_model_skips_inference() -> None:
+    """An explicit Pydantic BaseModel class for output is used as-is."""
+
+    class Result(BaseModel):
+        value: int
+        label: str
+
+    @tool("returns_model", output_schema=Result)
+    def returns_model() -> dict:
+        return {"value": 1, "label": "one"}
+
+    schema = returns_model.output_json_schema()
+    assert schema is not None
+    assert schema["properties"] == {
+        "value": {"title": "Value", "type": "integer"},
+        "label": {"title": "Label", "type": "string"},
+    }
+    # TypeAdapter validates the dict against the Pydantic model.
+    assert returns_model.invoke() == {"value": 1, "label": "one"}
+
+
+def test_output_schema_pydantic_model_rejects_invalid_output() -> None:
+    """Pydantic-defined output_schema raises pydantic.ValidationError on bad output."""
+
+    class Result(BaseModel):
+        value: int
+
+    @tool("returns_model", output_schema=Result)
+    def returns_model(payload):
+        return payload
+
+    with pytest.raises(ValidationError):
+        returns_model.invoke(payload={"value": "not-an-int"})
+
+
+def test_output_schema_overrides_return_annotation() -> None:
+    """When output_schema is provided, the function's return annotation is ignored."""
+
+    # Function annotated as -> int, but explicit schema says string.
+    @tool("override", output_schema={"type": "string"})
+    def override() -> int:
+        return "hello"  # type: ignore[return-value]
+
+    assert override.output_json_schema() == {"type": "string"}
+    assert override.invoke() == "hello"
+
+
+def test_output_schema_plain_python_type() -> None:
+    """A plain python type (e.g. int) passed as output_schema works via TypeAdapter."""
+
+    @tool("counter", output_schema=int)
+    def counter(n):
+        return n
+
+    assert counter.output_json_schema() == {"type": "integer"}
+    assert counter.invoke(n=5) == 5
+
+    with pytest.raises(ValidationError):
+        counter.invoke(n="not-an-int")
+
+
+async def test_output_schema_dict_async() -> None:
+    """Explicit output JSON Schema works for async tools too."""
+
+    @tool("async_int", output_schema={"type": "integer"})
+    async def async_int(n):
+        return n
+
+    assert isinstance(async_int, AsyncTool)
+    assert await async_int.ainvoke(n=7) == 7
+
+    with pytest.raises(jsonschema.ValidationError):
+        await async_int.ainvoke(n="bad")
+
+
+def test_input_and_output_schema_both_explicit() -> None:
+    """Both schemas can be explicit dicts at once."""
+
+    @tool(
+        "echo",
+        input_schema={
+            "type": "object",
+            "properties": {"msg": {"type": "string"}},
+            "required": ["msg"],
+        },
+        output_schema={"type": "string"},
+    )
+    def echo(**kwargs) -> str:
+        return kwargs["msg"]
+
+    assert echo.input_json_schema() == {
+        "type": "object",
+        "properties": {"msg": {"type": "string"}},
+        "required": ["msg"],
+    }
+    assert echo.output_json_schema() == {"type": "string"}
+    assert echo.invoke(msg="hi") == "hi"
+
+    with pytest.raises(jsonschema.ValidationError):
+        echo.invoke(msg=123)  # input is not a string
