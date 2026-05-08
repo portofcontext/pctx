@@ -128,6 +128,11 @@ class GetFunctionDetailsInput(BaseModel):
     functions: list[str]
 
 
+class SearchFunctionsInput(BaseModel):
+    query: str
+    k: int = 10
+
+
 class GetFunctionDetailsOutput(BaseModel):
     """Output from getting detailed function information"""
 

@@ -225,7 +225,7 @@ main() {
     echo "  2. Run 'cargo test' to ensure everything works"
     echo "  3. Commit and push the changes"
     echo "  3. Dispatch release from GitHub Actions"
-    echo "  4. If the Python SDK needs releasing, bump pyproject.toml, run make test-python (uv.lock) use the GH action manual dispatch"
+    echo "  4. If the Python SDK needs releasing, bump pyproject.toml, run make test (uv.lock) use the GH action manual dispatch"
 
 }
 
