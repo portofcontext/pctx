@@ -42,13 +42,13 @@ if TYPE_CHECKING:
         from crewai.tools import BaseTool as CrewAiBaseTool
         from langchain_core.tools import BaseTool as LangchainBaseTool
         from pydantic_ai.tools import Tool as PydanticAITool
-        from Stemmer import Stemmer
+        from Stemmer import Stemmer  # ty: ignore[unresolved-import]
     except ImportError:
         pass
 
 try:
     from bm25s import BM25, tokenize
-    from Stemmer import Stemmer
+    from Stemmer import Stemmer  # ty: ignore[unresolved-import]
 except ImportError:
     pass
 
@@ -866,7 +866,7 @@ class Pctx:
                 "Claude Agent SDK is not installed. Install it with: pip install pctx[claude]"
             ) from e
 
-        def _text_content_block(val: str) -> dict:
+        def _text_content_block(val: str) -> dict[str, Any]:
             return {"content": [{"type": "text", "text": val}]}
 
         # build all tools
@@ -875,7 +875,7 @@ class Pctx:
             get_tool_description("execute_bash", overrides=descriptions),
             ExecuteBashInput.model_json_schema(),
         )
-        async def execute_bash(args: dict[str, Any]) -> str:
+        async def execute_bash(args: dict[str, Any]) -> dict[str, Any]:
             tool_input = ExecuteBashInput(**args)
             bash_out = await self.execute_bash(tool_input.command)
             return _text_content_block(bash_out.markdown())
@@ -887,7 +887,7 @@ class Pctx:
             ),
             ExecuteTypescriptInput.model_json_schema(),
         )
-        async def execute_typescript(args: dict[str, Any]) -> str:
+        async def execute_typescript(args: dict[str, Any]) -> dict[str, Any]:
             tool_input = ExecuteTypescriptInput(**args)
             exec_out = await self.execute_typescript(
                 tool_input.code, disclosure=disclosure
@@ -899,7 +899,7 @@ class Pctx:
             get_tool_description("list_functions", overrides=descriptions),
             {"type": "object"},
         )
-        async def list_functions(_args: dict[str, Any]) -> str:
+        async def list_functions(_args: dict[str, Any]) -> dict[str, Any]:
             listed = await self.list_functions()
             return _text_content_block(listed.code)
 
@@ -908,7 +908,7 @@ class Pctx:
             get_tool_description("get_function_details", overrides=descriptions),
             GetFunctionDetailsInput.model_json_schema(),
         )
-        async def get_function_details(args: dict[str, Any]) -> str:
+        async def get_function_details(args: dict[str, Any]) -> dict[str, Any]:
             tool_input = GetFunctionDetailsInput(**args)
             details = await self.get_function_details(tool_input.functions)
             return _text_content_block(details.code)
@@ -918,7 +918,7 @@ class Pctx:
             get_tool_description("search_functions", overrides=descriptions),
             SearchFunctionsInput.model_json_schema(),
         )
-        async def search_functions(args: dict[str, Any]) -> str:
+        async def search_functions(args: dict[str, Any]) -> dict[str, Any]:
             print(f"Claude fn called search_functions: {args}")
             tool_input = SearchFunctionsInput(**args)
             functions = await self.search_functions(tool_input.query, tool_input.k)

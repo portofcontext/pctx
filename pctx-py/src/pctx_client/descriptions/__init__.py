@@ -30,7 +30,7 @@ def get_tool_description(
     tool_name: ToolName,
     disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
     version: int = 1,
-    overrides: dict[ToolName, str] = None,
+    overrides: dict[ToolName, str] | None = None,
 ) -> str:
     """Load a tool description string from the data directory.
 
@@ -47,11 +47,12 @@ def get_tool_description(
     if overrides is not None and tool_name in overrides:
         return overrides[tool_name]
 
+    path_segment = tool_name
     if tool_name == "execute_typescript":
-        tool_name = f"{tool_name}_{disclosure.value}"
+        path_segment = f"{tool_name}_{disclosure.value}"
 
     return (
-        files("pctx_client.descriptions.data.tools") / tool_name / f"v{version}.txt"
+        files("pctx_client.descriptions.data.tools") / path_segment / f"v{version}.txt"
     ).read_text(encoding="utf-8")
 
 

@@ -2,7 +2,7 @@ name: Python CI
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
     paths:
       - "pctx-py/**"
       - ".github/workflows/ci-python.yaml"
@@ -21,7 +21,7 @@ defaults:
     working-directory: pctx-py
 
 jobs:
-  lint:
+  check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -37,19 +37,26 @@ jobs:
           python-version: "3.10"
 
       - name: Install dependencies
-        run: uv sync --group dev
+        id: install
+        run: uv sync --all-extras --all-groups
 
       - name: Check formatting
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run ruff format --check .
 
       - name: Run linter
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
         run: uv run ruff check .
+
+      - name: Type check
+        if: ${{ !cancelled() && steps.install.outcome == 'success' }}
+        run: uv run ty check src
 
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: [ "3.10", "3.11", "3.12", "3.13" ]
     steps:
       - uses: actions/checkout@v4
 
