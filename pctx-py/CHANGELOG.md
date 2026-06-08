@@ -11,6 +11,13 @@ For changes to the underlying Rust crates and CLI, see the
 
 ## [UNRELEASED] - YYYY-MM-DD
 
+## [v0.4.0] - 2026-06-08
+
+### Added
+- `py.typed` for mypy
+
+## [v0.4.0] - 2026-05-08
+
 ### Added
 
 - `BaseTool.input_schema` now accepts a JSON Schema dict in addition to a
@@ -87,7 +94,9 @@ For changes to the underlying Rust crates and CLI, see the
 - Convertors to export CodeMode tools to popular agent frameworks
   (LangChain, CrewAI, OpenAI Agents, Pydantic AI).
 
-[UNRELEASED]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.2...HEAD
+[UNRELEASED]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.1...HEAD
+[v0.4.1]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.0...pctx-py-v0.4.1
+[v0.4.0]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.1...pctx-py-v0.4.0
 [v0.3.2]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.1...pctx-py-v0.3.2
 [v0.3.1]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.0...pctx-py-v0.3.1
 [v0.3.0]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.0b1...pctx-py-v0.3.0
