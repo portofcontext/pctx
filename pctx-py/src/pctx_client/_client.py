@@ -65,7 +65,7 @@ class Pctx:
         tools: list[Tool | AsyncTool] | None = None,
         servers: list[ServerConfig] | None = None,
         url: str = "http://localhost:8080",
-        api_key: str | None = None,
+        headers: dict[str, str] | None = None,
         execute_timeout: float = 30.0,
     ):
         """
@@ -77,6 +77,8 @@ class Pctx:
                 - HTTP server: {"name": "...", "url": "...", "auth": {...}}
                 - stdio server: {"name": "...", "command": "...", "args": [...], "env": {...}}
             url: PCTX server URL (default: http://localhost:8080)
+            headers: Additional headers applied to every request and the
+                WebSocket connection request
             execute_timeout: Timeout for code execution in seconds (default: 30.0)
         """
 
@@ -100,14 +102,14 @@ class Pctx:
         ws_scheme = "wss" if http_scheme == "https" else "ws"
 
         self._ws_client = WebSocketClient(
-            url=f"{ws_scheme}://{host}{parsed.path}/ws", api_key=api_key, tools=tools
+            url=f"{ws_scheme}://{host}{parsed.path}/ws", headers=headers, tools=tools
         )
         self._client = AsyncClient(
             base_url=f"{http_scheme}://{host}{parsed.path}",
-            headers={"x-pctx-api-key": api_key or ""},
+            headers=headers or {},
         )
         self._session_id: str | None = None
-        self._api_key = api_key
+        self._headers = headers or {}
 
         self._tools = tools or []
         self._servers = servers or []

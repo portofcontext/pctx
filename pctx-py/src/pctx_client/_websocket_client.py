@@ -52,7 +52,7 @@ class WebSocketClient:
     def __init__(
         self,
         url: str,
-        api_key: str | None = None,
+        headers: dict[str, str] | None = None,
         tools: list[Tool | AsyncTool] | None = None,
     ):
         """
@@ -60,11 +60,12 @@ class WebSocketClient:
 
         Args:
             url: WebSocket server URL (e.g., "ws://localhost:8080/ws")
+            headers: Additional headers to send with the connection request
         """
         self.url = url
         self.ws: ClientConnection | None = None
         self.tools = tools or []
-        self._api_key = api_key
+        self._headers = headers or {}
         self._pending_executions: dict[str | int, asyncio.Future] = {}
         self._request_counter = 0
 
@@ -77,8 +78,8 @@ class WebSocketClient:
         """
         try:
             headers = {
+                **self._headers,
                 "x-code-mode-session": code_mode_session,
-                "x-pctx-api-key": self._api_key or "",
             }
             self.ws = await websockets.connect(self.url, additional_headers=headers)
         except Exception as e:
