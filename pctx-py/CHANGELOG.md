@@ -11,7 +11,21 @@ For changes to the underlying Rust crates and CLI, see the
 
 ## [UNRELEASED] - YYYY-MM-DD
 
-## [v0.4.0] - 2026-06-08
+### Added
+
+- `Pctx(headers=...)`: an arbitrary `dict[str, str]` of headers applied to every
+  HTTP request and the WebSocket connection request. Use this to authenticate
+  against deployments that expect custom headers (e.g. a
+  `{"authorization": "Bearer <token>"}` for GCP IAM-protected services).
+
+### Removed
+
+- **Breaking**: the deprecated `Pctx(api_key=...)` parameter and the
+  `x-pctx-api-key` header it set. The system that validated this key is no
+  longer maintained. Pass credentials via `headers=` instead — e.g.
+  `Pctx(api_key="k")` → `Pctx(headers={"x-pctx-api-key": "k"})`.
+
+## [v0.4.1] - 2026-06-08
 
 ### Added
 - `py.typed` for mypy

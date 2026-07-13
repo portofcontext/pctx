@@ -48,7 +48,7 @@ def multiply(a: float, b: float) -> MultiplyOutput:
 async def main():
     async with Pctx(
         # url="https://....",
-        # api_key="pctx_xxxx",
+        # headers={"authorization": "Bearer xxxx"},
         tools=[add, subtract, multiply, now_timestamp, search_logs],
         servers=[
             {
