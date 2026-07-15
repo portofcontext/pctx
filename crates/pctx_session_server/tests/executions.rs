@@ -430,6 +430,47 @@ async fn test_exec_large_trace_still_sends() {
     assert_eq!(response["result"]["output"], json!(expected_sum));
 }
 
+/// A script that returns a value larger than the frame limit. Dropping the trace
+/// isn't enough here, so the return value itself is truncated to a marker and an
+/// explanatory notice is surfaced on stderr — but the response still sends.
+#[tokio::test]
+#[serial]
+async fn test_exec_large_output_truncates_and_sends() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    // Return a ~20 MiB string directly, over the 15 MiB response limit.
+    let code = r#"async function run() { return "A".repeat(20 * 1024 * 1024); }"#;
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-large-output",
+        "method": "execute_code",
+        "params": { "code": code, "disclosure": "sidecar" }
+    }))
+    .await;
+
+    // The response must still send despite the oversized return value.
+    let response: serde_json::Value = ws.receive_json().await;
+    let result = &response["result"];
+
+    assert_eq!(result["success"], json!(true));
+    // Output replaced with the truncation marker.
+    assert_eq!(result["output"]["__truncated__"], json!(true));
+    // The agent is told why via stderr.
+    assert!(
+        result["stderr"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("truncated"),
+        "stderr should carry the truncation notice: {result:?}"
+    );
+}
+
 #[tokio::test]
 #[serial]
 async fn test_exec_type_error_with_rich_diagnostics() {
