@@ -32,6 +32,18 @@ pub fn get_description(
     }
 }
 
+/// Assigns a generated type name to a schema root without changing child schemas.
+pub fn assign_schema_type_name(schema: Schema, type_name: &str) -> Schema {
+    match schema {
+        Schema::Object(mut obj) => {
+            obj.extensions
+                .insert(X_TYPE_NAME.to_string(), json!(type_name));
+            Schema::Object(obj)
+        }
+        other => other,
+    }
+}
+
 /// Iterates through the provided schema, assigning unique type names recursively
 pub fn assign_type_names(schema: Schema, type_name: &str) -> Schema {
     match SchemaType::from(&schema) {

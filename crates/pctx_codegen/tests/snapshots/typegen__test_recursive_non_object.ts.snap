@@ -1,0 +1,18 @@
+---
+source: crates/pctx_codegen/tests/typegen.rs
+assertion_line: 30
+expression: "&typegen_res.types"
+---
+export type RecursiveNonObjectAny =
+  | string
+  | number
+  | { [key: string]: RecursiveNonObjectAny | undefined | undefined };
+
+export type RecursiveNonObject = {
+  value?:
+    | string
+    | number
+    | { [key: string]: RecursiveNonObjectAny | undefined | undefined }
+    | undefined
+    | undefined;
+};
