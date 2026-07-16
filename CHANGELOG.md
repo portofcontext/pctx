@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Bound `execute_code` responses under the 16 MiB WebSocket frame limit: oversized responses (usually from a bloated trace, occasionally from a huge return value or stdout) previously exceeded the frame limit and silently failed to reach the client. The response is now shrunk before sending — dropping the trace first, then replacing the return value with a truncation marker if still too large.
+
 ## [v0.7.1] - 2026-03-27
 
 ### Added
