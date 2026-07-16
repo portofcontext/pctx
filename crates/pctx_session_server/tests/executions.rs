@@ -345,6 +345,132 @@ async fn test_exec_callbacks(#[case] code: &str, #[case] disclosure: &str) {
     );
 }
 
+/// A tool returning a large `{ val, text }` is called `N_CALLS` times, but the script only returns
+/// the sum of `val`. The trace captures every `text`, bloating it past the 16 MiB frame limit — so
+/// the response fails to send even though the returned value is tiny. Passes once the trace is
+/// size-bounded before transport.
+#[tokio::test]
+#[serial]
+async fn test_exec_large_trace_still_sends() {
+    // ~2 MiB per callback response × 10 calls ≈ 20 MiB of trace, over the 16 MiB frame limit.
+    const BIG_TEXT_BYTES: usize = 2 * 1024 * 1024;
+    const N_CALLS: i64 = 10;
+
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    // Register a single callback tool that returns a large { val, text } object.
+    let big_tool = CallbackConfig {
+        name: "get".into(),
+        namespace: Some("test_load".into()),
+        description: Some("Returns a large payload".into()),
+        input_schema: Some(json!({
+            "type": "object",
+            "properties": { "i": { "type": "number" } },
+            "required": ["i"]
+        })),
+        output_schema: Some(json!({
+            "type": "object",
+            "properties": {
+                "val": { "type": "number" },
+                "text": { "type": "string" }
+            },
+            "required": ["val", "text"]
+        })),
+    };
+    let register_res = server
+        .post("/register/tools")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "tools": [big_tool] }))
+        .await;
+    register_res.assert_status_ok();
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    // Script: call the tool N times, accumulate only the small `val`, return the sum.
+    let code = format!(
+        "async function run() {{
+            let sum = 0;
+            for (let i = 0; i < {N_CALLS}; i++) {{
+                const res = await invoke({{ name: \"test_load__get\", arguments: {{ i }} }});
+                sum += res.val;
+            }}
+            return sum;
+        }}"
+    );
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-large-trace",
+        "method": "execute_code",
+        "params": { "code": code, "disclosure": "sidecar" }
+    }))
+    .await;
+
+    // Service each execute_tool request with a large { val, text } response.
+    let big_text = "A".repeat(BIG_TEXT_BYTES);
+    for i in 0..N_CALLS {
+        let msg: WsJsonRpcMessage = ws.receive_json().await;
+        let (_req, req_id) = msg.into_request().unwrap();
+        ws.send_json(&json!({
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": { "output": { "val": i, "text": big_text } }
+        }))
+        .await;
+    }
+
+    // The final execute_code response carries the ~20 MiB trace. Today this receive fails
+    // (message exceeds the receiver frame limit); after the trace is bounded it succeeds.
+    let response: serde_json::Value = ws.receive_json().await;
+
+    let expected_sum: i64 = (0..N_CALLS).sum();
+    assert_eq!(response["result"]["output"], json!(expected_sum));
+}
+
+/// A script that returns a value larger than the frame limit. Dropping the trace
+/// isn't enough here, so the return value itself is truncated to a marker and an
+/// explanatory notice is surfaced on stderr — but the response still sends.
+#[tokio::test]
+#[serial]
+async fn test_exec_large_output_truncates_and_sends() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    // Return a ~20 MiB string directly, over the 15 MiB response limit.
+    let code = r#"async function run() { return "A".repeat(20 * 1024 * 1024); }"#;
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "test-large-output",
+        "method": "execute_code",
+        "params": { "code": code, "disclosure": "sidecar" }
+    }))
+    .await;
+
+    // The response must still send despite the oversized return value.
+    let response: serde_json::Value = ws.receive_json().await;
+    let result = &response["result"];
+
+    assert_eq!(result["success"], json!(true));
+    // Output replaced with the truncation marker.
+    assert_eq!(result["output"]["__truncated__"], json!(true));
+    // The agent is told why via stderr.
+    assert!(
+        result["stderr"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("truncated"),
+        "stderr should carry the truncation notice: {result:?}"
+    );
+}
+
 #[tokio::test]
 #[serial]
 async fn test_exec_type_error_with_rich_diagnostics() {

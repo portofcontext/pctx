@@ -33,6 +33,7 @@ use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::AppState;
+use crate::websocket::truncate::bound_response_size;
 
 /// Handle WebSocket upgrade
 pub async fn ws_handler<B: PctxSessionBackend>(
@@ -291,7 +292,9 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
         .await;
 
         let (msg, execution_res) = match output {
-            Ok(Ok(exec_output)) => {
+            Ok(Ok(mut exec_output)) => {
+                // Keep the response within the WebSocket frame limit before sending.
+                bound_response_size(&mut exec_output);
                 if let Err(e) = state
                     .backend
                     .set_pool(code_mode_session_id, exec_output.registry.pool())

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Stack overflow in `pctx_codegen` when generating TypeScript signatures for recursive JSON Schema `$defs` that are not object-with-properties schemas. Recursive refs now stop expanding inline and use generated type aliases, while non-recursive refs keep the existing inline behavior.
+- Bound `execute_code` responses under the 16 MiB WebSocket frame limit: oversized responses (usually from a bloated trace, occasionally from a huge return value or stdout) previously exceeded the frame limit and silently failed to reach the client. The response is now shrunk before sending — dropping the trace first, then replacing the return value with a truncation marker if still too large. ***TEMPORARY FIX*** - long term suggested fix is planned in: `.plans/large-execution-payloads.md`
 
 ## [v0.7.1] - 2026-03-27
 
@@ -229,13 +230,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.3.0...HEAD
-[v0.2.1]: https://github.com/portofcontext/pctx/compare/v0.3.0
-[v0.2.1]: https://github.com/portofcontext/pctx/compare/v0.2.2
-[v0.2.1]: https://github.com/portofcontext/pctx/compare/v0.2.1
-[v0.2.0]: https://github.com/portofcontext/pctx/compare/v0.2.0
-[v0.1.4]: https://github.com/portofcontext/pctx/compare/v0.1.4
-[v0.1.3]: https://github.com/portofcontext/pctx/compare/v0.1.3
-[v0.1.2]: https://github.com/portofcontext/pctx/compare/v0.1.2
-[v0.1.1]: https://github.com/portofcontext/pctx/compare/v0.1.1
+[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.1...HEAD
+[v0.7.1]: https://github.com/portofcontext/pctx/compare/v0.7.0...v0.7.1
+[v0.7.0]: https://github.com/portofcontext/pctx/compare/v0.6.0...v0.7.0
+[v0.6.0]: https://github.com/portofcontext/pctx/compare/v0.5.0...v0.6.0
+[v0.5.0]: https://github.com/portofcontext/pctx/compare/v0.4.3...v0.5.0
+[v0.4.3]: https://github.com/portofcontext/pctx/compare/v0.4.2...v0.4.3
+[v0.4.2]: https://github.com/portofcontext/pctx/compare/v0.4.1...v0.4.2
+[v0.4.1]: https://github.com/portofcontext/pctx/compare/v0.4.0...v0.4.1
+[v0.4.0]: https://github.com/portofcontext/pctx/compare/v0.3.0...v0.4.0
+[v0.3.0]: https://github.com/portofcontext/pctx/compare/v0.2.2...v0.3.0
+[v0.2.2]: https://github.com/portofcontext/pctx/compare/v0.2.1...v0.2.2
+[v0.2.1]: https://github.com/portofcontext/pctx/compare/v0.2.0...v0.2.1
+[v0.2.0]: https://github.com/portofcontext/pctx/compare/v0.1.4...v0.2.0
+[v0.1.4]: https://github.com/portofcontext/pctx/compare/v0.1.3...v0.1.4
+[v0.1.3]: https://github.com/portofcontext/pctx/compare/v0.1.2...v0.1.3
+[v0.1.2]: https://github.com/portofcontext/pctx/compare/v0.1.1...v0.1.2
+[v0.1.1]: https://github.com/portofcontext/pctx/compare/v0.1.0...v0.1.1
 [v0.1.0]: https://github.com/portofcontext/pctx/releases/tag/v0.1.0
