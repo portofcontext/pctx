@@ -71,6 +71,62 @@ pub struct PctxRegistry {
 }
 
 impl PctxRegistry {
+    /// Returns every MCP server registered in this registry as a list of
+    /// `(tool_names, ServerConfig)` pairs.
+    ///
+    /// Used by the process pool to reconstruct a registry inside a worker
+    /// process that only has access to serialisable data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either internal lock is poisoned.
+    pub fn mcp_servers(&self) -> Vec<(Vec<String>, ServerConfig)> {
+        let actions = self.actions.read().unwrap();
+        let servers = self.servers.read().unwrap();
+
+        let mut by_server: std::collections::HashMap<String, Vec<String>> =
+            std::collections::HashMap::new();
+
+        for action in actions.values() {
+            if let RegistryAction::Mcp(mcp_id) = action {
+                by_server
+                    .entry(mcp_id.sever_name.clone())
+                    .or_default()
+                    .push(mcp_id.tool_name.clone());
+            }
+        }
+
+        by_server
+            .into_iter()
+            .filter_map(|(server_name, tool_names)| {
+                servers.get(&server_name).map(|cfg| (tool_names, cfg.clone()))
+            })
+            .collect()
+    }
+
+    /// Returns the IDs of every callback registered in this registry.
+    ///
+    /// Used by the process pool to tell a worker which callback IDs to proxy
+    /// back to the parent process.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the internal lock is poisoned.
+    pub fn callback_ids(&self) -> Vec<String> {
+        self.actions
+            .read()
+            .unwrap()
+            .iter()
+            .filter_map(|(id, action)| {
+                if matches!(action, RegistryAction::Callback(_)) {
+                    Some(id.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     /// Returns the ids of this Pctx Registry.
     ///
     /// # Panics
@@ -404,5 +460,99 @@ impl std::fmt::Display for PctxRegistry {
             f,
             "PctxRegistry({action_count} actions, {server_count} servers)"
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use serde_json::json;
+
+    use super::PctxRegistry;
+
+    fn noop_callback() -> super::CallbackFn {
+        Arc::new(|_args| Box::pin(async { Ok(json!(null)) }))
+    }
+
+    // ── callback_ids() ───────────────────────────────────────────────────────
+
+    #[test]
+    fn callback_ids_empty_when_no_callbacks_registered() {
+        let registry = PctxRegistry::default();
+        assert!(registry.callback_ids().is_empty());
+    }
+
+    #[test]
+    fn callback_ids_returns_all_registered_ids() {
+        let registry = PctxRegistry::default();
+        registry.add_callback("ns.foo", noop_callback()).unwrap();
+        registry.add_callback("ns.bar", noop_callback()).unwrap();
+
+        let mut ids = registry.callback_ids();
+        ids.sort();
+        assert_eq!(ids, vec!["ns.bar", "ns.foo"]);
+    }
+
+    #[test]
+    fn callback_ids_excludes_mcp_actions() {
+        // An MCP action registered via add_mcp should NOT appear in callback_ids.
+        use pctx_config::server::{HttpServerConfig, ServerConfig, ServerTransport};
+        let registry = PctxRegistry::default();
+        registry
+            .add_mcp(
+                &["my_tool".to_string()],
+                ServerConfig {
+                    name: "my_server".to_string(),
+                    transport: ServerTransport::Http(HttpServerConfig {
+                        url: "http://localhost:1234".parse().unwrap(),
+                        auth: None,
+                    }),
+                },
+            )
+            .unwrap();
+        registry.add_callback("cb.one", noop_callback()).unwrap();
+
+        let ids = registry.callback_ids();
+        assert_eq!(ids, vec!["cb.one"]);
+    }
+
+    // ── mcp_servers() ────────────────────────────────────────────────────────
+
+    #[test]
+    fn mcp_servers_empty_when_no_servers_registered() {
+        let registry = PctxRegistry::default();
+        assert!(registry.mcp_servers().is_empty());
+    }
+
+    #[test]
+    fn mcp_servers_excludes_callbacks() {
+        let registry = PctxRegistry::default();
+        registry.add_callback("cb.one", noop_callback()).unwrap();
+        assert!(registry.mcp_servers().is_empty());
+    }
+
+    #[test]
+    fn mcp_servers_returns_tool_names_and_config() {
+        use pctx_config::server::{HttpServerConfig, ServerConfig, ServerTransport};
+        let registry = PctxRegistry::default();
+        let cfg = ServerConfig {
+            name: "svc".to_string(),
+            transport: ServerTransport::Http(HttpServerConfig {
+                url: "http://localhost:9999".parse().unwrap(),
+                auth: None,
+            }),
+        };
+        registry
+            .add_mcp(&["tool_a".to_string(), "tool_b".to_string()], cfg.clone())
+            .unwrap();
+
+        let servers = registry.mcp_servers();
+        assert_eq!(servers.len(), 1);
+
+        let (mut tool_names, returned_cfg) = servers.into_iter().next().unwrap();
+        tool_names.sort();
+        assert_eq!(tool_names, vec!["tool_a", "tool_b"]);
+        assert_eq!(returned_cfg.name, cfg.name);
     }
 }

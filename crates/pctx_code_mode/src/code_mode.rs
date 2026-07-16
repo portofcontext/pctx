@@ -1,10 +1,12 @@
 use pctx_codegen::{Tool, ToolSet};
 use pctx_config::{ToolDisclosure, server::ServerConfig};
+use pctx_executor::ExecutorPool;
 use pctx_registry::PctxRegistry;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
     collections::{HashMap, HashSet},
+    sync::Arc,
     time::Duration,
 };
 use tracing::{debug, info, instrument, warn};
@@ -28,10 +30,33 @@ pub struct CodeMode {
 
     // Virtual filesystem for just-bash exploration
     virtual_fs: HashMap<String, String>,
+
+    /// Optional process pool for parallel TypeScript execution.
+    ///
+    /// When set, `execute_typescript` and `execute_bash` dispatch to a worker
+    /// process instead of acquiring the process-wide `V8_MUTEX`, allowing N
+    /// concurrent executions where N is the pool size.
+    ///
+    /// Skipped during serialisation — pools must be re-attached after
+    /// deserialising a `CodeMode`.
+    #[serde(skip)]
+    executor: Option<Arc<ExecutorPool>>,
 }
 
 impl CodeMode {
     // --------------- Builder functions ---------------
+
+    /// Attach a process pool so that `execute_typescript` and `execute_bash`
+    /// dispatch to worker processes instead of serialising through the
+    /// process-wide V8 lock.
+    ///
+    /// The pool must outlive this `CodeMode` (hence `Arc`). Call this after
+    /// construction, before any executions.
+    #[must_use]
+    pub fn with_executor_pool(mut self, pool: Arc<ExecutorPool>) -> Self {
+        self.executor = Some(pool);
+        self
+    }
 
     pub async fn with_server(mut self, server: &ServerConfig) -> Result<Self> {
         self.add_server(server).await?;
@@ -179,6 +204,13 @@ impl CodeMode {
             server.name,
             tool_set.tools.len()
         );
+
+        // Explicitly cancel the transport task before dropping so the OS-level
+        // TCP socket and epoll registration are released immediately rather than
+        // waiting for the Tokio task to be scheduled and exit on its own.
+        // Under concurrent load, many pending-cancellation tasks accumulate and
+        // exhaust the process file-descriptor limit (EMFILE / os error 24).
+        mcp_client.cancellation_token().cancel();
 
         Ok((tool_set, server.clone()))
     }
@@ -504,8 +536,24 @@ export default result;"#,
 
         debug!(to_execute = %to_execute, "Executing bash in sandbox");
 
-        let execution_res =
-            pctx_executor::execute(&to_execute, pctx_executor::ExecuteOptions::new()).await?;
+        let execution_res = if let Some(pool) = &self.executor {
+            pool.execute(&to_execute, pctx_executor::ExecuteOptions::new())
+                .await?
+        } else {
+            tokio::task::spawn_blocking(move || -> Result<_> {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| Error::Message(format!("Failed to create Tokio runtime: {e}")))?;
+                rt.block_on(pctx_executor::execute(
+                    &to_execute,
+                    pctx_executor::ExecuteOptions::new(),
+                ))
+                .map_err(Into::into)
+            })
+            .await
+            .map_err(|e| Error::Message(format!("Task join error: {e}")))??
+        };
 
         // Extract stdout and stderr from the bash result object
         // The output field contains the result object: { stdout, stderr, exitCode }
@@ -666,11 +714,27 @@ export default result;"#,
 
         debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
 
-        let execution_res = pctx_executor::execute(
-            &to_execute,
-            pctx_executor::ExecuteOptions::new().with_registry(registry),
-        )
-        .await?;
+        let execution_res = if let Some(pool) = &self.executor {
+            pool.execute(
+                &to_execute,
+                pctx_executor::ExecuteOptions::new().with_registry(registry),
+            )
+            .await?
+        } else {
+            tokio::task::spawn_blocking(move || -> Result<_> {
+                let rt = tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                    .map_err(|e| Error::Message(format!("Failed to create Tokio runtime: {e}")))?;
+                rt.block_on(pctx_executor::execute(
+                    &to_execute,
+                    pctx_executor::ExecuteOptions::new().with_registry(registry),
+                ))
+                .map_err(Into::into)
+            })
+            .await
+            .map_err(|e| Error::Message(format!("Task join error: {e}")))??
+        };
 
         if execution_res.success {
             debug!("TypeScript execution completed successfully");

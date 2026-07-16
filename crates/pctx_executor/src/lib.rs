@@ -13,6 +13,11 @@ use thiserror::Error;
 use tracing::{debug, warn};
 
 pub mod events;
+pub mod ipc;
+pub mod pool;
+pub mod protocol;
+
+pub use pool::{ExecutorPool, PoolConfig};
 
 /// Process-wide mutex to serialize all V8 isolate creation and usage.
 ///
@@ -531,3 +536,6 @@ fn process_execution_results(
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
+
+#[cfg(test)]
+mod tests;

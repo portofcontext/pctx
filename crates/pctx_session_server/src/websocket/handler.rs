@@ -29,7 +29,7 @@ use rmcp::{
 };
 use serde_json::json;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{Instrument, debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::AppState;
@@ -47,7 +47,7 @@ pub async fn ws_handler<B: PctxSessionBackend>(
         .await
         .unwrap_or_default()
     {
-        error!("Rejecting WebSocket connection: code mode session {code_mode_session} not found");
+        warn!("Rejecting WebSocket connection: code mode session {code_mode_session} not found (stale session ID or server restarted)");
         return (
             StatusCode::NOT_FOUND,
             format!("Code mode session {code_mode_session} not found"),
@@ -202,6 +202,9 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
 
     debug!("Found CodeMode session with ID: {code_mode_session_id}");
 
+    // Re-attach the executor pool (stripped by serde on backend fetch).
+    let code_mode = state.attach_pool(code_mode);
+
     let execution_id = Uuid::new_v4();
 
     // Build registry from the session's MCP servers, reusing the cached pool
@@ -270,28 +273,17 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
         execution_id = %execution_id,
     );
 
-    tokio::spawn(async move {
-        let code_mode_clone = code_mode.clone();
+    tokio::spawn(
+      async move {
         let code_to_exec = params.code.clone();
 
-        let output = tokio::task::spawn_blocking(move || -> Result<_, anyhow::Error> {
-            let _guard = execution_span.enter();
-            let rt = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-                .map_err(|e| anyhow::anyhow!("Failed to create runtime: {e}"))?;
-
-            rt.block_on(code_mode_clone.execute_typescript(
-                &code_to_exec,
-                params.disclosure,
-                Some(registry),
-            ))
-            .map_err(|e| anyhow::anyhow!("Execution error: {e}"))
-        })
-        .await;
+        let output = code_mode
+            .execute_typescript(&code_to_exec, params.disclosure, Some(registry))
+            .await
+            .map_err(|e| anyhow::anyhow!("Execution error: {e}"));
 
         let (msg, execution_res) = match output {
-            Ok(Ok(exec_output)) => {
+            Ok(exec_output) => {
                 if let Err(e) = state
                     .backend
                     .set_pool(code_mode_session_id, exec_output.registry.pool())
@@ -307,22 +299,11 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                     Ok(exec_output),
                 )
             }
-            Ok(Err(e)) => (
-                WsJsonRpcMessage::error(
-                    ErrorData {
-                        code: ErrorCode::INTERNAL_ERROR,
-                        message: format!("Execution failed: {e}").into(),
-                        data: None,
-                    },
-                    req_id,
-                ),
-                Err(anyhow!(e)),
-            ),
             Err(e) => (
                 WsJsonRpcMessage::error(
                     ErrorData {
                         code: ErrorCode::INTERNAL_ERROR,
-                        message: format!("Task join failed: {e}").into(),
+                        message: format!("Execution failed: {e}").into(),
                         data: None,
                     },
                     req_id,
@@ -349,7 +330,9 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
         if let Err(e) = sender.send(msg) {
             error!("Failed to send response: {e}");
         }
-    });
+      }
+      .instrument(execution_span),
+    );
 
     Ok(())
 }

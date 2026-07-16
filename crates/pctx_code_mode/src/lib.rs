@@ -190,6 +190,7 @@ pub use code_mode::CodeMode;
 // Re-export config, codegen, registry, crates
 pub use pctx_codegen as codegen;
 pub use pctx_config as config;
+pub use pctx_executor::{ExecutorPool, PoolConfig};
 pub use pctx_registry as registry;
 
 pub type Result<T> = std::result::Result<T, Error>;
