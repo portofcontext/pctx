@@ -4187,7 +4187,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_code_execution_runtime"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "anyhow",
  "deno_core",
@@ -4206,7 +4206,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_code_mode"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "anyhow",
  "futures",
@@ -4226,7 +4226,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_codegen"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "biome_formatter",
  "biome_js_formatter",
@@ -4331,7 +4331,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_registry"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "deno_error",
  "pctx_config",

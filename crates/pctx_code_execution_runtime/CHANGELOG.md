@@ -5,13 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.1.3 (2026-01-28)
+## 0.2.1 (2026-07-16)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 1 commit contributed to the release.
+ - 125 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -22,6 +23,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_config v0.1.5 ([`a3e69e4`](https://github.com/portofcontext/pctx/commit/a3e69e40e3403ed6544e5495287e824261e7d5b0))
+</details>
+
+## 0.2.0 (2026-03-13)
+
+### Other
+
+ - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 10 commits contributed to the release.
+ - 44 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
+    - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))
+    - Merge pull request #63 from jamadeo/upgrade-rmcp ([`1fba0e1`](https://github.com/portofcontext/pctx/commit/1fba0e1946138ca59dd86e2b0f48f54ccd5b1d11))
+    - Upgrade rmcp to 1.2.0 ([`68247fd`](https://github.com/portofcontext/pctx/commit/68247fdb05f3b3a3253ad17e25347476d8c0f37a))
+    - Support direct tool calls in sidecar style ([`8b5817c`](https://github.com/portofcontext/pctx/commit/8b5817c41d590ec02c32b305254b99c882b33e21))
+    - Unified registry ([`12e0b62`](https://github.com/portofcontext/pctx/commit/12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862))
+    - Registry crate ([`af6d95c`](https://github.com/portofcontext/pctx/commit/af6d95c2c5d572b49298e8b5258cde2a3ad07a68))
+    - Execute_typescript_simple ([`61b5bf0`](https://github.com/portofcontext/pctx/commit/61b5bf0439415f35b3dd33dd597fb83ef698fb29))
+    - Merge pull request #56 from portofcontext/in-memory-fs ([`8b692dd`](https://github.com/portofcontext/pctx/commit/8b692dde566648ff4eae65bee0e5578170d419bf))
+    - Sync with main ([`cc6a0a9`](https://github.com/portofcontext/pctx/commit/cc6a0a90a8dc7d08e0faf108b70b77a96c2b44a2))
+</details>
+
+## 0.1.3 (2026-01-28)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 day passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_config v0.1.3, pctx_code_execution_runtime v0.1.3, pctx_executor v0.1.2, pctx_code_mode v0.2.2 ([`d89a17a`](https://github.com/portofcontext/pctx/commit/d89a17a1dcf724dd9545c3a59cadae7ba1bfeff7))
     - Remove generic fectch from runtime ([`fdfc800`](https://github.com/portofcontext/pctx/commit/fdfc80069eb561177410fc55909ce422f2450280))
 </details>
 
@@ -31,8 +88,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
- - 6 days passed between releases.
+ - 4 commits contributed to the release over the course of 1 calendar day.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -45,6 +102,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  * **Uncategorized**
     - Release pctx_config v0.1.2, pctx_code_execution_runtime v0.1.2, pctx_code_mode v0.2.0 ([`bb7d3d9`](https://github.com/portofcontext/pctx/commit/bb7d3d93af81360310c3891bb649c54077af445d))
     - Bump rmcp ([`af1c5e3`](https://github.com/portofcontext/pctx/commit/af1c5e30122cab57c19a8a0984f4cd4f51ae8539))
+    - Minify just-bash bundle ([`4010323`](https://github.com/portofcontext/pctx/commit/40103233148950826ca198c723bf8ff99f1958a3))
+    - Add just-bash ([`5629f3a`](https://github.com/portofcontext/pctx/commit/5629f3a7b31bc17be713ca7d8022e65d21d9d6a7))
 </details>
 
 ## 0.1.1 (2026-01-20)

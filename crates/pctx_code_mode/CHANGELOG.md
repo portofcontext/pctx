@@ -5,13 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.1 (2026-07-16)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 113 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_config v0.1.5 ([`a3e69e4`](https://github.com/portofcontext/pctx/commit/a3e69e40e3403ed6544e5495287e824261e7d5b0))
+</details>
+
 ## 0.4.0 (2026-03-25)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 6 commits contributed to the release over the course of 8 calendar days.
+ - 7 commits contributed to the release over the course of 8 calendar days.
  - 12 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_registry v0.1.1, pctx_executor v0.2.1, pctx_code_mode v0.4.0 ([`72792d9`](https://github.com/portofcontext/pctx/commit/72792d9b6349cc07174f4d4397a51c709521bc3d))
     - Manual version bumps ([`594b9eb`](https://github.com/portofcontext/pctx/commit/594b9ebb2934fe61d81c9c168d3d2a874529a4c9))
     - Merge pull request #66 from portofcontext/registry-audit-log ([`267473b`](https://github.com/portofcontext/pctx/commit/267473bc7615b438ae13c1ecd61b4be5dfacc231))
     - Merge pull request #65 from portofcontext/62-question-intended-approach-for-stateful-upstream-mcp-tools-eg-lsp-mcp-start_lsp---open_document ([`0f2ded4`](https://github.com/portofcontext/pctx/commit/0f2ded4e8b5bef930ad2b84bf6a399c2b74aa095))
@@ -37,17 +59,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
 <csr-id-e274f784d1f7041b92b1e21d34dea248a7b47933/>
 
-### Other
-
- - <csr-id-11828b1c1187c55d5f13f43dbe198bda59ee6ae9/> comment out `mcp dev` command
- - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
- - <csr-id-e274f784d1f7041b92b1e21d34dea248a7b47933/> optional namespace
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 25 commits contributed to the release.
+ - 37 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -122,6 +139,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -167,7 +185,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 7 commits contributed to the release.
- - 6 days passed between releases.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
