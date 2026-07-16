@@ -11,6 +11,7 @@ use crate::{
 };
 
 pub static X_TYPE_NAME: &str = "x-type-name";
+const MAX_TYPE_SIGNATURE_DEPTH: usize = 128;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RefSchemaType {
@@ -26,6 +27,18 @@ impl RefSchemaType {
                 "Failed following JSON schema reference, `#/$defs/{}` does not exist",
                 &self.ref_key
             )))
+    }
+
+    pub fn type_name(&self, defs: &SchemaDefinitions) -> Option<String> {
+        let Schema::Object(obj) = defs.get(&self.ref_key)? else {
+            return None;
+        };
+
+        obj.extensions
+            .get(X_TYPE_NAME)
+            .and_then(|value| value.as_str())
+            .map(String::from)
+            .filter(|type_name| !type_name.is_empty())
     }
 }
 
@@ -224,10 +237,58 @@ impl SchemaType {
         required: bool,
         defs: &SchemaDefinitions,
     ) -> CodegenResult<String> {
-        let mut sig: String = match self {
+        self.type_signature_inner(required, defs, &mut Vec::new(), 0)
+    }
+
+    pub(crate) fn type_signature_with_ref_stack(
+        &self,
+        required: bool,
+        defs: &SchemaDefinitions,
+        ref_stack: &mut Vec<String>,
+    ) -> CodegenResult<String> {
+        self.type_signature_inner(required, defs, ref_stack, 0)
+    }
+
+    fn type_signature_inner(
+        &self,
+        required: bool,
+        defs: &SchemaDefinitions,
+        ref_stack: &mut Vec<String>,
+        depth: usize,
+    ) -> CodegenResult<String> {
+        if depth > MAX_TYPE_SIGNATURE_DEPTH {
+            return Ok(apply_optional_modifiers(
+                "any".to_string(),
+                self.is_nullable(),
+                required,
+            ));
+        }
+
+        let sig: String = match self {
             SchemaType::Reference(ref_schema_type) => {
-                let followed = ref_schema_type.follow(defs)?;
-                SchemaType::from(followed).type_signature(required, defs)?
+                if ref_stack.contains(&ref_schema_type.ref_key) {
+                    let target_nullable = defs
+                        .get(&ref_schema_type.ref_key)
+                        .map(SchemaType::from)
+                        .is_some_and(|schema_type| schema_type.is_nullable());
+                    ref_schema_type
+                        .type_name(defs)
+                        .map(|type_name| {
+                            apply_optional_modifiers(type_name, target_nullable, required)
+                        })
+                        .unwrap_or_else(|| "any".to_string())
+                } else {
+                    ref_stack.push(ref_schema_type.ref_key.clone());
+                    let followed = ref_schema_type.follow(defs)?;
+                    let result = SchemaType::from(followed).type_signature_inner(
+                        required,
+                        defs,
+                        ref_stack,
+                        depth + 1,
+                    );
+                    ref_stack.pop();
+                    result?
+                }
             }
             SchemaType::Any(_) => "any".into(),
             SchemaType::Boolean(_) => "boolean".into(),
@@ -241,27 +302,41 @@ impl SchemaType {
             SchemaType::Object(ObjectSchemaType { type_name, .. }) => type_name.clone(),
             SchemaType::Map(MapSchemaType { value_schema, .. }) => format!(
                 "{{ [key: string]: {val_sig} }}",
-                val_sig = SchemaType::from(value_schema).type_signature(false, defs)?
+                val_sig = SchemaType::from(value_schema).type_signature_inner(
+                    false,
+                    defs,
+                    ref_stack,
+                    depth + 1,
+                )?
             ),
             SchemaType::Array(ArraySchemaType { item_schema, .. }) => format!(
                 "{item_sig}[]",
-                item_sig = SchemaType::from(item_schema).type_signature(true, defs)?
+                item_sig = SchemaType::from(item_schema).type_signature_inner(
+                    true,
+                    defs,
+                    ref_stack,
+                    depth + 1,
+                )?
             ),
             SchemaType::Union(UnionSchemaType { union_schemas, .. }) => union_schemas
                 .iter()
-                .map(|s| SchemaType::from(s).type_signature(true, defs))
+                .map(|s| SchemaType::from(s).type_signature_inner(true, defs, ref_stack, depth + 1))
                 .collect::<CodegenResult<Vec<String>>>()?
                 .join(" | "),
         };
 
-        if self.is_nullable() {
-            sig = format!("{sig} | null")
-        }
-        if !required {
-            sig = format!("{sig} | undefined")
-        }
-        Ok(sig)
+        Ok(apply_optional_modifiers(sig, self.is_nullable(), required))
     }
+}
+
+fn apply_optional_modifiers(mut sig: String, nullable: bool, required: bool) -> String {
+    if nullable {
+        sig = format!("{sig} | null");
+    }
+    if !required {
+        sig = format!("{sig} | undefined");
+    }
+    sig
 }
 
 impl From<&Schema> for SchemaType {

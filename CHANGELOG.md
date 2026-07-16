@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Stack overflow in `pctx_codegen` when generating TypeScript signatures for recursive JSON Schema `$defs` that are not object-with-properties schemas. Recursive refs now stop expanding inline and use generated type aliases, while non-recursive refs keep the existing inline behavior.
+
 ## [v0.7.1] - 2026-03-27
 
 ### Added

@@ -7,6 +7,10 @@ schema:
       $ref: "#/$defs/TwoNode1"
     three_node:
       $ref: "#/$defs/ThreeNode1"
+    union:
+      $ref: "#/$defs/UnionCircular"
+    self_map:
+      $ref: "#/$defs/SelfMap"
 
   "$defs":
     DirectCircularRef:
@@ -100,6 +104,20 @@ schema:
         first: # optional to break the infinite loop
           $ref: "#/$defs/ThreeNode1"
 
+    UnionCircular:
+      anyOf:
+        - type: string
+        - type: number
+        - type: object
+          additionalProperties:
+            $ref: "#/$defs/UnionCircular"
+
+    SelfMap:
+      description: map whose values are maps of myself
+      type: object
+      additionalProperties:
+        $ref: "#/$defs/SelfMap"
+
 tests:
   valid:
     - id: direct-array
@@ -175,3 +193,37 @@ tests:
                         second_foo: bar_2
                         third:
                           third_foo: bar_2
+    - id: union-string-value
+      value:
+        union: hello
+    - id: union-number-value
+      value:
+        union: 42
+    - id: union-map-value
+      value:
+        union:
+          foo: hello
+          nested:
+            fizz: 42
+    - id: self-map-empty
+      value:
+        self_map: {}
+    - id: self-map-nested
+      value:
+        self_map:
+          a: {}
+          b:
+            c:
+              d: {}
+  invalid:
+    - id: union-boolean-value
+      value:
+        union: true
+    - id: union-map-boolean-value
+      value:
+        union:
+          foo: true
+    - id: self-map-non-map-value
+      value:
+        self_map:
+          a: hello
