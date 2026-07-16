@@ -1,7 +1,19 @@
 ---
-source: crates/codegen/tests/typegen.rs
+source: crates/pctx_codegen/tests/typegen.rs
 expression: "&typegen_res.types"
 ---
+export type CircularReferencesUnionCircular =
+  | string
+  | number
+  | { [key: string]: CircularReferencesUnionCircular | undefined | undefined };
+
+/**
+ * map whose values are maps of myself
+ */
+export type CircularReferencesSelfMap = {
+  [key: string]: CircularReferencesSelfMap | undefined | undefined;
+};
+
 export type CircularReferences = {
   /**
    * object with direct circular references
@@ -11,6 +23,20 @@ export type CircularReferences = {
   two_node?: CircularReferencesTwoNode1 | undefined | undefined;
 
   three_node?: CircularReferencesThreeNode1 | undefined | undefined;
+
+  union?:
+    | string
+    | number
+    | { [key: string]: CircularReferencesUnionCircular | undefined | undefined }
+    | undefined
+    | undefined;
+  /**
+   * map whose values are maps of myself
+   */
+  self_map?:
+    | { [key: string]: CircularReferencesSelfMap | undefined | undefined }
+    | undefined
+    | undefined;
 };
 
 /**

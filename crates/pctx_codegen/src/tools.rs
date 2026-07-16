@@ -219,8 +219,8 @@ impl Tool {
     pub fn ts_invoke_map_entry(&self, toolset_name: Option<&str>) -> String {
         let args = match &self.input_type {
             Some(i) if i.all_optional => format!("{} | undefined", &i.type_signature),
-            Some(i) => format!("{}", &i.type_signature),
-            None => format!("any | undefined"),
+            Some(i) => i.type_signature.clone(),
+            None => "any | undefined".to_string(),
         };
 
         format!(

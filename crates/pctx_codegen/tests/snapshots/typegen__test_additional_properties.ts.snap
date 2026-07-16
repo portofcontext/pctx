@@ -1,5 +1,5 @@
 ---
-source: crates/codegen/tests/typegen.rs
+source: crates/pctx_codegen/tests/typegen.rs
 expression: "&typegen_res.types"
 ---
 export type AdditionalProperties = {
@@ -12,6 +12,12 @@ export type AdditionalProperties = {
   true_additional_props: AdditionalPropertiesTrueAdditionalProps;
 
   false_additional_props: AdditionalPropertiesFalseAdditionalProps;
+
+  only_additional_props_primitive: { [key: string]: string | undefined };
+
+  only_additional_props_object: {
+    [key: string]: AdditionalPropertiesAdditionalObject | undefined | undefined;
+  };
 };
 
 export type AdditionalPropertiesAnyAdditionalProps = {
@@ -61,4 +67,10 @@ export type AdditionalPropertiesTrueAdditionalProps = {
 
 export type AdditionalPropertiesFalseAdditionalProps = {
   foo: string;
+};
+
+export type AdditionalPropertiesAdditionalObject = {
+  foo?: string | undefined;
+
+  bar?: number[] | undefined;
 };

@@ -9,8 +9,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::{
-    CodegenResult, SchemaDefinitions, case::Case, format::format_ts, schema_type::SchemaType,
-    typegen::schema_data::ObjectSchemaData, utils::assign_type_names,
+    CodegenResult, SchemaDefinitions,
+    case::Case,
+    format::format_ts,
+    schema_type::SchemaType,
+    typegen::schema_data::{ObjectSchemaData, TypeAliasData},
+    utils::{assign_schema_type_name, assign_type_names},
 };
 
 static TYPES_TEMPLATE: &str = include_str!("./types.handlebars");
@@ -29,7 +33,8 @@ pub fn generate_types(root_schema: RootSchema, type_name: &str) -> CodegenResult
     for (ref_key, s) in root_schema.definitions {
         // TODO: clashing type names?
         let type_name = Case::Pascal.sanitize(format!("{type_name} {ref_key}"));
-        defs.insert(ref_key, assign_type_names(s, &type_name));
+        let named_schema = assign_type_names(s, &type_name);
+        defs.insert(ref_key, assign_schema_type_name(named_schema, &type_name));
     }
     let schema = assign_type_names(
         Schema::Object(root_schema.schema),
@@ -37,9 +42,13 @@ pub fn generate_types(root_schema: RootSchema, type_name: &str) -> CodegenResult
     );
 
     // collect and generate types with handlebars
+    let aliases = TypeAliasData::collect(&schema, &defs)?;
     let to_generate = ObjectSchemaData::collect(&schema, &defs)?;
     let types = Handlebars::new()
-        .render_template(TYPES_TEMPLATE, &json!({"objects": to_generate}))
+        .render_template(
+            TYPES_TEMPLATE,
+            &json!({"aliases": aliases, "objects": to_generate}),
+        )
         .unwrap();
 
     Ok(TypegenResult {
@@ -54,17 +63,13 @@ fn is_all_optional(schema: &Schema, defs: &SchemaDefinitions) -> CodegenResult<b
     // follow top schema until no longer ref
     let mut schema_type = SchemaType::from(schema);
     let mut visited = HashSet::new();
-    loop {
-        if let SchemaType::Reference(ref_st) = &schema_type {
-            let is_new = visited.insert(ref_st.ref_key.clone());
-            if is_new {
-                let followed = ref_st.follow(defs)?;
-                schema_type = SchemaType::from(followed)
-            } else {
-                // circular ref
-                break;
-            }
+    while let SchemaType::Reference(ref_st) = &schema_type {
+        let is_new = visited.insert(ref_st.ref_key.clone());
+        if is_new {
+            let followed = ref_st.follow(defs)?;
+            schema_type = SchemaType::from(followed);
         } else {
+            // circular ref
             break;
         }
     }

@@ -1,3 +1,9 @@
+{{#each aliases}}
+{{#if this.doc_string}}{{{this.doc_string}}}{{/if}}
+export type {{this.name}} = {{{this.sig}}};
+
+{{/each}}
+
 {{#each objects}}
 {{#if this.doc_string}}{{{this.doc_string}}}{{/if}}
 export type {{this.name}} = {
