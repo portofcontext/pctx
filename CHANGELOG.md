@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.7.2] - 2026-07-16
+
+### Fixed
+
 - Stack overflow in `pctx_codegen` when generating TypeScript signatures for recursive JSON Schema `$defs` that are not object-with-properties schemas. Recursive refs now stop expanding inline and use generated type aliases, while non-recursive refs keep the existing inline behavior.
 - Bound `execute_code` responses under the 16 MiB WebSocket frame limit: oversized responses (usually from a bloated trace, occasionally from a huge return value or stdout) previously exceeded the frame limit and silently failed to reach the client. The response is now shrunk before sending — dropping the trace first, then replacing the return value with a truncation marker if still too large. ***TEMPORARY FIX*** - long term suggested fix is planned in: `.plans/large-execution-payloads.md`
 
@@ -230,7 +234,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.1...HEAD
+[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.2...HEAD
+[v0.7.2]: https://github.com/portofcontext/pctx/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/portofcontext/pctx/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/portofcontext/pctx/compare/v0.6.0...v0.7.0
 [v0.6.0]: https://github.com/portofcontext/pctx/compare/v0.5.0...v0.6.0
