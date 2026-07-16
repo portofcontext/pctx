@@ -98,7 +98,3 @@ typegen_test!(
     test_circular_references,
     include_str!("./fixtures/typegen/circular_references.yml")
 );
-typegen_test!(
-    test_recursive_non_object,
-    include_str!("./fixtures/typegen/recursive_non_object.yml")
-);

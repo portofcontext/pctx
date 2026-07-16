@@ -6,6 +6,8 @@ schema:
     - string_additional_props
     - true_additional_props
     - false_additional_props
+    - only_additional_props_primitive
+    - only_additional_props_object
   properties:
     any_additional_props:
       type: object
@@ -57,6 +59,29 @@ schema:
         foo:
           type: string
       additionalProperties: false
+    only_additional_props_primitive:
+      type: object
+      additionalProperties:
+        type: string
+    only_additional_props_object:
+      type: object
+      additionalProperties:
+        $ref: "#/$defs/AdditionalObject"
+
+  $defs:
+    AdditionalObject:
+      type: object
+      requires:
+        - foo
+        - bar
+      properties:
+        foo:
+          type: string
+        bar:
+          type: array
+          items:
+            type: number
+
 tests:
   valid:
     - id: no-additional-props
@@ -71,6 +96,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
     - id: with-additional-props
       value:
         any_additional_props:
@@ -101,7 +128,20 @@ tests:
           third_additional: true
         false_additional_props:
           foo: bar
-          # not allowed additional
+        only_additional_props_primitive:
+          first_additional: first
+          second_additional: second
+          third_additional: third
+        only_additional_props_object:
+          first_additional:
+            foo: first
+            bar: [1, 2, 3]
+          second_additional:
+            foo: second
+            bar: [4, 5, 6]
+          third_additional:
+            foo: third
+            bar: [7, 8, 9]
   invalid:
     - id: obj-additional-props-wrong-type-number
       value:
@@ -116,6 +156,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: obj-additional-props-missing-fizz
       value:
@@ -131,6 +173,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: obj-additional-props-missing-buzz
       value:
@@ -146,6 +190,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: obj-additional-props-wrong-fizz-type
       value:
@@ -162,6 +208,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: obj-additional-props-wrong-buzz-type
       value:
@@ -178,6 +226,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     # Wrong types for additional properties in string_additional_props
     - id: string-additional-props-wrong-type-number
@@ -193,6 +243,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: string-additional-props-wrong-type-boolean
       value:
@@ -207,6 +259,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: string-additional-props-wrong-type-object
       value:
@@ -222,6 +276,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: string-additional-props-wrong-type-array
       value:
@@ -236,6 +292,8 @@ tests:
           foo: bar
         false_additional_props:
           foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
 
     - id: false-additional-props-not-allowed-additional
       value:
@@ -250,3 +308,45 @@ tests:
         false_additional_props:
           foo: bar
           not_allowed: true
+        only_additional_props_primitive: {}
+        only_additional_props_object: {}
+
+    # Wrong types for additional properties in only_additional_props_primitive
+    - id: only-additional-props-primitive-wrong-type-number
+      value:
+        any_additional_props:
+          foo: bar
+        obj_additional_props:
+          foo: bar
+        string_additional_props:
+          foo: bar
+          invalid_prop: 123
+        true_additional_props:
+          foo: bar
+        false_additional_props:
+          foo: bar
+        only_additional_props_primitive:
+          foo: 1
+          buzz: 2
+        only_additional_props_object: {}
+
+    # Wrong types for additional properties in only_additional_props_object
+    - id: only-additional-props-object-wrong-type
+      value:
+        any_additional_props:
+          foo: bar
+        obj_additional_props:
+          foo: bar
+        string_additional_props:
+          foo: bar
+          invalid_prop: 123
+        true_additional_props:
+          foo: bar
+        false_additional_props:
+          foo: bar
+        only_additional_props_primitive: {}
+        only_additional_props_object:
+          first: not an object
+          second:
+            foo: 1
+            bar: "not an array"
