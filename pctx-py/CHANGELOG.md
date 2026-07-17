@@ -9,7 +9,7 @@ and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 For changes to the underlying Rust crates and CLI, see the
 [root CHANGELOG](../CHANGELOG.md).
 
-## [UNRELEASED] - YYYY-MM-DD
+## [v0.4.2] - 2026-07-17
 
 ### Added
 
@@ -108,7 +108,7 @@ For changes to the underlying Rust crates and CLI, see the
 - Convertors to export CodeMode tools to popular agent frameworks
   (LangChain, CrewAI, OpenAI Agents, Pydantic AI).
 
-[UNRELEASED]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.1...HEAD
+[v0.4.2]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.1...pctx-py-v0.4.2
 [v0.4.1]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.0...pctx-py-v0.4.1
 [v0.4.0]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.1...pctx-py-v0.4.0
 [v0.3.2]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.1...pctx-py-v0.3.2
