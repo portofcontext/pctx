@@ -1,5 +1,6 @@
 pub mod case;
 pub mod format;
+pub mod normalize;
 pub mod schema_type;
 pub mod tools;
 pub mod typegen;

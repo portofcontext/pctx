@@ -28,6 +28,11 @@ pub struct TypegenResult {
 }
 
 pub fn generate_types(root_schema: RootSchema, type_name: &str) -> CodegenResult<TypegenResult> {
+    // Normalize in-document pointer refs (e.g. a recursive filter's
+    // `#/properties/filter/anyOf/0`) into named `definitions` refs, which the
+    // resolver below handles. A no-op for schemas that already use `$defs`.
+    let root_schema = normalize_root_schema(root_schema)?;
+
     // ensure all objects have type names
     let mut defs: SchemaDefinitions = IndexMap::new();
     for (ref_key, s) in root_schema.definitions {
@@ -57,6 +62,20 @@ pub fn generate_types(root_schema: RootSchema, type_name: &str) -> CodegenResult
         type_signature: SchemaType::from(&schema).type_signature(true, &defs)?,
         all_optional: is_all_optional(&schema, &defs)?,
     })
+}
+
+/// Apply [`normalize_in_document_refs`](crate::normalize::normalize_in_document_refs)
+/// to a `RootSchema`. Round-trips through JSON so pointer resolution runs against
+/// the standard schema document (where `#/properties/…` is meaningful), then
+/// re-parses; the schemas involved are tiny (one tool's input), so the cost is
+/// negligible and paid once at registration.
+fn normalize_root_schema(root_schema: RootSchema) -> CodegenResult<RootSchema> {
+    let value = serde_json::to_value(&root_schema).map_err(|e| {
+        crate::CodegenError::TypeGen(format!("serialize schema for normalize: {e}"))
+    })?;
+    let normalized = crate::normalize::normalize_in_document_refs(value);
+    serde_json::from_value(normalized)
+        .map_err(|e| crate::CodegenError::TypeGen(format!("re-parse normalized schema: {e}")))
 }
 
 fn is_all_optional(schema: &Schema, defs: &SchemaDefinitions) -> CodegenResult<bool> {
