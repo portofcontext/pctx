@@ -9,6 +9,16 @@ and this package adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 For changes to the underlying Rust crates and CLI, see the
 [root CHANGELOG](../CHANGELOG.md).
 
+## [UNRELEASED] - YYYY-MM-DD
+
+### Added
+
+- `Pctx.execute_typescript(tool_timeout_secs=..., tool_timeout_overrides=...)`:
+  bound each individual tool call. `tool_timeout_overrides` keys tools by id
+  (`"namespace__name"`). Both optional, default 30s, clamped to 1–600s.
+  Still capped by the client-wide `Pctx(execute_timeout=...)` (default 30s),
+  so raise that alongside any per-tool value above 30.
+
 ## [v0.4.2] - 2026-07-17
 
 ### Added
