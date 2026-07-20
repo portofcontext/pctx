@@ -1,3 +1,5 @@
+use std::{collections::HashMap, time::Duration};
+
 use axum::{Json, http::StatusCode, response::IntoResponse};
 use pctx_code_mode::{config, model::ExecuteTypescriptOutput};
 use serde::{Deserialize, Serialize};
@@ -131,11 +133,58 @@ pub struct ExecuteToolParams {
     pub args: Option<serde_json::Value>,
 }
 
+impl ExecuteToolParams {
+    /// Registry id of the tool (`namespace__name`), matching
+    /// [`pctx_code_mode::model::CallbackConfig::id`].
+    pub fn tool_id(&self) -> String {
+        match &self.namespace {
+            Some(ns) => format!("{ns}__{}", self.name),
+            None => self.name.clone(),
+        }
+    }
+}
+
+/// Timeout applied to a single tool call when the request specifies none.
+pub const DEFAULT_TOOL_TIMEOUT_SECS: u64 = 30;
+/// Upper bound on a client-supplied tool call timeout.
+///
+/// Each in-flight call holds a blocking thread, so an unbounded value lets a
+/// client pin one indefinitely.
+pub const MAX_TOOL_TIMEOUT_SECS: u64 = 600;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecuteTypescriptParams {
     pub code: String,
     #[serde(default)]
     pub disclosure: config::ToolDisclosure,
+    /// Timeout applied to every tool call made by this execution, in seconds.
+    ///
+    /// Defaults to [`DEFAULT_TOOL_TIMEOUT_SECS`]. This bounds a single call, not
+    /// the execution as a whole: code making N sequential calls can run for N
+    /// times this value.
+    #[serde(default)]
+    pub tool_timeout_secs: Option<u64>,
+    /// Per-tool overrides of `tool_timeout_secs`, keyed by tool id
+    /// (`namespace__name`, or just `name` when the tool has no namespace).
+    ///
+    /// Ids with no registered tool are ignored.
+    #[serde(default)]
+    pub tool_timeout_overrides: HashMap<String, u64>,
+}
+
+impl ExecuteTypescriptParams {
+    /// Resolves the timeout for a tool: override, then request default, then
+    /// [`DEFAULT_TOOL_TIMEOUT_SECS`] — clamped to [`MAX_TOOL_TIMEOUT_SECS`].
+    pub fn tool_timeout(&self, tool_id: &str) -> Duration {
+        let secs = self
+            .tool_timeout_overrides
+            .get(tool_id)
+            .copied()
+            .or(self.tool_timeout_secs)
+            .unwrap_or(DEFAULT_TOOL_TIMEOUT_SECS);
+
+        Duration::from_secs(secs.clamp(1, MAX_TOOL_TIMEOUT_SECS))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

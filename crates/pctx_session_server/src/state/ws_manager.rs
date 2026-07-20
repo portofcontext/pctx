@@ -1,4 +1,4 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use rmcp::model::RequestId;
 use tokio::sync::{RwLock, mpsc as tokio_mpsc};
@@ -15,8 +15,10 @@ pub enum ExecuteCallbackError {
     ExecutionFailed(rmcp::model::ErrorData),
     #[error("Response channel closed")]
     ChannelClosed,
-    #[error("Execution timeout")]
-    Timeout,
+    /// `tool` is the registry id (`namespace__name`), matching the key callers
+    /// use in `tool_timeout_overrides`.
+    #[error("Tool `{tool}` timed out after {}s", .timeout.as_secs())]
+    Timeout { tool: String, timeout: Duration },
 }
 
 #[derive(Default)]
@@ -144,8 +146,10 @@ impl WsSession {
     pub async fn execute_callback(
         &self,
         params: ExecuteToolParams,
+        timeout: Duration,
     ) -> Result<ExecuteToolResult, ExecuteCallbackError> {
         let req_id = RequestId::String(Uuid::new_v4().to_string().into());
+        let tool_id = params.tool_id();
         // Create std::sync::mpsc channel for response
         let (response_tx, response_rx) = std::sync::mpsc::channel();
 
@@ -165,7 +169,7 @@ impl WsSession {
 
         // Wait for response with timeout
         let result = tokio::time::timeout(
-            tokio::time::Duration::from_secs(30),
+            timeout,
             tokio::task::spawn_blocking(move || response_rx.recv()),
         )
         .await;
@@ -178,7 +182,10 @@ impl WsSession {
             Ok(Ok(Ok(Err(error)))) => Err(ExecuteCallbackError::ExecutionFailed(error)),
             Ok(Ok(Err(_))) => Err(ExecuteCallbackError::ChannelClosed),
             Ok(Err(_)) => Err(ExecuteCallbackError::ChannelClosed),
-            Err(_) => Err(ExecuteCallbackError::Timeout),
+            Err(_) => Err(ExecuteCallbackError::Timeout {
+                tool: tool_id,
+                timeout,
+            }),
         }
     }
 

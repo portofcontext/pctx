@@ -331,6 +331,8 @@ class JsonRpcError(JsonRpcBase):
 class ExecuteCodeParams(BaseModel):
     code: str
     disclosure: ToolDisclosure = ToolDisclosure.CATALOG
+    tool_timeout_secs: int | None = None
+    tool_timeout_overrides: dict[str, int] = Field(default_factory=dict)
 
 
 class ExecuteCodeRequest(JsonRpcBase):

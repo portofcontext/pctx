@@ -312,6 +312,8 @@ class Pctx:
         self,
         code: str,
         disclosure: ToolDisclosure | ToolDisclosureName = ToolDisclosure.CATALOG,
+        tool_timeout_secs: int | None = None,
+        tool_timeout_overrides: dict[str, int] | None = None,
     ) -> ExecuteTypescriptOutput:
         """
         Execute TypeScript code that calls namespaced functions.
@@ -323,6 +325,14 @@ class Pctx:
             code: TypeScript code to execute. Must include an async `run()` function
                 that serves as the entry point. Functions must be called with their
                 namespace prefix (e.g., 'Weather.getCurrentWeather()').
+            tool_timeout_secs: Timeout in seconds applied to each individual tool
+                call the code makes (server default 30, max 600). This bounds one
+                call, not the execution as a whole — code making N sequential
+                calls can still run for N times this value, up to the client-wide
+                execute_timeout.
+            tool_timeout_overrides: Per-tool overrides of tool_timeout_secs, keyed
+                by tool id ("namespace__name", or "name" if there is no
+                namespace). Ids that match no registered tool are ignored.
 
         Returns:
             ExecuteTypescriptOutput: An object containing execution results with attributes:
@@ -364,6 +374,8 @@ class Pctx:
             code,
             disclosure=ToolDisclosure(disclosure),
             timeout=self._execute_timeout,
+            tool_timeout_secs=tool_timeout_secs,
+            tool_timeout_overrides=tool_timeout_overrides,
         )
 
     async def execute(

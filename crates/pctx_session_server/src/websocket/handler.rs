@@ -226,6 +226,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
     for callback_cfg in code_mode.callbacks() {
         let ws_session_lock_clone = ws_session_lock.clone();
         let cfg = callback_cfg.clone();
+        let timeout = params.tool_timeout(&callback_cfg.id());
 
         let callback: CallbackFn = Arc::new(move |args: Option<serde_json::Value>| {
             let cfg = cfg.clone();
@@ -235,11 +236,14 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                 let ws_session = ws_session_lock_clone.read().await;
 
                 let callback_res = ws_session
-                    .execute_callback(ExecuteToolParams {
-                        namespace: cfg.namespace,
-                        name: cfg.name,
-                        args,
-                    })
+                    .execute_callback(
+                        ExecuteToolParams {
+                            namespace: cfg.namespace,
+                            name: cfg.name,
+                            args,
+                        },
+                        timeout,
+                    )
                     .await
                     .map_err(|e| e.to_string())?;
 
