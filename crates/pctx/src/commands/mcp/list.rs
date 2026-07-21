@@ -68,7 +68,7 @@ impl UpstreamMcpSummary {
         let (error, init_res, tools) = match server.connect().await {
             Ok(client) => {
                 let mut error = None;
-                let init_result = client.peer_info().cloned();
+                let init_result = client.peer_info().as_deref().cloned();
                 let tool_names = match client.list_all_tools().await {
                     Ok(tools) => tools.into_iter().map(|t| t.name.to_string()).collect(),
                     Err(e) => {

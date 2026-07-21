@@ -226,10 +226,7 @@ impl PctxMcpServer {
         let service = StreamableHttpService::new(
             move || Ok(mcp_service.clone()),
             session_manager,
-            StreamableHttpServerConfig {
-                stateful_mode: self.stateful_mode,
-                ..Default::default()
-            },
+            StreamableHttpServerConfig::default().with_stateful_mode(self.stateful_mode),
         );
 
         let router = axum::Router::new().nest_service("/mcp", service).layer(

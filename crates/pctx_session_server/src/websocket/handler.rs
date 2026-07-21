@@ -195,7 +195,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                 message: format!("CodeMode session `{code_mode_session_id}` does not exist").into(),
                 data: None,
             },
-            req_id,
+            Some(req_id),
         );
         let _ = sender.send(err_res);
         return Ok(());
@@ -262,7 +262,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                     .into(),
                     data: None,
                 },
-                req_id.clone(),
+                Some(req_id.clone()),
             );
             let _ = sender.send(err_res);
         }
@@ -321,7 +321,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                         message: format!("Execution failed: {e}").into(),
                         data: None,
                     },
-                    req_id,
+                    Some(req_id),
                 ),
                 Err(anyhow!(e)),
             ),
@@ -332,7 +332,7 @@ async fn handle_execute_code_request<B: PctxSessionBackend>(
                         message: format!("Task join failed: {e}").into(),
                         data: None,
                     },
-                    req_id,
+                    Some(req_id),
                 ),
                 Err(anyhow!(e)),
             ),
@@ -399,11 +399,16 @@ async fn handle_message<B: PctxSessionBackend>(
                         Err(format!("Received unsupported JsonRpc response: {text}"))
                     }
                 },
-                JsonRpcMessage::Error(err_msg) => state
-                    .ws_manager
-                    .handle_execute_callback_response(err_msg.id, Err(err_msg.error))
-                    .await
-                    .map_err(|()| "Failed to handle execute callback response".to_string()),
+                JsonRpcMessage::Error(err_msg) => {
+                    let Some(req_id) = err_msg.id else {
+                        return Err(format!("Received JsonRpc error without an id: {text}"));
+                    };
+                    state
+                        .ws_manager
+                        .handle_execute_callback_response(req_id, Err(err_msg.error))
+                        .await
+                        .map_err(|()| "Failed to handle execute callback response".to_string())
+                }
                 JsonRpcMessage::Notification(_) => {
                     info!("Received JsonRpc Notification: {text}");
                     Ok(())
