@@ -114,6 +114,8 @@ class WebSocketClient:
         code: str,
         disclosure: ToolDisclosure = ToolDisclosure.CATALOG,
         timeout: float = 30.0,
+        tool_timeout_secs: int | None = None,
+        tool_timeout_overrides: dict[str, int] | None = None,
     ) -> ExecuteTypescriptOutput:
         """
         Execute code via WebSocket instead of REST.
@@ -121,7 +123,11 @@ class WebSocketClient:
         Args:
             code_mode_session: CodeMode session to run execution in
             code: TypeScript/JavaScript code to execute
-            timeout: Timeout in seconds (default 30)
+            timeout: Timeout in seconds for the whole execution (default 30)
+            tool_timeout_secs: Timeout in seconds applied to each individual tool
+                call made by the code (server default 30, max 600)
+            tool_timeout_overrides: Per-tool overrides of tool_timeout_secs, keyed
+                by tool id ("namespace__name", or "name" if there is no namespace)
 
         Returns:
             ExecuteTypescriptOutput with success, stdout, stderr, and output
@@ -144,7 +150,12 @@ class WebSocketClient:
         request = ExecuteCodeRequest(
             id=request_id,
             method="execute_typescript",
-            params=ExecuteCodeParams(code=code, disclosure=disclosure),
+            params=ExecuteCodeParams(
+                code=code,
+                disclosure=disclosure,
+                tool_timeout_secs=tool_timeout_secs,
+                tool_timeout_overrides=tool_timeout_overrides or {},
+            ),
         )
 
         try:

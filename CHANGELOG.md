@@ -9,7 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Configurable per-tool-call timeouts on `execute_typescript`, replacing a hardcoded 30s: `tool_timeout_secs` applies to every tool the execution calls, `tool_timeout_overrides` overrides individual tools by id (`namespace__name`). Both optional (default 30s), clamped to 1–600s, and available in the Python client. Bounds one call, not the whole execution.
+
 ### Changed
+
+- Tool call timeout errors now name the tool and limit (``Tool `test_math__add` timed out after 30s``, previously `Execution timeout`).
 
 ### Fixed
 

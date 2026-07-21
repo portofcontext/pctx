@@ -863,3 +863,104 @@ async fn test_bash_exploration_then_typescript_execution() {
         })
     );
 }
+
+/// A per-tool override takes precedence over the request-wide default: `add` is
+/// held to 1s while every other tool gets 600s, and the client never answers.
+#[tokio::test]
+#[serial]
+async fn test_exec_callback_timeout_override() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    let test_tools: Vec<CallbackConfig> = callback_tools().into_iter().map(|(c, _)| c).collect();
+    let register_res = server
+        .post("/register/tools")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "tools": test_tools }))
+        .await;
+    register_res.assert_status_ok();
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "timeout-1",
+        "method": "execute_code",
+        "params": {
+            "code": "async function run() { return await TestMath.add({a: 8, b: 2}); }",
+            "tool_timeout_secs": 600,
+            "tool_timeout_overrides": { "test_math__add": 1 }
+        }
+    }))
+    .await;
+
+    // Server asks the client to run the tool; we deliberately never respond.
+    let msg: WsJsonRpcMessage = ws.receive_json().await;
+    let (add_msg, _req_id) = msg.into_request().unwrap();
+    assert_eq!(json!(add_msg)["params"]["name"], json!("add"));
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], json!(false));
+    let stderr = response["result"]["stderr"].as_str().unwrap();
+    assert!(
+        stderr.contains("Tool `test_math__add` timed out after 1s"),
+        "expected a 1s timeout, got: {stderr}"
+    );
+}
+
+/// The request-wide default applies to a tool with no override, and the timeout
+/// surfaces as a catchable error rather than killing the whole execution.
+#[tokio::test]
+#[serial]
+async fn test_exec_callback_timeout_request_default() {
+    let (session_id, server, _) = create_test_server_with_session().await;
+
+    let test_tools: Vec<CallbackConfig> = callback_tools().into_iter().map(|(c, _)| c).collect();
+    let register_res = server
+        .post("/register/tools")
+        .add_header(CODE_MODE_SESSION_HEADER, session_id.to_string())
+        .json(&json!({ "tools": test_tools }))
+        .await;
+    register_res.assert_status_ok();
+
+    let mut ws = connect_websocket(&server, session_id)
+        .await
+        .into_websocket()
+        .await;
+
+    let code = "
+        async function run() {
+            try {
+                await TestMath.add({a: 8, b: 2});
+                return \"no timeout\";
+            } catch (e) {
+                return `caught: ${String(e)}`;
+            }
+        }";
+
+    ws.send_json(&json!({
+        "jsonrpc": "2.0",
+        "id": "timeout-2",
+        "method": "execute_code",
+        "params": {
+            "code": code,
+            "tool_timeout_secs": 1
+        }
+    }))
+    .await;
+
+    // Server asks the client to run the tool; we deliberately never respond.
+    let msg: WsJsonRpcMessage = ws.receive_json().await;
+    let (add_msg, _req_id) = msg.into_request().unwrap();
+    assert_eq!(json!(add_msg)["params"]["name"], json!("add"));
+
+    let response: serde_json::Value = ws.receive_json().await;
+    assert_eq!(response["result"]["success"], json!(true));
+    let output = response["result"]["output"].as_str().unwrap();
+    assert!(
+        output.contains("Tool `test_math__add` timed out after 1s"),
+        "expected the timeout to be catchable in TS, got: {output}"
+    );
+}
