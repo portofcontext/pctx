@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.7.3] - 2026-07-21
+
+### Added
+
 - Configurable per-tool-call timeouts on `execute_typescript`, replacing a hardcoded 30s: `tool_timeout_secs` applies to every tool the execution calls, `tool_timeout_overrides` overrides individual tools by id (`namespace__name`). Both optional (default 30s), clamped to 1–600s, and available in the Python client. Bounds one call, not the whole execution.
 
 ### Changed
@@ -240,7 +248,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.3...HEAD
+[v0.7.3]: https://github.com/portofcontext/pctx/compare/v0.7.2...v0.7.3
 [v0.7.2]: https://github.com/portofcontext/pctx/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/portofcontext/pctx/compare/v0.7.0...v0.7.1
 [v0.7.0]: https://github.com/portofcontext/pctx/compare/v0.6.0...v0.7.0

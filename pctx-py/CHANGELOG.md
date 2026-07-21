@@ -13,6 +13,14 @@ For changes to the underlying Rust crates and CLI, see the
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.4.3] - 2026-07-21
+
+### Added
+
 - `Pctx.execute_typescript(tool_timeout_secs=..., tool_timeout_overrides=...)`:
   bound each individual tool call. `tool_timeout_overrides` keys tools by id
   (`"namespace__name"`). Both optional, default 30s, clamped to 1–600s.
@@ -118,6 +126,8 @@ For changes to the underlying Rust crates and CLI, see the
 - Convertors to export CodeMode tools to popular agent frameworks
   (LangChain, CrewAI, OpenAI Agents, Pydantic AI).
 
+[UNRELEASED]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.3...HEAD
+[v0.4.3]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.2...pctx-py-v0.4.3
 [v0.4.2]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.1...pctx-py-v0.4.2
 [v0.4.1]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.4.0...pctx-py-v0.4.1
 [v0.4.0]: https://github.com/portofcontext/pctx/compare/pctx-py-v0.3.1...pctx-py-v0.4.0
