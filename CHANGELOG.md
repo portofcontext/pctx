@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pctx_codegen` now resolves in-document JSON pointer `$ref`s (e.g. `#/properties/filter/anyOf/0`) during type generation. Previously only `$defs`-named refs resolved, so a tool whose input schema used a pointer ref — such as a recursive query filter whose `and`/`or` groups reference the filter itself — failed type generation, and consumers fell back to typing the entire tool input as `any`. Pointer targets are now hoisted into `definitions` under a generated name and all refs to them repointed, so self-referential schemas generate proper recursive TypeScript types. Schemas already using `$defs`/`definitions` refs are unaffected.
+
 ## [v0.7.2] - 2026-07-16
 
 ### Fixed
