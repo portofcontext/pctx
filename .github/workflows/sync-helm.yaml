@@ -1,0 +1,23 @@
+name: sync-helm
+
+on:
+  workflow_call:
+    inputs:
+      plan:
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  dispatch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch sync-pctx-version
+        env:
+          GH_TOKEN: ${{ secrets.HELM_SYNC_TOKEN }}
+          VERSION: ${{ fromJson(inputs.plan).announcement_tag }}
+        run: |
+          gh workflow run sync-pctx-version.yaml \
+            --repo ${{ secrets.HELM_REPO }} \
+            --field version="$VERSION"
