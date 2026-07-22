@@ -233,3 +233,22 @@ impl CallbackConfig {
         )
     }
 }
+
+/// Outcome of registering a batch of callback tools.
+///
+/// Tools that register are listed in `registered`; those that cannot be are
+/// collected in `failed`. Each tool is registered independently, so one
+/// failure does not affect another.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
+pub struct CallbackReport {
+    /// Ids of tools that registered (including any degraded to an `any` type).
+    pub registered: Vec<String>,
+    /// Tools that could not be registered at all, with the reason.
+    pub failed: Vec<FailedCallback>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct FailedCallback {
+    pub id: String,
+    pub reason: String,
+}

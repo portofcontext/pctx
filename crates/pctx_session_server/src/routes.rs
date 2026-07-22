@@ -8,7 +8,7 @@ use pctx_code_mode::{
         GetFunctionDetailsOutput, ListFunctionsOutput,
     },
 };
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::extractors::CodeModeSession;
@@ -249,21 +249,31 @@ pub(crate) async fn register_tools<B: PctxSessionBackend>(
                 details: None,
             },
         ))?;
-    code_mode
-        .add_callbacks(&request.tools)
-        .context("Failed adding callbacks")?;
+    // Register tools independently: a tool that cannot be registered is
+    // skipped and returned in `failed`, without failing the whole request.
+    let report = code_mode.add_callbacks(&request.tools);
 
     // Update the backend with the modified CodeMode
     state.backend.update(session_id, code_mode).await?;
 
-    info!(
-        session_id =? session_id,
-        tools =? &tool_ids,
-        "Registered tools",
-    );
+    if report.failed.is_empty() {
+        info!(
+            session_id =? session_id,
+            registered = report.registered.len(),
+            "Registered tools",
+        );
+    } else {
+        warn!(
+            session_id =? session_id,
+            registered = report.registered.len(),
+            failed =? report.failed,
+            "Registered tools; some were dropped",
+        );
+    }
 
     Ok(Json(RegisterToolsResponse {
-        registered: request.tools.len(),
+        registered: report.registered.len(),
+        failed: report.failed,
     }))
 }
 

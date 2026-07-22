@@ -12,8 +12,9 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     Error, Result,
     model::{
-        CallbackConfig, ExecuteBashOutput, ExecuteTypescriptOutput, FunctionDetails,
-        GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
+        CallbackConfig, CallbackReport, ExecuteBashOutput, ExecuteTypescriptOutput, FailedCallback,
+        FunctionDetails, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
+        ListedFunction,
     },
 };
 
@@ -56,7 +57,7 @@ impl CodeMode {
         mut self,
         callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
     ) -> Result<Self> {
-        self.add_callbacks(callbacks)?;
+        self.add_callbacks(callbacks);
         Ok(self)
     }
 
@@ -154,17 +155,12 @@ impl CodeMode {
                 None
             };
 
-            tools.push(
-                Tool::new(
-                    &mcp_tool.name,
-                    mcp_tool.description.clone().map(String::from),
-                    Some(input_schema),
-                    output_schema,
-                )
-                .map_err(|e| {
-                    Error::Message(format!("Failed to create tool `{}`: {e}", &mcp_tool.name))
-                })?,
-            );
+            tools.push(Tool::new(
+                &mcp_tool.name,
+                mcp_tool.description.clone().map(String::from),
+                Some(input_schema),
+                output_schema,
+            ));
         }
 
         let description = mcp_client
@@ -183,14 +179,33 @@ impl CodeMode {
         Ok((tool_set, server.clone()))
     }
 
+    /// Register a batch of callback tools, isolating per-tool failures.
+    ///
+    /// Each tool is registered independently. A tool that cannot be registered
+    /// (name clash, unparseable schema) is skipped and recorded in the returned
+    /// [`CallbackReport`] without affecting the rest of the batch.
     pub fn add_callbacks<'a>(
         &mut self,
         callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
-    ) -> Result<()> {
+    ) -> CallbackReport {
+        let mut report = CallbackReport::default();
         for callback in callbacks {
-            self.add_callback(callback)?;
+            match self.add_callback(callback) {
+                Ok(()) => report.registered.push(callback.id()),
+                Err(e) => {
+                    warn!(
+                        tool = %callback.id(),
+                        error = %e,
+                        "code mode: skipping tool that failed to register",
+                    );
+                    report.failed.push(FailedCallback {
+                        id: callback.id(),
+                        reason: e.to_string(),
+                    });
+                }
+            }
         }
-        Ok(())
+        report
     }
 
     // Generates a Tool and add it to the correct Toolset from the given callback config
@@ -245,7 +260,7 @@ impl CodeMode {
             callback.description.clone(),
             input_schema,
             output_schema,
-        )?;
+        );
 
         // add tool & it's configuration
         tool_set.tools.push(tool);
@@ -686,5 +701,44 @@ export default result;"#,
             registry: execution_res.registry,
             trace: execution_res.trace,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::model::CallbackConfig;
+
+    fn cb(name: &str) -> CallbackConfig {
+        CallbackConfig {
+            name: name.to_string(),
+            namespace: Some("ns".to_string()),
+            description: None,
+            input_schema: None,
+            output_schema: None,
+        }
+    }
+
+    /// A failing tool in a batch is isolated: the others still register and the
+    /// offender is reported rather than failing the call (pctx#119).
+    #[test]
+    fn add_callbacks_isolates_a_failing_tool() {
+        let mut cm = CodeMode::default();
+        // The second `dup` clashes with the first; `keep` is unrelated.
+        let batch = vec![cb("keep"), cb("dup"), cb("dup")];
+
+        let report = cm.add_callbacks(&batch);
+
+        assert_eq!(report.registered, vec!["ns__keep", "ns__dup"]);
+        assert_eq!(report.failed.len(), 1);
+        assert_eq!(report.failed[0].id, "ns__dup");
+
+        // The good tools are actually registered despite the clash.
+        let names: Vec<String> = cm
+            .tool_sets
+            .iter()
+            .flat_map(|ts| ts.tools.iter().map(|t| t.name.clone()))
+            .collect();
+        assert_eq!(names, vec!["keep".to_string(), "dup".to_string()]);
     }
 }

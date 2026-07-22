@@ -35,7 +35,7 @@ async fn test_register_tools() {
         .await;
 
     res.assert_status_ok();
-    res.assert_json(&json!({"registered": test_tools.len()}));
+    res.assert_json(&json!({"registered": test_tools.len(), "failed": []}));
 
     // List functions & get details
     let list_res = server
@@ -123,7 +123,7 @@ async fn test_register_tools_not_shared() {
         .await;
 
     res.assert_status_ok();
-    res.assert_json(&json!({"registered": test_tools.len()}));
+    res.assert_json(&json!({"registered": test_tools.len(), "failed": []}));
 
     let session_2 = create_session(&server).await;
 

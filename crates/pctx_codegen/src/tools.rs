@@ -1,14 +1,31 @@
 use schemars::schema::RootSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::{
-    CodegenResult,
     case::Case,
     ts_generate_docstring,
     typegen::{TypegenResult, generate_types},
 };
+
+/// Generate the TypeScript type for a tool schema, falling back to `any` when
+/// codegen cannot express the schema.
+///
+/// Upstream tools may carry JSON Schema this codegen does not support (for
+/// example a recursive `$ref`). Such a tool is given a permissive `any`
+/// signature so it remains callable at runtime, rather than being rejected.
+fn generate_types_lenient(schema: RootSchema, type_name: &str, tool: &str) -> TypegenResult {
+    generate_types(schema, type_name).unwrap_or_else(|e| {
+        warn!(tool, type_name, error = %e, "codegen failed; degrading tool type to `any`");
+        TypegenResult {
+            types_generated: 0,
+            type_signature: "any".into(),
+            all_optional: false,
+            types: String::new(),
+        }
+    })
+}
 
 pub const DEFAULT_NAMESPACE: &str = "Tools";
 
@@ -100,23 +117,18 @@ impl Tool {
         description: Option<String>,
         input: Option<RootSchema>,
         output: Option<RootSchema>,
-    ) -> CodegenResult<Self> {
+    ) -> Self {
         let fn_name = Case::Camel.sanitize(name);
         debug!("Generating Typescript interface for tool: '{name}' -> function {fn_name}",);
 
-        let input_type = if let Some(i) = &input {
-            Some(generate_types(i.clone(), &format!("{fn_name}Input"))?)
-        } else {
-            None
-        };
+        let input_type = input
+            .as_ref()
+            .map(|i| generate_types_lenient(i.clone(), &format!("{fn_name}Input"), name));
+        let output_type = output
+            .as_ref()
+            .map(|o| generate_types_lenient(o.clone(), &format!("{fn_name}Output"), name));
 
-        let output_type = if let Some(o) = output.clone() {
-            Some(generate_types(o, &format!("{fn_name}Output"))?)
-        } else {
-            None
-        };
-
-        Ok(Self {
+        Self {
             name: name.into(),
             description,
             input_schema: input,
@@ -124,7 +136,7 @@ impl Tool {
             fn_name,
             input_type,
             output_type,
-        })
+        }
     }
 
     pub fn id(&self, toolset_name: Option<&str>) -> String {

@@ -508,6 +508,21 @@
           }
         }
       },
+      "FailedCallback": {
+        "type": "object",
+        "required": [
+          "id",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "FunctionDetails": {
         "allOf": [
           {
@@ -679,11 +694,17 @@
       },
       "RegisterToolsResponse": {
         "type": "object",
-        "description": "Response to registering tools",
+        "description": "Response to registering tools.\n\n`failed` lists tools that could not be registered at all (name clash,\nunparseable schema); the rest of the batch still registers. A tool whose\nschema our codegen can't express is registered with a permissive `any`\nsignature, not failed.",
         "required": [
           "registered"
         ],
         "properties": {
+          "failed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FailedCallback"
+            }
+          },
           "registered": {
             "type": "integer",
             "minimum": 0
