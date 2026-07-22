@@ -24,7 +24,7 @@ tower-http = "0.6"
 utoipa = "5"
 
 # MCP
-rmcp = "1.2.0"
+rmcp = "1.8.0"
 reqwest = { version = "0.13.2", default-features = false }
 
 # Logging & Telemetry

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Declared `rmcp` minimum raised from 1.2.0 to 1.8.0, the version the code
+  actually requires. With the understated minimum, downstream consumers of the
+  git-dep crates could resolve an older rmcp and fail to compile
+  `pctx_session_server`.
+
 ## [v0.7.3] - 2026-07-22
 
 ### Added
