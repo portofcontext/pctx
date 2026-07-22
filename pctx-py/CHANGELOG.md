@@ -17,7 +17,7 @@ For changes to the underlying Rust crates and CLI, see the
 
 ### Fixed
 
-## [v0.4.3] - 2026-07-21
+## [v0.4.3] - 2026-07-22
 
 ### Added
 
