@@ -13,9 +13,16 @@ jobs:
   dispatch:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_KEY }}
+          owner: ${{ github.repository_owner }}
+
       - name: Dispatch sync-pctx-version
         env:
-          GH_TOKEN: ${{ secrets.HELM_SYNC_TOKEN }}
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
           VERSION: ${{ fromJson(inputs.plan).announcement_tag }}
         run: |
           gh workflow run sync-pctx-version.yaml \
