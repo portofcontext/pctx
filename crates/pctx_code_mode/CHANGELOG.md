@@ -5,13 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.4.2 (2026-07-22)
+
 ## 0.4.1 (2026-07-16)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 113 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.1, pctx_registry v0.1.2, pctx_code_execution_runtime v0.2.1, pctx_code_mode v0.4.1 ([`998fa8c`](https://github.com/portofcontext/pctx/commit/998fa8c1b48fbcbba21b103dbb9db07d8b2a2187))
     - Release pctx_config v0.1.5 ([`a3e69e4`](https://github.com/portofcontext/pctx/commit/a3e69e40e3403ed6544e5495287e824261e7d5b0))
 </details>
 
