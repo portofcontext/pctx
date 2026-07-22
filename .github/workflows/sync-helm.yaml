@@ -20,4 +20,5 @@ jobs:
         run: |
           gh workflow run sync-pctx-version.yaml \
             --repo ${{ secrets.HELM_REPO }} \
+            --ref main \
             --field version="$VERSION"
