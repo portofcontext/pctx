@@ -17,6 +17,14 @@ For changes to the underlying Rust crates and CLI, see the
 
 ### Fixed
 
+## [v0.4.4] - 2026-07-22
+
+### Fixed
+
+- WebSocket connections now allow messages up to 16 MiB (matching the server's
+  frame limit) instead of the `websockets` default of 1 MiB, so large tool
+  responses are no longer rejected.
+
 ## [v0.4.3] - 2026-07-22
 
 ### Added

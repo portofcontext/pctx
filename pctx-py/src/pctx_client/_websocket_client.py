@@ -81,7 +81,14 @@ class WebSocketClient:
                 **self._headers,
                 "x-code-mode-session": code_mode_session,
             }
-            self.ws = await websockets.connect(self.url, additional_headers=headers)
+            # The `websockets` default max_size is 1 MiB, but the server bounds
+            # responses to 15 MiB (staying under tungstenite's 16 MiB frame
+            # limit). Match that frame limit so large responses aren't rejected.
+            self.ws = await websockets.connect(
+                self.url,
+                additional_headers=headers,
+                max_size=16 * 1024 * 1024,
+            )
         except Exception as e:
             raise ConnectionError(f"Failed to connect to {self.url}: {e}") from e
 
