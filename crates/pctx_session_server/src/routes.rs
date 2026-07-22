@@ -256,7 +256,7 @@ pub(crate) async fn register_tools<B: PctxSessionBackend>(
     // Update the backend with the modified CodeMode
     state.backend.update(session_id, code_mode).await?;
 
-    if report.failed.is_empty() {
+    if report.failed.is_empty() && report.warnings.is_empty() {
         info!(
             session_id =? session_id,
             registered = report.registered.len(),
@@ -267,13 +267,15 @@ pub(crate) async fn register_tools<B: PctxSessionBackend>(
             session_id =? session_id,
             registered = report.registered.len(),
             failed =? report.failed,
-            "Registered tools; some were dropped",
+            warnings =? report.warnings,
+            "Registered tools; some were dropped or degraded",
         );
     }
 
     Ok(Json(RegisterToolsResponse {
         registered: report.registered.len(),
         failed: report.failed,
+        warnings: report.warnings,
     }))
 }
 

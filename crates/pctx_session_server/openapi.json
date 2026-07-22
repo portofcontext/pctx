@@ -422,6 +422,22 @@
           "output_schema": {}
         }
       },
+      "CallbackWarning": {
+        "type": "object",
+        "description": "A tool that registered successfully but in a degraded form.",
+        "required": [
+          "id",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        }
+      },
       "CloseSessionResponse": {
         "type": "object",
         "description": "Response after closing a `CodeMode` session",
@@ -694,7 +710,7 @@
       },
       "RegisterToolsResponse": {
         "type": "object",
-        "description": "Response to registering tools.\n\n`failed` lists tools that could not be registered at all (name clash,\nunparseable schema); the rest of the batch still registers. A tool whose\nschema our codegen can't express is registered with a permissive `any`\nsignature, not failed.",
+        "description": "Response to registering tools.\n\n`failed` lists tools that could not be registered at all (name clash,\nunparseable schema); the rest of the batch still registers. A tool whose\nschema our codegen can't express is registered with a permissive `any`\nsignature and reported in `warnings`, not failed.",
         "required": [
           "registered"
         ],
@@ -708,6 +724,13 @@
           "registered": {
             "type": "integer",
             "minimum": 0
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CallbackWarning"
+            },
+            "description": "Tools that registered in a degraded form (e.g. types fell back to `any`)."
           }
         }
       }

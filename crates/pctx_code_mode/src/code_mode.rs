@@ -12,9 +12,9 @@ use tracing::{debug, info, instrument, warn};
 use crate::{
     Error, Result,
     model::{
-        CallbackConfig, CallbackReport, ExecuteBashOutput, ExecuteTypescriptOutput, FailedCallback,
-        FunctionDetails, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
-        ListedFunction,
+        CallbackConfig, CallbackReport, CallbackWarning, ExecuteBashOutput,
+        ExecuteTypescriptOutput, FailedCallback, FunctionDetails, GetFunctionDetailsInput,
+        GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
     },
 };
 
@@ -53,12 +53,17 @@ impl CodeMode {
         Ok(self)
     }
 
+    /// Register a batch of callback tools, returning the [`CallbackReport`]
+    /// alongside the updated `CodeMode`.
+    ///
+    /// Registration is per-tool and never fails the batch, so this is
+    /// infallible; inspect the report to see what was dropped or degraded.
     pub fn with_callbacks<'a>(
         mut self,
         callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
-    ) -> Result<Self> {
-        self.add_callbacks(callbacks);
-        Ok(self)
+    ) -> (Self, CallbackReport) {
+        let report = self.add_callbacks(callbacks);
+        (self, report)
     }
 
     // --------------- Registrations functions ---------------
@@ -183,7 +188,9 @@ impl CodeMode {
     ///
     /// Each tool is registered independently. A tool that cannot be registered
     /// (name clash, unparseable schema) is skipped and recorded in the returned
-    /// [`CallbackReport`] without affecting the rest of the batch.
+    /// [`CallbackReport`] without affecting the rest of the batch. A tool that
+    /// registers in a degraded form (types codegen could not express, so `any`)
+    /// is recorded in the report's `warnings`.
     pub fn add_callbacks<'a>(
         &mut self,
         callbacks: impl IntoIterator<Item = &'a CallbackConfig>,
@@ -191,7 +198,15 @@ impl CodeMode {
         let mut report = CallbackReport::default();
         for callback in callbacks {
             match self.add_callback(callback) {
-                Ok(()) => report.registered.push(callback.id()),
+                Ok(degraded) => {
+                    report.registered.push(callback.id());
+                    report
+                        .warnings
+                        .extend(degraded.into_iter().map(|reason| CallbackWarning {
+                            id: callback.id(),
+                            reason,
+                        }));
+                }
                 Err(e) => {
                     warn!(
                         tool = %callback.id(),
@@ -208,8 +223,11 @@ impl CodeMode {
         report
     }
 
-    // Generates a Tool and add it to the correct Toolset from the given callback config
-    pub fn add_callback(&mut self, callback: &CallbackConfig) -> Result<()> {
+    /// Generates a Tool and adds it to the correct Toolset from the given callback config.
+    ///
+    /// Returns the reasons, if any, the tool's types had to be degraded to `any`
+    /// — the tool is still registered and callable.
+    pub fn add_callback(&mut self, callback: &CallbackConfig) -> Result<Vec<String>> {
         debug!(callback =? callback.id(), "Adding callback tool {}", callback.id());
 
         // find the correct toolset & check for clashes
@@ -261,13 +279,14 @@ impl CodeMode {
             input_schema,
             output_schema,
         );
+        let degraded = tool.degraded_types().to_vec();
 
         // add tool & it's configuration
         tool_set.tools.push(tool);
         self.callbacks.push(callback.clone());
         self.refresh_virtual_fs();
 
-        Ok(())
+        Ok(degraded)
     }
 
     pub fn add_tool_set(&mut self, tool_set: ToolSet) -> Result<()> {
@@ -740,5 +759,26 @@ mod tests {
             .flat_map(|ts| ts.tools.iter().map(|t| t.name.clone()))
             .collect();
         assert_eq!(names, vec!["keep".to_string(), "dup".to_string()]);
+        assert!(report.warnings.is_empty());
+    }
+
+    /// A tool whose schema codegen can't express still registers, but the
+    /// degradation is reported so a remote caller sees it too.
+    #[test]
+    fn add_callbacks_reports_degraded_types() {
+        let mut cm = CodeMode::default();
+        let mut degraded = cb("degraded");
+        degraded.input_schema = Some(json!({
+            "type": "object",
+            "properties": { "x": { "$ref": "#/definitions/DoesNotExist" } }
+        }));
+
+        let report = cm.add_callbacks(&[cb("fine"), degraded]);
+
+        assert_eq!(report.registered, vec!["ns__fine", "ns__degraded"]);
+        assert!(report.failed.is_empty());
+        assert_eq!(report.warnings.len(), 1);
+        assert_eq!(report.warnings[0].id, "ns__degraded");
+        assert!(report.warnings[0].reason.contains("degraded to `any`"));
     }
 }

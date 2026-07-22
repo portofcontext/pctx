@@ -239,16 +239,30 @@ impl CallbackConfig {
 /// Tools that register are listed in `registered`; those that cannot be are
 /// collected in `failed`. Each tool is registered independently, so one
 /// failure does not affect another.
+///
+/// A tool whose schema codegen cannot express still registers, with a
+/// permissive `any` signature, and is reported in `warnings` — so a remote
+/// caller learns about the degradation instead of it only reaching the logs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize, ToSchema)]
 pub struct CallbackReport {
     /// Ids of tools that registered (including any degraded to an `any` type).
     pub registered: Vec<String>,
     /// Tools that could not be registered at all, with the reason.
     pub failed: Vec<FailedCallback>,
+    /// Tools that registered, but not as specified (e.g. types degraded to `any`).
+    #[serde(default)]
+    pub warnings: Vec<CallbackWarning>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct FailedCallback {
+    pub id: String,
+    pub reason: String,
+}
+
+/// A tool that registered successfully but in a degraded form.
+#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+pub struct CallbackWarning {
     pub id: String,
     pub reason: String,
 }
