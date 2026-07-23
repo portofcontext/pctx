@@ -1,14 +1,44 @@
 use schemars::schema::RootSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::{
-    CodegenResult,
     case::Case,
     ts_generate_docstring,
     typegen::{TypegenResult, generate_types},
 };
+
+/// Generate the TypeScript type for a tool schema, falling back to `any` when
+/// codegen cannot express the schema.
+///
+/// Upstream tools may carry JSON Schema this codegen does not support (for
+/// example a recursive `$ref`). Such a tool is given a permissive `any`
+/// signature so it remains callable at runtime, rather than being rejected.
+///
+/// Returns the type alongside a human readable reason when the type was
+/// degraded, so callers can report it rather than only logging it.
+fn generate_types_lenient(
+    schema: RootSchema,
+    type_name: &str,
+    tool: &str,
+) -> (TypegenResult, Option<String>) {
+    match generate_types(schema, type_name) {
+        Ok(result) => (result, None),
+        Err(e) => {
+            warn!(tool, type_name, error = %e, "codegen failed; degrading tool type to `any`");
+            (
+                TypegenResult {
+                    types_generated: 0,
+                    type_signature: "any".into(),
+                    all_optional: false,
+                    types: String::new(),
+                },
+                Some(e.to_string()),
+            )
+        }
+    }
+}
 
 pub const DEFAULT_NAMESPACE: &str = "Tools";
 
@@ -92,6 +122,11 @@ pub struct Tool {
 
     input_type: Option<TypegenResult>,
     output_type: Option<TypegenResult>,
+
+    /// Reasons the tool's types were degraded to `any`, one per schema that
+    /// codegen could not express. Empty for a fully typed tool.
+    #[serde(default)]
+    degraded_types: Vec<String>,
 }
 
 impl Tool {
@@ -100,23 +135,30 @@ impl Tool {
         description: Option<String>,
         input: Option<RootSchema>,
         output: Option<RootSchema>,
-    ) -> CodegenResult<Self> {
+    ) -> Self {
         let fn_name = Case::Camel.sanitize(name);
         debug!("Generating Typescript interface for tool: '{name}' -> function {fn_name}",);
 
-        let input_type = if let Some(i) = &input {
-            Some(generate_types(i.clone(), &format!("{fn_name}Input"))?)
-        } else {
-            None
-        };
+        let mut degraded_types = vec![];
 
-        let output_type = if let Some(o) = output.clone() {
-            Some(generate_types(o, &format!("{fn_name}Output"))?)
-        } else {
-            None
-        };
+        let input_type = input.as_ref().map(|i| {
+            let (ty, degraded) =
+                generate_types_lenient(i.clone(), &format!("{fn_name}Input"), name);
+            if let Some(reason) = degraded {
+                degraded_types.push(format!("input schema degraded to `any`: {reason}"));
+            }
+            ty
+        });
+        let output_type = output.as_ref().map(|o| {
+            let (ty, degraded) =
+                generate_types_lenient(o.clone(), &format!("{fn_name}Output"), name);
+            if let Some(reason) = degraded {
+                degraded_types.push(format!("output schema degraded to `any`: {reason}"));
+            }
+            ty
+        });
 
-        Ok(Self {
+        Self {
             name: name.into(),
             description,
             input_schema: input,
@@ -124,7 +166,15 @@ impl Tool {
             fn_name,
             input_type,
             output_type,
-        })
+            degraded_types,
+        }
+    }
+
+    /// Reasons this tool's types were degraded to `any` during codegen.
+    ///
+    /// Empty when both schemas generated real TypeScript types.
+    pub fn degraded_types(&self) -> &[String] {
+        &self.degraded_types
     }
 
     pub fn id(&self, toolset_name: Option<&str>) -> String {

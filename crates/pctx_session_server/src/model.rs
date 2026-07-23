@@ -80,10 +80,20 @@ pub struct RegisterToolsRequest {
     pub tools: Vec<pctx_code_mode::model::CallbackConfig>,
 }
 
-/// Response to registering tools
+/// Response to registering tools.
+///
+/// `failed` lists tools that could not be registered at all (name clash,
+/// unparseable schema); the rest of the batch still registers. A tool whose
+/// schema our codegen can't express is registered with a permissive `any`
+/// signature and reported in `warnings`, not failed.
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 pub struct RegisterToolsResponse {
     pub registered: usize,
+    #[serde(default)]
+    pub failed: Vec<pctx_code_mode::model::FailedCallback>,
+    /// Tools that registered in a degraded form (e.g. types fell back to `any`).
+    #[serde(default)]
+    pub warnings: Vec<pctx_code_mode::model::CallbackWarning>,
 }
 
 /// Request to register MCP servers

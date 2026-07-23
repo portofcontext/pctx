@@ -565,8 +565,7 @@ mod tests {
                 }))
                 .unwrap(),
                 Some(serde_json::from_value(account_schema.clone()).unwrap()),
-            )
-            .unwrap(),
+            ),
             Tool::new(
                 "freeze_account",
                 Some("Freezes an account".into()),
@@ -579,8 +578,7 @@ mod tests {
                 }))
                 .unwrap(),
                 Some(serde_json::from_value(account_schema.clone()).unwrap()),
-            )
-            .unwrap(),
+            ),
         ];
 
         let mut cm = CodeMode::default();

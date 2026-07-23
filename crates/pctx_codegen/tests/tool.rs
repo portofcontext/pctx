@@ -1,6 +1,7 @@
 use pctx_codegen::{RootSchema, Tool, ToolSet};
 use pctx_type_check_runtime::type_check;
 use serde::Deserialize;
+use serde_json::json;
 
 const BASIC_TOOL: &str = include_str!("./fixtures/tools/basic.yml");
 const NESTED_TYPES_TOOL: &str = include_str!("./fixtures/tools/nested_types.yml");
@@ -25,7 +26,6 @@ impl ToolFixture {
             self.input_schema.clone(),
             self.output_schema.clone(),
         )
-        .expect("Tool::new failed")
     }
 }
 
@@ -79,4 +79,39 @@ fn test_toolset_namespace() {
         "toolset__namespace_interface.ts",
         toolset.ts_namespace_declaration(true)
     );
+}
+
+// --- codegen resilience ---
+
+/// A schema our codegen can't express (here, a `$ref` to a missing definition)
+/// must not fail the tool: it degrades to a permissive `any` signature so the
+/// tool stays callable at runtime, just untyped.
+#[test]
+fn tool_degrades_uncodegenable_schema_to_any() {
+    let bad: RootSchema = serde_json::from_value(json!({
+        "type": "object",
+        "properties": { "x": { "$ref": "#/definitions/DoesNotExist" } }
+    }))
+    .unwrap();
+
+    let tool = Tool::new("bad_tool", None, Some(bad), None);
+
+    assert_eq!(tool.input_signature().as_deref(), Some("any"));
+    // The degradation is reported, not just logged, so callers can surface it.
+    assert_eq!(tool.degraded_types().len(), 1);
+    assert!(tool.degraded_types()[0].starts_with("input schema degraded to `any`"));
+}
+
+/// A tool whose schemas all generate real types reports no degradation.
+#[test]
+fn tool_with_generatable_schema_reports_no_degradation() {
+    let good: RootSchema = serde_json::from_value(json!({
+        "type": "object",
+        "properties": { "x": { "type": "string" } }
+    }))
+    .unwrap();
+
+    let tool = Tool::new("good_tool", None, Some(good), None);
+
+    assert!(tool.degraded_types().is_empty());
 }

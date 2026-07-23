@@ -9,10 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `/register/tools` responses now include `warnings`: tools that registered in a degraded form, with the reason. A tool whose JSON Schema our codegen cannot express is registered with a permissive `any` signature so it stays callable; previously that only reached the server logs, invisible to a client talking to a remotely deployed session server.
+
 ### Changed
+
+- **Breaking:** `CodeMode::with_callbacks` returns `(Self, CallbackReport)` instead of `Result<Self>`, so builder-style callers see which tools failed or degraded. Per-tool isolation means the batch itself cannot fail, so the report is the only outcome.
+- **Breaking:** `CodeMode::add_callback` returns `Result<Vec<String>>` — the reasons that tool's types were degraded to `any`, empty when fully typed.
 
 ### Fixed
 
+- `/register/tools` no longer fails the whole batch when a single tool cannot be registered. Each tool is registered independently: a genuinely bad tool (name clash, unparseable schema) is skipped and returned in the response's `failed` list, and a tool our codegen cannot type degrades to an `any` signature rather than being dropped. Previously one bad tool from an upstream server — such as a recursive `$ref` in a federated schema — took down registration for the entire batch, forcing clients into ~135 sequential per-tool calls per session.
 - Declared `rmcp` minimum raised from 1.2.0 to 1.8.0, the version the code
   actually requires. With the understated minimum, downstream consumers of the
   git-dep crates could resolve an older rmcp and fail to compile
