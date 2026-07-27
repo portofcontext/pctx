@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Moved full MCP tool call / callback inputs and outputs, and `execute_typescript`/`execute_bash` code and output, from INFO to DEBUG logs to declutter traces. Added DEBUG logs describing tool result shape (structured content, JSON parse success/fallback).
+
 ### Fixed
 
 - Declared `rmcp` minimum raised from 1.2.0 to 1.8.0, the version the code

@@ -479,7 +479,7 @@ impl CodeMode {
     }
 
     /// Execute bash commands directly in the virtual filesystem
-    #[instrument(skip(self), ret(Display), err)]
+    #[instrument(skip(self), err)]
     pub async fn execute_bash(&self, command: &str) -> Result<ExecuteBashOutput> {
         debug!(command = %command, "Executing bash command");
 
@@ -544,15 +544,18 @@ export default result;"#,
             warn!("Bash execution failed with exit code {exit_code}: {stderr}");
         }
 
-        Ok(ExecuteBashOutput {
+        let output = ExecuteBashOutput {
             exit_code,
             stdout,
             stderr,
-        })
+        };
+        debug!("Bash execution result:\n{output}");
+
+        Ok(output)
     }
 
     /// Execute TypeScript code with access to registered tools and virtual filesystem
-    #[instrument(skip(self, registry), ret(Display), err)]
+    #[instrument(skip(self, registry, code), err)]
     pub async fn execute_typescript(
         &self,
         code: &str,
@@ -664,7 +667,7 @@ export default result;"#,
             }
         };
 
-        debug!(to_execute = %to_execute, "Executing TypeScript in sandbox");
+        debug!("Executing TypeScript in sandbox:\n{to_execute}");
 
         let execution_res = pctx_executor::execute(
             &to_execute,
@@ -678,13 +681,17 @@ export default result;"#,
             warn!("TypeScript execution failed: {:?}", execution_res.stderr);
         }
 
-        Ok(ExecuteTypescriptOutput {
+        let output = ExecuteTypescriptOutput {
             success: execution_res.success,
             stdout: execution_res.stdout,
             stderr: execution_res.stderr,
             output: execution_res.output,
             registry: execution_res.registry,
             trace: execution_res.trace,
-        })
+        };
+
+        debug!("TypeScript execution result:\n{output}");
+
+        Ok(output)
     }
 }
