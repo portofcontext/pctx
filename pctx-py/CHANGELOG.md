@@ -17,6 +17,14 @@ For changes to the underlying Rust crates and CLI, see the
 
 ### Fixed
 
+- Tool calls now run concurrently. Each request is handled in its own task
+  rather than awaited inside the WebSocket read loop, so code fanning out with
+  `Promise.all` takes the time of its slowest call instead of the sum of all
+  of them.
+- Sync tools run on a worker thread instead of blocking the event loop, so one
+  slow sync tool no longer stalls the calls beside it. Their bodies now execute
+  off the main thread, so anything they share must be thread-safe.
+
 ## [v0.4.4] - 2026-07-22
 
 ### Fixed

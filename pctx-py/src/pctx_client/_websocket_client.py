@@ -68,6 +68,10 @@ class WebSocketClient:
         self._headers = headers or {}
         self._pending_executions: dict[str | int, asyncio.Future] = {}
         self._request_counter = 0
+        self._message_handler_task: asyncio.Task | None = None
+        # In-flight tool executions. Held strongly because asyncio only keeps
+        # weak references to tasks, and cancelled as a group on disconnect.
+        self._tool_tasks: set[asyncio.Task] = set()
 
     async def _connect(self, code_mode_session: str):
         """
@@ -99,6 +103,10 @@ class WebSocketClient:
         """Disconnect from the WebSocket server."""
         if self._message_handler_task:
             self._message_handler_task.cancel()
+
+        for task in self._tool_tasks:
+            task.cancel()
+        self._tool_tasks.clear()
 
         if self.ws:
             await self.ws.close()
@@ -192,8 +200,14 @@ class WebSocketClient:
                     message: WebSocketMessage = adapter.validate_json(message_data)
 
                     if isinstance(message, ExecuteToolRequest):
-                        res = await self._handle_execute_tool(message)
-                        await self._send(res)
+                        # Run the tool in its own task so this loop stays free to
+                        # read the next message. Awaiting it here would serialize
+                        # every tool call the server dispatches, so code that fans
+                        # out with `Promise.all` would take the sum of its calls
+                        # rather than the slowest one.
+                        task = asyncio.create_task(self._execute_tool(message))
+                        self._tool_tasks.add(task)
+                        task.add_done_callback(self._tool_tasks.discard)
                     elif isinstance(message, ExecuteCodeResponse):
                         future = self._pending_executions.get(message.id)
                         if future is not None:
@@ -215,6 +229,16 @@ class WebSocketClient:
             pass
         except Exception as e:
             print(f"Message handler error: {e}")
+
+    async def _execute_tool(self, req: ExecuteToolRequest):
+        """Run one tool request and send its response back to the server."""
+        try:
+            res = await self._handle_execute_tool(req)
+            await self._send(res)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            print(f"Error executing tool: {e}")
 
     async def _handle_execute_tool(
         self, req: ExecuteToolRequest
@@ -240,10 +264,14 @@ class WebSocketClient:
         args = req.params.args or {}
         try:
             if isinstance(tool, Tool):
+                # Sync tools go to a worker thread. Calling one inline would
+                # block the event loop for its whole duration, which stalls
+                # every other in-flight tool call behind it -- and with it the
+                # loop reading further requests off the WebSocket.
                 if tool.input_schema is None:
-                    output = tool.invoke()
+                    output = await asyncio.to_thread(tool.invoke)
                 else:
-                    output = tool.invoke(**args)
+                    output = await asyncio.to_thread(tool.invoke, **args)
             else:
                 if tool.input_schema is None:
                     output = await tool.ainvoke()
