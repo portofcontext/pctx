@@ -24,8 +24,9 @@ use crate::{
     routes, websocket,
 };
 use pctx_code_mode::model::{
-    CallbackConfig, ExecuteBashInput, ExecuteBashOutput, FunctionDetails, GetFunctionDetailsInput,
-    GetFunctionDetailsOutput, ListFunctionsOutput, ListedFunction,
+    CallbackConfig, CallbackWarning, ExecuteBashInput, ExecuteBashOutput, FailedCallback,
+    FunctionDetails, GetFunctionDetailsInput, GetFunctionDetailsOutput, ListFunctionsOutput,
+    ListedFunction,
 };
 
 #[derive(OpenApi)]
@@ -60,6 +61,8 @@ use pctx_code_mode::model::{
             RegisterToolsRequest,
             CallbackConfig,
             RegisterToolsResponse,
+            FailedCallback,
+            CallbackWarning,
             // Server registration
             RegisterMcpServersRequest,
             RegisterMcpServersResponse,
