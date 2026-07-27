@@ -1,5 +1,8 @@
 """Integration tests for pctx code mode against a running server"""
 
+import asyncio
+import threading
+import time
 from datetime import datetime
 
 import pytest
@@ -790,6 +793,153 @@ async def test_mixed_tools_and_mcp_servers():
                 "Expected formatted string"
             )
 
+    except ConnectionError:
+        pytest.fail(
+            "Failed to connect to pctx server at http://localhost:8080.\n"
+            "Please ensure the pctx server is running.\n"
+            "Start the server with: pctx server start"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_async_tool_calls_run_in_parallel():
+    """Tools fanned out with `Promise.all` must execute concurrently.
+
+    The client used to await each tool request inside its WebSocket read loop,
+    so a batch of N calls took the sum of their durations instead of the
+    slowest one. Assert on observed overlap rather than wall time alone, so
+    the test fails on serialization rather than on a slow machine.
+    """
+    sleep_secs = 0.5
+    calls = 4
+
+    in_flight = 0
+    max_in_flight = 0
+
+    @tool
+    async def slow_echo(value: int) -> int:
+        """Sleep briefly, then echo the value back"""
+        nonlocal in_flight, max_in_flight
+        in_flight += 1
+        max_in_flight = max(max_in_flight, in_flight)
+        try:
+            await asyncio.sleep(sleep_secs)
+            return value
+        finally:
+            in_flight -= 1
+
+    try:
+        async with Pctx(tools=[slow_echo], execute_timeout=60) as pctx:
+            code = """
+            async function run() {
+                const values = await Promise.all([
+                    Tools.slowEcho({ value: 1 }),
+                    Tools.slowEcho({ value: 2 }),
+                    Tools.slowEcho({ value: 3 }),
+                    Tools.slowEcho({ value: 4 }),
+                ]);
+                return { values };
+            }
+            """
+
+            start = time.perf_counter()
+            output = await pctx.execute_typescript(code)
+            elapsed = time.perf_counter() - start
+
+            assert output.success, f"Execution should succeed, got: {output.stderr}"
+            assert output.output is not None, "Execution should return output"
+            assert output.output.get("values") == [1, 2, 3, 4], (
+                f"Expected all four calls to return, got: {output.output}"
+            )
+
+            assert max_in_flight == calls, (
+                f"All {calls} tool calls should be in flight at once, "
+                f"peaked at {max_in_flight} -- the client is serializing them"
+            )
+
+            # Serialized dispatch takes calls * sleep_secs; concurrent dispatch
+            # takes ~sleep_secs. Half way between the two is a wide enough
+            # margin to absorb session setup and round-trip overhead.
+            serial_secs = calls * sleep_secs
+            assert elapsed < serial_secs / 2, (
+                f"Concurrent calls took {elapsed:.2f}s; serialized dispatch "
+                f"would take ~{serial_secs:.2f}s"
+            )
+    except ConnectionError:
+        pytest.fail(
+            "Failed to connect to pctx server at http://localhost:8080.\n"
+            "Please ensure the pctx server is running.\n"
+            "Start the server with: pctx server start"
+        )
+
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_concurrent_sync_tool_calls_run_in_parallel():
+    """Sync tools fanned out with `Promise.all` must also run concurrently.
+
+    A sync tool body blocks whatever thread it runs on, so calling it inline
+    on the event loop would stall every other in-flight call behind it. They
+    run on worker threads instead -- hence the blocking `time.sleep` here, and
+    the lock around the counters, which the tool bodies touch off-thread.
+    """
+    sleep_secs = 0.5
+    calls = 4
+
+    lock = threading.Lock()
+    in_flight = 0
+    max_in_flight = 0
+
+    @tool
+    def slow_echo_sync(value: int) -> int:
+        """Block briefly, then echo the value back"""
+        nonlocal in_flight, max_in_flight
+        with lock:
+            in_flight += 1
+            max_in_flight = max(max_in_flight, in_flight)
+        try:
+            time.sleep(sleep_secs)
+            return value
+        finally:
+            with lock:
+                in_flight -= 1
+
+    try:
+        async with Pctx(tools=[slow_echo_sync], execute_timeout=60) as pctx:
+            code = """
+            async function run() {
+                const values = await Promise.all([
+                    Tools.slowEchoSync({ value: 1 }),
+                    Tools.slowEchoSync({ value: 2 }),
+                    Tools.slowEchoSync({ value: 3 }),
+                    Tools.slowEchoSync({ value: 4 }),
+                ]);
+                return { values };
+            }
+            """
+
+            start = time.perf_counter()
+            output = await pctx.execute_typescript(code)
+            elapsed = time.perf_counter() - start
+
+            assert output.success, f"Execution should succeed, got: {output.stderr}"
+            assert output.output is not None, "Execution should return output"
+            assert output.output.get("values") == [1, 2, 3, 4], (
+                f"Expected all four calls to return, got: {output.output}"
+            )
+
+            assert max_in_flight == calls, (
+                f"All {calls} tool calls should be in flight at once, "
+                f"peaked at {max_in_flight} -- sync tools are blocking the "
+                f"event loop instead of running on worker threads"
+            )
+
+            serial_secs = calls * sleep_secs
+            assert elapsed < serial_secs / 2, (
+                f"Concurrent calls took {elapsed:.2f}s; serialized dispatch "
+                f"would take ~{serial_secs:.2f}s"
+            )
     except ConnectionError:
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"

@@ -15,7 +15,7 @@ use std::{
     sync::{Arc, RwLock},
     time::SystemTime,
 };
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, instrument, warn};
 
 pub type CallbackFn = Arc<
     dyn Fn(
@@ -237,13 +237,7 @@ impl PctxRegistry {
     ///
     /// This function will return an error if an action by the provided id doesn't exist
     /// or if the action itself fails
-    #[instrument(
-        name = "invoke_registry_action",
-        skip_all,
-        fields(id=id, args = json!(args).to_string()),
-        ret(Display),
-        err
-    )]
+    #[instrument(name = "invoke_registry_action", skip_all, fields(id = id), err)]
     pub async fn invoke(
         &self,
         id: &str,
@@ -333,24 +327,39 @@ impl PctxRegistry {
                     }
 
                     // Prefer structuredContent if available, otherwise use content array
-                    let has_structured = tool_result.structured_content.is_some();
                     let val = if let Some(structured) = tool_result.structured_content {
+                        debug!(tool = %mcp_id.id(), "tool result: using structured content");
                         structured
                     } else if let Some(RawContent::Text(text_content)) =
                         tool_result.content.first().map(|a| &**a)
                     {
                         // Try to parse as JSON, fallback to string value
-                        serde_json::from_str(&text_content.text)
-                            .or_else(|_| Ok(serde_json::Value::String(text_content.text.clone())))
-                            .map_err(|e: serde_json::Error| {
-                                RegistryError::ToolCall(format!("Failed to parse content: {e}"))
-                            })?
+                        match serde_json::from_str(&text_content.text) {
+                            Ok(json) => {
+                                debug!(
+                                    tool = %mcp_id.id(),
+                                    "tool result: parsed text content as JSON"
+                                );
+                                json
+                            }
+                            Err(e) => {
+                                debug!(
+                                    tool = %mcp_id.id(),
+                                    error = %e,
+                                    "tool result: text content is not JSON, using raw string"
+                                );
+                                serde_json::Value::String(text_content.text.clone())
+                            }
+                        }
                     } else {
                         // Return the whole content array as JSON
+                        debug!(
+                            tool = %mcp_id.id(),
+                            content_len = tool_result.content.len(),
+                            "tool result: no structured or text content, using raw content array"
+                        );
                         json!(tool_result.content)
                     };
-
-                    info!(structured_content = has_structured, result =? &val, "Tool result");
 
                     Ok(val)
                 })();

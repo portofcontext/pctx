@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Moved full MCP tool call / callback inputs and outputs, and `execute_typescript`/`execute_bash` code and output, from INFO to DEBUG logs to declutter traces. Added DEBUG logs describing tool result shape (structured content, JSON parse success/fallback).
 - **Breaking:** `CodeMode::with_callbacks` returns `(Self, CallbackReport)` instead of `Result<Self>`, so builder-style callers see which tools failed or degraded. Per-tool isolation means the batch itself cannot fail, so the report is the only outcome.
 - **Breaking:** `CodeMode::add_callback` returns `Result<Vec<String>>` — the reasons that tool's types were degraded to `any`, empty when fully typed.
 
