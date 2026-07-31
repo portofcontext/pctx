@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+### Changed
+
+### Fixed
+
+## [v0.7.4] - 2026-07-31
+
+### Added
+
 - `/register/tools` responses now include `warnings`: tools that registered in a degraded form, with the reason. A tool whose JSON Schema our codegen cannot express is registered with a permissive `any` signature so it stays callable; previously that only reached the server logs, invisible to a client talking to a remotely deployed session server.
 
 ### Changed
@@ -259,7 +267,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Initial public release
 
-[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.3...HEAD
+[Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.4...HEAD
+[v0.7.4]: https://github.com/portofcontext/pctx/compare/v0.7.3...v0.7.4
 [v0.7.3]: https://github.com/portofcontext/pctx/compare/v0.7.2...v0.7.3
 [v0.7.2]: https://github.com/portofcontext/pctx/compare/v0.7.1...v0.7.2
 [v0.7.1]: https://github.com/portofcontext/pctx/compare/v0.7.0...v0.7.1
