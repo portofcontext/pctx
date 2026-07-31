@@ -29,7 +29,7 @@ use rmcp::{
 };
 use serde_json::json;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
 
 use crate::AppState;
@@ -371,7 +371,7 @@ async fn handle_message<B: PctxSessionBackend>(
 ) -> Result<(), String> {
     match msg {
         Message::Text(text) => {
-            debug!("Received text message from {ws_session}: {text}");
+            trace!("Received text message from {ws_session}: {text}");
 
             let jrpc_msg = serde_json::from_str::<WsJsonRpcMessage>(&text)
                 .map_err(|e| format!("Received invalid JsonRpc message from websocket: {e}"))?;

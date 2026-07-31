@@ -6,7 +6,10 @@ use clap::{Parser, Subcommand};
 use serde_json::json;
 use std::io::{self, Write};
 
-use crate::utils::{logger::init_cli_logger, telemetry::init_telemetry};
+use crate::utils::{
+    logger::{self, init_cli_logger},
+    telemetry::init_telemetry,
+};
 use pctx_config::Config;
 
 #[derive(Parser)]
@@ -42,52 +45,58 @@ pub struct Cli {
 }
 
 impl Cli {
-    fn cli_logger(&self) -> bool {
-        !matches!(
-            &self.command,
-            Commands::Mcp(McpCommands::Start(_) | McpCommands::Dev(_))
-        )
-    }
+    /// `-v` and `-q` are global, so every command resolves its logging here.
+    async fn init_logging(&self, cfg: &Config) -> anyhow::Result<()> {
+        let level = logger::flag_level(self.verbose, self.quiet);
 
-    fn json_l(&self) -> Option<Utf8PathBuf> {
-        if let Commands::Mcp(McpCommands::Dev(dev)) = &self.command {
-            Some(dev.log_file.clone())
-        } else {
-            None
+        match &self.command {
+            // Short-lived commands print for a human, the rest emit structured logs
+            Commands::Mcp(
+                McpCommands::Init(_)
+                | McpCommands::List(_)
+                | McpCommands::Add(_)
+                | McpCommands::Remove(_),
+            ) => {
+                init_cli_logger(self.verbose, self.quiet);
+                Ok(())
+            }
+            // Dev writes JSONL for its TUI to tail
+            Commands::Mcp(McpCommands::Dev(dev)) => {
+                init_telemetry(cfg, Some(dev.log_file.clone()), false, level).await
+            }
+            // Stdio mode keeps stdout clean for JSON-RPC
+            Commands::Mcp(McpCommands::Start(start_cmd)) => {
+                init_telemetry(cfg, None, start_cmd.stdio, level).await
+            }
+            Commands::Start(_) => init_telemetry(cfg, None, false, level).await,
         }
     }
 
     #[allow(clippy::missing_errors_doc)]
     pub async fn handle(&self) -> anyhow::Result<()> {
-        match &self.command {
-            Commands::Mcp(mcp_cmd) => self.handle_mcp(mcp_cmd).await,
-            Commands::Start(start_cmd) => {
-                let cfg = Config::load(&self.config).unwrap_or_default();
-                // Session server uses stdout for logs (not stdio protocol)
-                init_telemetry(&cfg, None, false).await?;
-
-                start_cmd.handle().await
-            }
-        }
-    }
-
-    async fn handle_mcp(&self, cmd: &McpCommands) -> anyhow::Result<()> {
         let cfg = Config::load(&self.config);
 
-        if let (McpCommands::Start(start_cmd), Err(err)) = (cmd, &cfg)
+        if let (Commands::Mcp(McpCommands::Start(start_cmd)), Err(err)) = (&self.command, &cfg)
             && start_cmd.stdio
         {
             return Self::handle_stdio_config_error(err);
         }
 
-        if self.cli_logger() {
-            init_cli_logger(self.verbose, self.quiet);
-        } else if let Ok(c) = &cfg {
-            // Use stderr for stdio mode to keep stdout clean for JSON-RPC
-            let use_stderr = matches!(cmd, McpCommands::Start(start_cmd) if start_cmd.stdio);
-            init_telemetry(c, self.json_l(), use_stderr).await?;
-        }
+        // A broken config still gets logging, so the error is reported the usual way
+        let fallback = Config::default();
+        self.init_logging(cfg.as_ref().unwrap_or(&fallback)).await?;
 
+        match &self.command {
+            Commands::Start(start_cmd) => start_cmd.handle().await,
+            Commands::Mcp(mcp_cmd) => self.handle_mcp(mcp_cmd, cfg).await,
+        }
+    }
+
+    async fn handle_mcp(
+        &self,
+        cmd: &McpCommands,
+        cfg: anyhow::Result<Config>,
+    ) -> anyhow::Result<()> {
         let _updated_cfg = match cmd {
             McpCommands::Init(cmd) => cmd.handle(&self.config).await?,
             McpCommands::List(cmd) => cmd.handle(cfg?).await?,

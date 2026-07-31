@@ -7,7 +7,7 @@ use std::{
     collections::{HashMap, HashSet},
     time::Duration,
 };
-use tracing::{debug, info, instrument, warn};
+use tracing::{debug, info, instrument, trace, warn};
 
 use crate::{
     Error, Result,
@@ -610,12 +610,8 @@ export default result;"#,
             "Executing TypeScript"
         );
 
-        // Format for logging only
-        let formatted_code = pctx_codegen::format::format_ts(code);
-
         debug!(
             code_from_llm = %code,
-            formatted_code = %formatted_code,
             code_length = code.len(),
             callbacks =? registry.ids(),
             disclosure =? disclosure,
@@ -709,7 +705,7 @@ export default result;"#,
             }
         };
 
-        debug!("Executing TypeScript in sandbox:\n{to_execute}");
+        trace!("Executing TypeScript in sandbox:\n{to_execute}");
 
         let execution_res = pctx_executor::execute(
             &to_execute,

@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `-v`/`-vv` flags apply globally (previously was only applied to `pctx mcp <sub-cmd>` commands)
 - `ExecuteBashOutput`'s `Display` printed `stdout` in the `# STDERR` section, so bash stderr was never shown. ([#141](https://github.com/portofcontext/pctx/issues/141))
 - `/register/tools` no longer fails the whole batch when a single tool cannot be registered. Each tool is registered independently: a genuinely bad tool (name clash, unparseable schema) is skipped and returned in the response's `failed` list, and a tool our codegen cannot type degrades to an `any` signature rather than being dropped. Previously one bad tool from an upstream server — such as a recursive `$ref` in a federated schema — took down registration for the entire batch, forcing clients into ~135 sequential per-tool calls per session.
 - Declared `rmcp` minimum raised from 1.2.0 to 1.8.0, the version the code actually requires. With the understated minimum, downstream consumers of the git-dep crates could resolve an older rmcp and fail to compile `pctx_session_server`.

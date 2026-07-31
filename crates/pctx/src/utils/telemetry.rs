@@ -16,7 +16,15 @@ pub(crate) async fn init_telemetry(
     cfg: &Config,
     json_l: Option<Utf8PathBuf>,
     use_stderr: bool,
+    flag_level: Option<&str>,
 ) -> Result<()> {
+    // An explicit -v/-q outranks RUST_LOG, which outranks the config file.
+    let env_filter = |default: &str| match flag_level {
+        Some(level) => EnvFilter::new(logger::default_env_filter(level)),
+        None => EnvFilter::try_from_default_env()
+            .unwrap_or_else(|_| EnvFilter::new(logger::default_env_filter(default))),
+    };
+
     // Set global text map propagator for trace context propagation (W3C Trace Context)
     // This enables parsing of traceparent/tracestate headers in distributed tracing
     opentelemetry::global::set_text_map_propagator(TraceContextPropagator::new());
@@ -70,17 +78,13 @@ pub(crate) async fn init_telemetry(
         let write_to =
             fs::File::create(&log_file).context(format!("failed creating log file: {log_file}"))?;
 
-        let env_filter = EnvFilter::try_from_default_env()
-            .unwrap_or(EnvFilter::new(logger::default_env_filter("debug")));
         layers.push(
             init_tracing_layer(write_to, &LoggerFormat::Json, false)
-                .with_filter(env_filter)
+                .with_filter(env_filter("debug"))
                 .boxed(),
         );
     } else if cfg.logger.enabled {
-        let env_filter = EnvFilter::try_from_default_env().unwrap_or(EnvFilter::new(
-            logger::default_env_filter(cfg.logger.level.as_str()),
-        ));
+        let env_filter = env_filter(cfg.logger.level.as_str());
 
         // Determine log destination based on config and mode:
         // 1. If file is specified in config, use it (all modes)
@@ -209,7 +213,7 @@ mod tests {
             ..Default::default()
         });
 
-        let result = init_telemetry(&cfg, None, false).await;
+        let result = init_telemetry(&cfg, None, false, None).await;
         assert!(result.is_ok(), "Telemetry initialization should succeed");
         assert!(
             log_path.exists(),

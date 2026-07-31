@@ -2,12 +2,16 @@ use std::io::Write;
 
 const WHITELISTED_CRATES: &[&str] = &[
     "pctx",
-    "pctx_mcp_server",
-    "pctx_session_server",
-    "pctx_config",
-    "pctx_executor",
+    "pctx_code_execution_runtime",
+    "pctx_code_mode",
     "pctx_codegen",
+    "pctx_config",
+    "pctx_deno_transpiler",
+    "pctx_executor",
+    "pctx_mcp_server",
     "pctx_registry",
+    "pctx_session_server",
+    "pctx_type_check_runtime",
 ];
 
 pub(crate) fn default_env_filter(level: &str) -> String {
@@ -22,16 +26,18 @@ pub(crate) fn default_env_filter(level: &str) -> String {
     filters.join(",")
 }
 
+/// Level named by the global `-v`/`-q` flags, or `None` when neither was passed.
+pub(crate) fn flag_level(verbose: u8, quiet: bool) -> Option<&'static str> {
+    match (quiet, verbose) {
+        (true, _) => Some("warn"),
+        (false, 0) => None,
+        (false, 1) => Some("debug"),
+        (false, _) => Some("trace"),
+    }
+}
+
 pub(crate) fn init_cli_logger(verbose: u8, quiet: bool) {
-    let level_str = if quiet {
-        "warn"
-    } else if verbose == 0 {
-        "info"
-    } else if verbose == 1 {
-        "debug"
-    } else {
-        "trace"
-    };
+    let level_str = flag_level(verbose, quiet).unwrap_or("info");
 
     let mut builder = env_logger::Builder::from_env(
         env_logger::Env::default().default_filter_or(default_env_filter(level_str)),

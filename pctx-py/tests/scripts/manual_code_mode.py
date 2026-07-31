@@ -56,7 +56,7 @@ async def main():
                 "url": "https://mcp.stripe.com",
                 "auth": {
                     "type": "bearer",
-                    "token": getenv("STRIPE_MCP_KEY"),
+                    "token": getenv("STRIPE_MCP_KEY", ""),
                 },
             }
         ],
@@ -73,7 +73,7 @@ async function run() {
     let subval = await MyMath.subtract({a: addval, b: 2});
     let multval = await MyMath.multiply({a: subval, b: 2});
     let now = await Tools.nowTimestamp();
-    let customers = await Stripe.listCustomers({});
+    let info = await Stripe.getStripeAccountInfo();
     let logs = await Tools.searchLogs();
     let logs2 = await Tools.searchLogs({});
     let logs3 = await Tools.searchLogs({ query: "custom query" });
