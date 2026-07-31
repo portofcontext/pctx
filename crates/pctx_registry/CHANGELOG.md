@@ -5,13 +5,37 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v0.1.3 (2026-07-31)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release over the course of 4 calendar days.
+ - 15 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #142 from portofcontext/fix/141-bash-output-stderr ([`2b8f701`](https://github.com/portofcontext/pctx/commit/2b8f701d7c46020336a27885d7b82b12ecfe3df1))
+    - Slim logs ([`3989073`](https://github.com/portofcontext/pctx/commit/3989073b751b6a9817add6584f0ac1c6a57621dc))
+    - Merge pull request #137 from portofcontext/fix/concurrency ([`9710d8a`](https://github.com/portofcontext/pctx/commit/9710d8ab37b721bd354e82863659c9b70c8f0433))
+    - Reduce verbose info logs ([`bf064ac`](https://github.com/portofcontext/pctx/commit/bf064ac896ae05c202fbdcac6330c3c04126c3ae))
+</details>
+
 ## v0.1.2 (2026-07-16)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 113 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.1, pctx_registry v0.1.2, pctx_code_execution_runtime v0.2.1, pctx_code_mode v0.4.1 ([`998fa8c`](https://github.com/portofcontext/pctx/commit/998fa8c1b48fbcbba21b103dbb9db07d8b2a2187))
     - Release pctx_config v0.1.5 ([`a3e69e4`](https://github.com/portofcontext/pctx/commit/a3e69e40e3403ed6544e5495287e824261e7d5b0))
 </details>
 

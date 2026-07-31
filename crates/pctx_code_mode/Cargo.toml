@@ -1,6 +1,6 @@
 [package]
 name = "pctx_code_mode"
-version = "0.4.2"
+version = "0.5.0"
 edition = "2024"
 license = "MIT"
 description = "TypeScript code execution engine for AI agents with tool schemas, sandboxed Deno runtime, and Rust callbacks"
@@ -13,9 +13,9 @@ categories = ["development-tools", "api-bindings"]
 [dependencies]
 # local
 pctx_config = { version = "^0.1.5", path = "../pctx_config" }
-pctx_codegen = { version = "^0.3.2", path = "../pctx_codegen" }
-pctx_executor = { version = "^0.2.1", path = "../pctx_executor" }
-pctx_registry = { version = "^0.1.2", path = "../pctx_registry" }
+pctx_codegen = { version = "^0.3.3", path = "../pctx_codegen" }
+pctx_executor = { version = "^0.2.2", path = "../pctx_executor" }
+pctx_registry = { version = "^0.1.3", path = "../pctx_registry" }
 
 # general
 thiserror = { workspace = true }

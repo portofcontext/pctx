@@ -5,13 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.2 (2026-07-31)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 128 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #142 from portofcontext/fix/141-bash-output-stderr ([`2b8f701`](https://github.com/portofcontext/pctx/commit/2b8f701d7c46020336a27885d7b82b12ecfe3df1))
+    - Slim logs ([`3989073`](https://github.com/portofcontext/pctx/commit/3989073b751b6a9817add6584f0ac1c6a57621dc))
+</details>
+
 ## 0.2.1 (2026-03-25)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 4 commits contributed to the release over the course of 8 calendar days.
+ - 5 commits contributed to the release over the course of 8 calendar days.
  - 12 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_registry v0.1.1, pctx_executor v0.2.1, pctx_code_mode v0.4.0 ([`72792d9`](https://github.com/portofcontext/pctx/commit/72792d9b6349cc07174f4d4397a51c709521bc3d))
     - Merge pull request #66 from portofcontext/registry-audit-log ([`267473b`](https://github.com/portofcontext/pctx/commit/267473bc7615b438ae13c1ecd61b4be5dfacc231))
     - Merge pull request #65 from portofcontext/62-question-intended-approach-for-stateful-upstream-mcp-tools-eg-lsp-mcp-start_lsp---open_document ([`0f2ded4`](https://github.com/portofcontext/pctx/commit/0f2ded4e8b5bef930ad2b84bf6a399c2b74aa095))
     - Execution event trace ([`52efa39`](https://github.com/portofcontext/pctx/commit/52efa391590fb5945b2654cf992147b43b95b6e7))
@@ -40,6 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 13 commits contributed to the release.
+ - 37 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -103,7 +127,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release over the course of 1 calendar day.
- - 7 days passed between releases.
+ - 8 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
