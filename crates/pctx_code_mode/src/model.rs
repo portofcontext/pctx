@@ -155,7 +155,7 @@ impl Display for ExecuteBashOutput {
         write!(
             f,
             "Exit Code: {}\n\n# STDOUT\n{}\n\n# STDERR\n{}",
-            &self.exit_code, &self.stdout, &self.stdout
+            &self.exit_code, &self.stdout, &self.stderr
         )
     }
 }

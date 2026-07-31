@@ -13,9 +13,9 @@ use std::{
     future::Future,
     pin::Pin,
     sync::{Arc, RwLock},
-    time::SystemTime,
+    time::{Instant, SystemTime},
 };
-use tracing::{debug, instrument, warn};
+use tracing::{debug, info, instrument, warn};
 
 pub type CallbackFn = Arc<
     dyn Fn(
@@ -251,12 +251,28 @@ impl PctxRegistry {
             RegistryAction::Callback(callback_fn) => {
                 let args_json = args.as_ref().map(|a| json!(a));
                 let started_at = SystemTime::now();
+                let timer = Instant::now();
+
+                info!("Invoking callback");
+                debug!(args = ?args_json, "Callback arguments");
 
                 let result = callback_fn(args.map(|a| json!(a))).await.map_err(|e| {
                     RegistryError::ExecutionError(format!(
                         "Failed calling callback with id \"{id}\": {e}",
                     ))
                 });
+
+                match &result {
+                    Ok(_) => info!(
+                        duration_ms = timer.elapsed().as_millis(),
+                        "Callback succeeded"
+                    ),
+                    Err(e) => warn!(
+                        duration_ms = timer.elapsed().as_millis(),
+                        error = %e,
+                        "Callback failed"
+                    ),
+                }
 
                 self.trace
                     .push(RegistryEvent::CallbackInvocation(CallbackInvocationEvent {
@@ -293,6 +309,10 @@ impl PctxRegistry {
 
                 let args_json = args.as_ref().map(|a| json!(a));
                 let started_at = SystemTime::now();
+                let timer = Instant::now();
+
+                info!("Calling MCP tool");
+                debug!(args = ?args_json, "MCP tool arguments");
 
                 let (client, cached_client) = self
                     .connection_pool
@@ -363,6 +383,20 @@ impl PctxRegistry {
 
                     Ok(val)
                 })();
+
+                match &result {
+                    Ok(_) => info!(
+                        cached_client,
+                        duration_ms = timer.elapsed().as_millis(),
+                        "MCP tool call succeeded"
+                    ),
+                    Err(e) => warn!(
+                        cached_client,
+                        duration_ms = timer.elapsed().as_millis(),
+                        error = %e,
+                        "MCP tool call failed"
+                    ),
+                }
 
                 self.trace
                     .push(RegistryEvent::McpToolCall(McpToolCallEvent {

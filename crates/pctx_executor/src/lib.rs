@@ -224,7 +224,7 @@ pub async fn execute(code: &str, options: ExecuteOptions) -> Result<ExecuteResul
     })
 }
 
-#[tracing::instrument(fields(runtime = "type_check"))]
+#[tracing::instrument(skip(code), fields(runtime = "type_check", code_length = code.len()))]
 fn run_type_check(code: &str) -> Result<CheckResult> {
     let mut check_result = type_check(code)?;
 
@@ -312,7 +312,10 @@ struct InternalExecuteResult {
 ///
 /// # Errors
 /// * Returns error only if internal Deno runtime initialization fails
-#[tracing::instrument(fields(runtime = "execution"))]
+#[tracing::instrument(
+    skip(code, options),
+    fields(runtime = "execution", code_length = code.len())
+)]
 async fn execute_code(
     code: &str,
     options: ExecuteOptions,

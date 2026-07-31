@@ -9,7 +9,7 @@ volumes:
 services:
   # OTLP Collector - receives OTLP and exposes metrics for Prometheus
   otel-collector:
-    image: otel/opentelemetry-collector-contrib:latest
+    image: otel/opentelemetry-collector-contrib:0.157.0
     command: ["--config=/etc/otel-collector-config.yml"]
     ports:
       - "4317:4317" # OTLP gRPC receiver
@@ -22,7 +22,7 @@ services:
 
   # Traces
   tempo:
-    image: grafana/tempo:latest
+    image: grafana/tempo:2.10.7
     command: -config.file=/etc/tempo.yaml
     ports:
       - "3200:3200"
@@ -47,7 +47,7 @@ services:
 
   # Metrics
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v3.13.2
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"

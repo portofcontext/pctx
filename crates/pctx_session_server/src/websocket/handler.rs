@@ -29,7 +29,7 @@ use rmcp::{
 };
 use serde_json::json;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info, trace, warn};
 use uuid::Uuid;
 
 use crate::AppState;
@@ -84,8 +84,6 @@ async fn handle_socket<B: PctxSessionBackend>(
     state: AppState<B>,
     code_mode_session: Uuid,
 ) {
-    info!(session_id =? code_mode_session, "New WebSocket connection");
-
     // Split socket into sender and receiver
     let (sender, receiver) = socket.split();
 
@@ -96,11 +94,10 @@ async fn handle_socket<B: PctxSessionBackend>(
     let session = WsSession::new(tx.clone(), code_mode_session);
     let ws_session = session.id;
 
-    debug!(
-        session_id =? code_mode_session,
-        ws_session =? ws_session,
-        "Created session {ws_session} connected to code mode session {}",
-        session.code_mode_session_id
+    info!(
+        session_id = %code_mode_session,
+        ws_session_id = %ws_session,
+        "New WebSocket connection"
     );
     state.ws_manager.add(session).await;
 
@@ -125,7 +122,11 @@ async fn handle_socket<B: PctxSessionBackend>(
 
     state.ws_manager.remove_session(ws_session).await;
 
-    info!("WebSocket connection closed for session {ws_session}");
+    info!(
+        session_id = %code_mode_session,
+        ws_session_id = %ws_session,
+        "WebSocket connection closed"
+    );
 }
 
 /// Handle outgoing WebSocket messages (`execute_tool` requests from server)
@@ -370,7 +371,7 @@ async fn handle_message<B: PctxSessionBackend>(
 ) -> Result<(), String> {
     match msg {
         Message::Text(text) => {
-            debug!("Received text message from {ws_session}: {text}");
+            trace!("Received text message from {ws_session}: {text}");
 
             let jrpc_msg = serde_json::from_str::<WsJsonRpcMessage>(&text)
                 .map_err(|e| format!("Received invalid JsonRpc message from websocket: {e}"))?;
@@ -420,7 +421,9 @@ async fn handle_message<B: PctxSessionBackend>(
             Ok(())
         }
         Message::Close(_) => {
-            info!("Received close message for session {ws_session}");
+            // The "WebSocket connection closed" line follows immediately, so
+            // this one is only interesting when debugging the handshake.
+            debug!(ws_session_id = %ws_session, "Received close message");
             Ok(())
         }
         Message::Ping(_) | Message::Pong(_) => Ok(()),
