@@ -602,6 +602,14 @@ export default result;"#,
             self.default_registry()?
         };
 
+        let timer = std::time::Instant::now();
+        info!(
+            code_length = code.len(),
+            disclosure = ?disclosure,
+            actions = registry.ids().len(),
+            "Executing TypeScript"
+        );
+
         // Format for logging only
         let formatted_code = pctx_codegen::format::format_ts(code);
 
@@ -710,9 +718,18 @@ export default result;"#,
         .await?;
 
         if execution_res.success {
-            debug!("TypeScript execution completed successfully");
+            info!(
+                duration_ms = timer.elapsed().as_millis(),
+                trace_events = execution_res.trace.events.len(),
+                "TypeScript execution succeeded"
+            );
         } else {
-            warn!("TypeScript execution failed: {:?}", execution_res.stderr);
+            warn!(
+                duration_ms = timer.elapsed().as_millis(),
+                trace_events = execution_res.trace.events.len(),
+                stderr = %execution_res.stderr,
+                "TypeScript execution failed"
+            );
         }
 
         let output = ExecuteTypescriptOutput {

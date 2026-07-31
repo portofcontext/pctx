@@ -84,8 +84,6 @@ async fn handle_socket<B: PctxSessionBackend>(
     state: AppState<B>,
     code_mode_session: Uuid,
 ) {
-    info!(session_id =? code_mode_session, "New WebSocket connection");
-
     // Split socket into sender and receiver
     let (sender, receiver) = socket.split();
 
@@ -96,11 +94,10 @@ async fn handle_socket<B: PctxSessionBackend>(
     let session = WsSession::new(tx.clone(), code_mode_session);
     let ws_session = session.id;
 
-    debug!(
-        session_id =? code_mode_session,
-        ws_session =? ws_session,
-        "Created session {ws_session} connected to code mode session {}",
-        session.code_mode_session_id
+    info!(
+        session_id = %code_mode_session,
+        ws_session_id = %ws_session,
+        "New WebSocket connection"
     );
     state.ws_manager.add(session).await;
 
@@ -125,7 +122,11 @@ async fn handle_socket<B: PctxSessionBackend>(
 
     state.ws_manager.remove_session(ws_session).await;
 
-    info!("WebSocket connection closed for session {ws_session}");
+    info!(
+        session_id = %code_mode_session,
+        ws_session_id = %ws_session,
+        "WebSocket connection closed"
+    );
 }
 
 /// Handle outgoing WebSocket messages (`execute_tool` requests from server)
@@ -420,7 +421,9 @@ async fn handle_message<B: PctxSessionBackend>(
             Ok(())
         }
         Message::Close(_) => {
-            info!("Received close message for session {ws_session}");
+            // The "WebSocket connection closed" line follows immediately, so
+            // this one is only interesting when debugging the handshake.
+            debug!(ws_session_id = %ws_session, "Received close message");
             Ok(())
         }
         Message::Ping(_) | Message::Pong(_) => Ok(()),

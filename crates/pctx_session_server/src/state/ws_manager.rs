@@ -2,7 +2,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use rmcp::model::RequestId;
 use tokio::sync::{RwLock, mpsc as tokio_mpsc};
-use tracing::{debug, info, warn};
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::model::{ExecuteToolParams, ExecuteToolResult, PctxJsonRpcRequest, WsJsonRpcMessage};
@@ -159,6 +159,13 @@ impl WsSession {
             .await
             .insert(req_id.clone(), response_tx);
 
+        debug!(
+            request_id = ?req_id,
+            tool = %tool_id,
+            ws_session_id = %self.id,
+            "Dispatching callback request to client",
+        );
+
         // Send message to client
         self.sender
             .send(WsJsonRpcMessage::request(
@@ -196,9 +203,11 @@ impl WsSession {
         result: Result<ExecuteToolResult, rmcp::model::ErrorData>,
     ) -> Result<(), ()> {
         let pending_read = self.pending_executions.read().await;
-        info!(
+        debug!(
+            request_id = ?request_id,
+            ws_session_id = %self.id,
             pending_count = pending_read.len(),
-            "Handling execution response for request_id: {request_id:?}",
+            "Handling callback response from client",
         );
         if let Some(response_tx) = pending_read.get(&request_id) {
             debug!("Found pending execution, sending result");

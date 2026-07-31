@@ -7,6 +7,7 @@ const WHITELISTED_CRATES: &[&str] = &[
     "pctx_config",
     "pctx_executor",
     "pctx_codegen",
+    "pctx_registry",
 ];
 
 pub(crate) fn default_env_filter(level: &str) -> String {

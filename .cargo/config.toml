@@ -26,3 +26,37 @@ rustflags = [
 
 [alias]
 pctx = "run -p pctx --"
+# Hot reload: rebuild and restart `pctx start` on source changes
+dev = [
+    "watch",
+    "-w",
+    "crates",
+    "-w",
+    "Cargo.toml",
+    "-w",
+    "Cargo.lock",
+    "-x",
+    "run -p pctx -- start",
+]
+dev-v = [
+    "watch",
+    "-w",
+    "crates",
+    "-w",
+    "Cargo.toml",
+    "-w",
+    "Cargo.lock",
+    "-x",
+    "run -p pctx -- start -v",
+]
+dev-vv = [
+    "watch",
+    "-w",
+    "crates",
+    "-w",
+    "Cargo.toml",
+    "-w",
+    "Cargo.lock",
+    "-x",
+    "run -p pctx -- start -vv",
+]
