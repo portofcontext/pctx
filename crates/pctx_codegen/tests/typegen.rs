@@ -98,3 +98,4 @@ typegen_test!(
     test_circular_references,
     include_str!("./fixtures/typegen/circular_references.yml")
 );
+typegen_test!(test_array, include_str!("./fixtures/typegen/array.yml"));
