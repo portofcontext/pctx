@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fmt::Display;
 
 use schemars::schema::{
@@ -249,6 +250,39 @@ impl SchemaType {
         self.type_signature_inner(required, defs, ref_stack, 0)
     }
 
+    /// Follows `$ref` indirection until reaching a non-reference type, stopping at a
+    /// circular reference.
+    pub(crate) fn deref(&self, defs: &SchemaDefinitions) -> CodegenResult<SchemaType> {
+        let mut schema_type = self.clone();
+        let mut visited = HashSet::new();
+        while let SchemaType::Reference(ref_st) = &schema_type {
+            if !visited.insert(ref_st.ref_key.clone()) {
+                // circular ref
+                break;
+            }
+            let followed = ref_st.follow(defs)?;
+            schema_type = SchemaType::from(followed);
+        }
+
+        Ok(schema_type)
+    }
+
+    /// Whether the rendered signature is a top-level union, i.e. carries a `|` that is
+    /// not already enclosed by brackets or braces.
+    fn renders_union(&self, defs: &SchemaDefinitions) -> CodegenResult<bool> {
+        let resolved = self.deref(defs)?;
+        // `apply_optional_modifiers` appends `| null` to whatever the arm produced.
+        Ok(self.is_nullable()
+            || resolved.is_nullable()
+            || match &resolved {
+                SchemaType::Enum(EnumSchemaType { options, .. }) => options.len() > 1,
+                SchemaType::Union(UnionSchemaType { union_schemas, .. }) => union_schemas.len() > 1,
+                // Every other arm renders a single token, or one already delimited by
+                // `[]`/`{}`, so a nested `|` cannot escape it.
+                _ => false,
+            })
+    }
+
     fn type_signature_inner(
         &self,
         required: bool,
@@ -309,15 +343,16 @@ impl SchemaType {
                     depth + 1,
                 )?
             ),
-            SchemaType::Array(ArraySchemaType { item_schema, .. }) => format!(
-                "{item_sig}[]",
-                item_sig = SchemaType::from(item_schema).type_signature_inner(
-                    true,
-                    defs,
-                    ref_stack,
-                    depth + 1,
-                )?
-            ),
+            SchemaType::Array(ArraySchemaType { item_schema, .. }) => {
+                let item_type = SchemaType::from(item_schema);
+                let item_sig = item_type.type_signature_inner(true, defs, ref_stack, depth + 1)?;
+                if item_type.renders_union(defs)? {
+                    // handles case where the item is a union e.g. `(Foo | null)[]` vs the incorrect `Foo | null[]`
+                    format!("({item_sig})[]")
+                } else {
+                    format!("{item_sig}[]")
+                }
+            }
             SchemaType::Union(UnionSchemaType { union_schemas, .. }) => union_schemas
                 .iter()
                 .map(|s| SchemaType::from(s).type_signature_inner(true, defs, ref_stack, depth + 1))

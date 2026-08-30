@@ -38,7 +38,9 @@ export type Array = {
   /**
    * optional property whose items are nullable - `| undefined` must not be captured either
    */
-  optional_nullable_objects?: (ArrayOptionalNullableObjects | null)[] | undefined;
+  optional_nullable_objects?:
+    | (ArrayOptionalNullableObjects | null)[]
+    | undefined;
 };
 
 export type ArrayNullableObjects = {

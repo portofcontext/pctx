@@ -1,7 +1,5 @@
 mod schema_data;
 
-use std::collections::HashSet;
-
 use handlebars::Handlebars;
 use indexmap::IndexMap;
 use schemars::schema::{RootSchema, Schema};
@@ -79,19 +77,7 @@ fn normalize_root_schema(root_schema: RootSchema) -> CodegenResult<RootSchema> {
 }
 
 fn is_all_optional(schema: &Schema, defs: &SchemaDefinitions) -> CodegenResult<bool> {
-    // follow top schema until no longer ref
-    let mut schema_type = SchemaType::from(schema);
-    let mut visited = HashSet::new();
-    while let SchemaType::Reference(ref_st) = &schema_type {
-        let is_new = visited.insert(ref_st.ref_key.clone());
-        if is_new {
-            let followed = ref_st.follow(defs)?;
-            schema_type = SchemaType::from(followed);
-        } else {
-            // circular ref
-            break;
-        }
-    }
+    let schema_type = SchemaType::from(schema).deref(defs)?;
 
     // "all optional" means {} is a valid default
     // therefore all maps & objects with no required fields
