@@ -1,0 +1,200 @@
+# Various test cases for an array whose item signature is a union must be
+# parenthesised. Without it, `Foo | null[]` binds the `[]` to `null` rather than to
+# the union
+schema:
+  type: object
+  required:
+    - nullable_objects
+    - nullable_objects_one_of
+    - nullable_strings
+    - union_items
+    - enum_items
+    - nullable_refs
+    - nested_nullable
+    - map_of_nullable_arrays
+  properties:
+    nullable_objects:
+      description: 'the exact shape from #153 - `type: [object, "null"]` items'
+      type: array
+      items:
+        type: [object, "null"]
+        required:
+          - path
+        properties:
+          path:
+            type: string
+    nullable_objects_one_of:
+      description: the oneOf spelling of the same shape, which the issue notes is equally affected
+      type: array
+      items:
+        oneOf:
+          - type: object
+            required:
+              - path
+            properties:
+              path:
+                type: string
+          - type: "null"
+    nullable_strings:
+      description: nullable primitive items - `string | null[]` without parens
+      type: array
+      items:
+        type: [string, "null"]
+    union_items:
+      description: not null-specific - any union item signature needs grouping
+      type: array
+      items:
+        oneOf:
+          - type: string
+          - type: number
+    enum_items:
+      description: enum items render as `"a" | "b"`, so they need grouping too
+      type: array
+      items:
+        type: string
+        enum:
+          - alpha
+          - beta
+    nullable_refs:
+      description: a nullable $ref item, where the union is introduced after following the ref
+      type: array
+      items:
+        oneOf:
+          - $ref: "#/$defs/Document"
+          - type: "null"
+    nested_nullable:
+      description: array of arrays of nullable items - grouping has to survive nesting
+      type: array
+      items:
+        type: array
+        items:
+          type: [integer, "null"]
+    map_of_nullable_arrays:
+      description: the array sits behind a map value, so the fix must apply at any depth
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: [string, "null"]
+    optional_nullable_objects:
+      description: optional property whose items are nullable - `| undefined` must not be captured either
+      type: array
+      items:
+        type: [object, "null"]
+        required:
+          - path
+        properties:
+          path:
+            type: string
+  "$defs":
+    Document:
+      type: object
+      required:
+        - path
+      properties:
+        path:
+          type: string
+        size:
+          type: integer
+
+tests:
+  valid:
+    # The mixed arrays below are the load-bearing cases: under the `Foo | null[]`
+    # bug none of them type-check, because a mixed array is assignable to neither
+    # arm of the union.
+    - id: all-mixed
+      value:
+        nullable_objects: [{ path: a.txt }, null, { path: b.txt }]
+        nullable_objects_one_of: [null, { path: c.txt }]
+        nullable_strings: [one, null, two]
+        union_items: [text, 12, 3.4]
+        enum_items: [alpha, beta, alpha]
+        nullable_refs: [{ path: d.txt, size: 10 }, null]
+        nested_nullable: [[1, null], [null], [2, 3]]
+        map_of_nullable_arrays:
+          first: [a, null]
+          second: [null, b]
+        optional_nullable_objects: [{ path: e.txt }, null]
+    - id: optional-omitted
+      value:
+        nullable_objects: [{ path: a.txt }, null]
+        nullable_objects_one_of: [null]
+        nullable_strings: [null]
+        union_items: [1]
+        enum_items: [beta]
+        nullable_refs: [null]
+        nested_nullable: [[null]]
+        map_of_nullable_arrays: {}
+    - id: all-null-elements
+      value:
+        nullable_objects: [null, null]
+        nullable_objects_one_of: [null, null]
+        nullable_strings: [null, null]
+        union_items: []
+        enum_items: []
+        nullable_refs: [null, null]
+        nested_nullable: [[null, null]]
+        map_of_nullable_arrays:
+          only: [null]
+    - id: empty-arrays
+      value:
+        nullable_objects: []
+        nullable_objects_one_of: []
+        nullable_strings: []
+        union_items: []
+        enum_items: []
+        nullable_refs: []
+        nested_nullable: []
+        map_of_nullable_arrays: {}
+  invalid:
+    # These guard the other direction: parenthesising must not widen the element
+    # type into `any[]`, which would make the whole suite vacuous.
+    - id: wrong-element-type
+      value:
+        nullable_objects: [{ path: a.txt }, null]
+        nullable_objects_one_of: [null]
+        nullable_strings: [1, null]
+        union_items: [1]
+        enum_items: [alpha]
+        nullable_refs: [null]
+        nested_nullable: [[1]]
+        map_of_nullable_arrays: {}
+    - id: enum-value-not-in-enum
+      value:
+        nullable_objects: [null]
+        nullable_objects_one_of: [null]
+        nullable_strings: [null]
+        union_items: [1]
+        enum_items: [gamma]
+        nullable_refs: [null]
+        nested_nullable: [[1]]
+        map_of_nullable_arrays: {}
+    - id: null-array-itself
+      value:
+        nullable_objects: null
+        nullable_objects_one_of: [null]
+        nullable_strings: [null]
+        union_items: [1]
+        enum_items: [alpha]
+        nullable_refs: [null]
+        nested_nullable: [[1]]
+        map_of_nullable_arrays: {}
+    - id: not-nested-deep-enough
+      value:
+        nullable_objects: [null]
+        nullable_objects_one_of: [null]
+        nullable_strings: [null]
+        union_items: [1]
+        enum_items: [alpha]
+        nullable_refs: [null]
+        nested_nullable: [1, null]
+        map_of_nullable_arrays: {}
+    - id: required-missing
+      value:
+        nullable_objects_one_of: [null]
+        nullable_strings: [null]
+        union_items: [1]
+        enum_items: [alpha]
+        nullable_refs: [null]
+        nested_nullable: [[1]]
+        map_of_nullable_arrays: {}

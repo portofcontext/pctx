@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Array items that are unions are now parenthesised: a nullable element generated `Foo | null[]`, binding the `[]` to `null`. ([#153](https://github.com/portofcontext/pctx/issues/153))
+
 ## [v0.7.4] - 2026-07-31
 
 ### Added

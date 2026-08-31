@@ -1,0 +1,62 @@
+---
+source: crates/pctx_codegen/tests/typegen.rs
+expression: "&typegen_res.types"
+---
+export type Array = {
+  /**
+   * the exact shape from #153 - `type: [object, "null"]` items
+   */
+  nullable_objects: (ArrayNullableObjects | null)[];
+  /**
+   * the oneOf spelling of the same shape, which the issue notes is equally affected
+   */
+  nullable_objects_one_of: (ArrayNullableObjectsOneOfObj0 | null)[];
+  /**
+   * nullable primitive items - `string | null[]` without parens
+   */
+  nullable_strings: (string | null)[];
+  /**
+   * not null-specific - any union item signature needs grouping
+   */
+  union_items: (string | number)[];
+  /**
+   * enum items render as `"a" | "b"`, so they need grouping too
+   */
+  enum_items: ("alpha" | "beta")[];
+  /**
+   * a nullable $ref item, where the union is introduced after following the ref
+   */
+  nullable_refs: (ArrayDocument | null)[];
+  /**
+   * array of arrays of nullable items - grouping has to survive nesting
+   */
+  nested_nullable: (number | null)[][];
+  /**
+   * the array sits behind a map value, so the fix must apply at any depth
+   */
+  map_of_nullable_arrays: { [key: string]: (string | null)[] | undefined };
+  /**
+   * optional property whose items are nullable - `| undefined` must not be captured either
+   */
+  optional_nullable_objects?:
+    | (ArrayOptionalNullableObjects | null)[]
+    | undefined;
+};
+
+export type ArrayNullableObjects = {
+  path: string;
+};
+
+export type ArrayNullableObjectsOneOfObj0 = {
+  path: string;
+};
+
+export type ArrayDocument = {
+  path: string;
+
+  size?: number | undefined;
+};
+
+export type ArrayOptionalNullableObjects = {
+  path: string;
+};
