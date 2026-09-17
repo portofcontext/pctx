@@ -31,7 +31,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -48,7 +48,7 @@ jobs:
         run: cargo build --release --bin pctx
 
       - name: Upload pctx binary
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: pctx-binary
           path: target/release/pctx
@@ -59,10 +59,10 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download pctx binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pctx-binary
           path: target/release
@@ -94,10 +94,10 @@ jobs:
     needs: [build, cli-tests]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Download pctx binary
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: pctx-binary
           path: target/release
@@ -106,13 +106,13 @@ jobs:
         run: chmod +x target/release/pctx
 
       # Set up Python
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.10"
 
       # Install uv
       - name: Install uv
-        uses: astral-sh/setup-uv@v7
+        uses: astral-sh/setup-uv@v10
         with:
           enable-cache: true
 
