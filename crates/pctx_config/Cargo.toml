@@ -51,6 +51,8 @@ opentelemetry-otlp = { workspace = true, features = [
     "trace",
 ] }
 base64 = "0.22"
+sha2 = "0.10"
+getrandom = "0.2"
 tonic = "0.14"
 opentelemetry_sdk = { workspace = true }
 shlex = { workspace = true }

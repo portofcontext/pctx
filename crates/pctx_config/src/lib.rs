@@ -10,6 +10,7 @@ use crate::{logger::LoggerConfig, server::ServerConfig, telemetry::TelemetryConf
 pub mod auth;
 pub(crate) mod defaults;
 pub mod logger;
+pub mod oauth2;
 pub mod server;
 pub mod telemetry;
 

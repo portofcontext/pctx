@@ -1,5 +1,6 @@
 pub(crate) mod logger;
 pub(crate) mod metrics;
+pub(crate) mod oauth_flow;
 pub(crate) mod prompts;
 pub(crate) mod spinner;
 pub(crate) mod styles;
