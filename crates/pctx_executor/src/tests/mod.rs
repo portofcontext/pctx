@@ -20,6 +20,7 @@ mod default_export_capture;
 mod diagnostic_filtering;
 mod just_bash;
 mod mcp_client_usage;
+mod module_loading;
 mod output_capture;
 mod runtime_execution;
 mod runtime_semantics;

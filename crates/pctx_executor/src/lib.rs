@@ -358,8 +358,12 @@ async fn execute_code(
     // Create JsRuntime from `pctx_runtime` snapshot and extension
     // The snapshot contains the ESM code pre-compiled, and init() registers both ops and ESM
     // Deno handles the deduplication when loading from snapshot
+    //
+    // User code is passed in directly and the runtime's own modules come from the snapshot,
+    // so nothing needs a module loader. `NoopModuleLoader` rejects every `import()`; a
+    // filesystem loader would let sandboxed code read arbitrary files from the host.
     let mut js_runtime = JsRuntime::new(RuntimeOptions {
-        module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
+        module_loader: Some(Rc::new(deno_core::NoopModuleLoader)),
         startup_snapshot: Some(pctx_code_execution_runtime::RUNTIME_SNAPSHOT),
         extensions,
         ..Default::default()

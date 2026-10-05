@@ -216,8 +216,9 @@ pub fn type_check(code: &str) -> Result<CheckResult> {
     // Ensure V8 platform is initialized (safe to call multiple times)
     init_v8_platform();
 
+    // The type checker never loads modules; refuse all of them rather than reading the host filesystem.
     let mut js_runtime = JsRuntime::new(RuntimeOptions {
-        module_loader: Some(Rc::new(deno_core::FsModuleLoader)),
+        module_loader: Some(Rc::new(deno_core::NoopModuleLoader)),
         startup_snapshot: Some(TYPE_CHECK_SNAPSHOT),
         extensions: vec![pctx_type_check_snapshot::init()],
         ..Default::default()
