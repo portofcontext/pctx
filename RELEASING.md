@@ -12,7 +12,17 @@ pctx uses [cargo-dist](https://github.com/axodotdev/cargo-dist) for automated re
 
 ### Step-by-Step Process
 
-#### 1. Prepare the Release
+#### 1. Publish to crates.io
+
+Publish the Rust library crates first, so the binary release is built from the same crate versions:
+
+```bash
+make publish-crates
+```
+
+This runs locally using `cargo-smart-release` to handle multi-crate dependencies.
+
+#### 2. Prepare the Release
 
 Update the version number in the package manifest:
 
@@ -21,7 +31,7 @@ Update the version number in the package manifest:
 # Example: version = "0.2.0"
 ```
 
-#### 2. Update the Changelog
+#### 3. Update the Changelog
 
 Edit [CHANGELOG.md](CHANGELOG.md) following [Keep a Changelog](https://keepachangelog.com/) format:
 
@@ -44,7 +54,7 @@ Update the comparison links at the bottom:
 [0.2.0]: https://github.com/portofcontext/pctx/compare/v0.1.0...v0.2.0
 ```
 
-#### 3. Commit and Push Changes
+#### 4. Commit and Push Changes
 
 ```bash
 git add crates/pctx/Cargo.toml CHANGELOG.md Cargo.lock
@@ -52,7 +62,7 @@ git commit -m "chore: prepare release v0.2.0"
 git push origin main
 ```
 
-#### 4. Trigger the Release
+#### 5. Trigger the Release
 
 1. Go to [GitHub Actions](https://github.com/portofcontext/pctx/actions/workflows/release.yml)
 2. Click "Run workflow"
@@ -66,7 +76,7 @@ The workflow will:
 - Create a GitHub Release with all artifacts
 - Publish Homebrew formula to the tap repository
 
-#### 5. Verify the Release
+#### 6. Verify the Release
 
 Once the workflow completes (~15-20 minutes):
 
@@ -85,16 +95,6 @@ brew install portofcontext/tap/pctx
 npm install -g @portofcontext/pctx
 ```
 
-
-#### 6. Publish to crates.io (Optional)
-
-To publish Rust library crates to crates.io:
-
-```bash
-make publish-crates
-```
-
-This runs locally using `cargo-smart-release` to handle multi-crate dependencies.
 
 ## Release Types
 
