@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+ - Updates the Deno runtime stack (via `pctx_executor` 0.3) to `deno_core` 0.412 / V8 150 / `temporal_rs` 0.2. Crates that also depend on `deno_core` must move to 0.412 in lockstep.
+
 ## 0.4.2 (2026-07-22)
 
 ## 0.4.1 (2026-07-16)

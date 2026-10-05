@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Changed
+
+ - Updates to `deno_core` 0.412 / `deno_ast` 0.53 (V8 150), matching `pctx_executor` 0.3 so both resolve a single V8.
+
 ## 0.1.3 (2026-03-13)
 
 ### Commit Statistics
