@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- `pctx_executor`'s unit tests (including the concurrent V8 isolate stress test) were silently not compiled since the `mod tests` declaration was dropped in v0.7.0; they run again, alongside new guards for async op scheduling, event loop draining, ICU/`Temporal` and WebAssembly behaviour.
 - Array items that are unions are now parenthesised: a nullable element generated `Foo | null[]`, binding the `[]` to `null`. ([#153](https://github.com/portofcontext/pctx/issues/153))
 
 ## [v0.7.4] - 2026-07-31
