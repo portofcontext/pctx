@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+### Fixed
+
+## [v0.7.5] - 2026-10-05
+
+### Added
+
+### Changed
+
 - Updated the Deno runtime stack to `deno_core 0.412`, `deno_ast 0.53.3`, and V8 150, moving Temporal support to `temporal_rs 0.2`.
 
 ### Fixed
