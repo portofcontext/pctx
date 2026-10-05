@@ -5,14 +5,42 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.2.2 (2026-07-31)
+## 0.3.0 (2026-10-05)
+
+### Chore
+
+ - <csr-id-88fd00f339e10f30f0cad212c148aa885bfd7e16/> bump deno stack to deno_core 0.412 / deno_ast 0.53
+   Moves to v8 150 and temporal_rs 0.2 so downstream workspaces can use
+   icu_calendar 2.3. op2(async) becomes op2 (async ops are eager by default)
+   and PollEventLoopOptions::pump_v8_message_loop is gone.
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 15 days passed between releases.
+ - 65 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #167 from BezotCorp/modernize-deno-stack ([`4603698`](https://github.com/portofcontext/pctx/commit/460369836fc592f4dfd2b361dfdd6a7e81bd6046))
+    - Bump deno stack to deno_core 0.412 / deno_ast 0.53 ([`88fd00f`](https://github.com/portofcontext/pctx/commit/88fd00f339e10f30f0cad212c148aa885bfd7e16))
+</details>
+
+## 0.2.2 (2026-07-31)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -23,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.3, pctx_registry v0.1.3, pctx_code_execution_runtime v0.2.2, pctx_executor v0.2.2, pctx_code_mode v0.5.0, safety bump pctx v0.8.0 ([`0b4e9ec`](https://github.com/portofcontext/pctx/commit/0b4e9ec255a11ed81012a0ea88c4bb1b8b1f6473))
     - Merge pull request #142 from portofcontext/fix/141-bash-output-stderr ([`2b8f701`](https://github.com/portofcontext/pctx/commit/2b8f701d7c46020336a27885d7b82b12ecfe3df1))
     - Fix Display for ExecuteBashOutput ([`76cdeab`](https://github.com/portofcontext/pctx/commit/76cdeab1706965540acbb06f28d5ba49191e3ff2))
 </details>
@@ -34,7 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 125 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -51,6 +79,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2026-03-13)
 
+<csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
+
 ### Other
 
  - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
@@ -60,7 +90,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 10 commits contributed to the release.
- - 44 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -90,7 +119,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -112,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release over the course of 1 calendar day.
- - 7 days passed between releases.
+ - 6 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 

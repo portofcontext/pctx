@@ -5,14 +5,60 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.0 (2026-10-05)
+
+### Chore
+
+ - <csr-id-88fd00f339e10f30f0cad212c148aa885bfd7e16/> bump deno stack to deno_core 0.412 / deno_ast 0.53
+   Moves to v8 150 and temporal_rs 0.2 so downstream workspaces can use
+   icu_calendar 2.3. op2(async) becomes op2 (async ops are eager by default)
+   and PollEventLoopOptions::pump_v8_message_loop is gone.
+
+### Test
+
+ - <csr-id-96d4ab6cd4ac2cba1ba9ef56f08bccfa213388db/> re-enable unit tests and add runtime semantics guards
+   The `#[cfg(test)] mod tests;` declaration was dropped from
+   pctx_executor/src/lib.rs in 52efa39, so every test under src/tests/
+   (including concurrent_v8_stress) stopped compiling or running. All 51
+   still pass once re-enabled.
+   
+   Adds runtime_semantics.rs to pin behaviour that a deno_core / V8 bump
+   can silently change: tool-call (op_invoke) and timer (op_sleep)
+   scheduling relative to microtasks, parallel vs sequential tool calls,
+   tool error propagation, event loop draining after module evaluation,
+   unhandled rejections, error stacks, ICU-backed Intl, Temporal, sync and
+   async WebAssembly, and multi-threaded execution with async ops.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 4 commits contributed to the release.
+ - 65 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Merge pull request #168 from portofcontext/test/runtime-semantics-guards ([`1135580`](https://github.com/portofcontext/pctx/commit/1135580e2488cdb3fb422dea3d5a6fc995b107bd))
+    - Re-enable unit tests and add runtime semantics guards ([`96d4ab6`](https://github.com/portofcontext/pctx/commit/96d4ab6cd4ac2cba1ba9ef56f08bccfa213388db))
+    - Merge pull request #167 from BezotCorp/modernize-deno-stack ([`4603698`](https://github.com/portofcontext/pctx/commit/460369836fc592f4dfd2b361dfdd6a7e81bd6046))
+    - Bump deno stack to deno_core 0.412 / deno_ast 0.53 ([`88fd00f`](https://github.com/portofcontext/pctx/commit/88fd00f339e10f30f0cad212c148aa885bfd7e16))
+</details>
+
 ## 0.2.2 (2026-07-31)
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
- - 128 days passed between releases.
+ - 3 commits contributed to the release.
+ - 127 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -23,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_codegen v0.3.3, pctx_registry v0.1.3, pctx_code_execution_runtime v0.2.2, pctx_executor v0.2.2, pctx_code_mode v0.5.0, safety bump pctx v0.8.0 ([`0b4e9ec`](https://github.com/portofcontext/pctx/commit/0b4e9ec255a11ed81012a0ea88c4bb1b8b1f6473))
     - Merge pull request #142 from portofcontext/fix/141-bash-output-stderr ([`2b8f701`](https://github.com/portofcontext/pctx/commit/2b8f701d7c46020336a27885d7b82b12ecfe3df1))
     - Slim logs ([`3989073`](https://github.com/portofcontext/pctx/commit/3989073b751b6a9817add6584f0ac1c6a57621dc))
 </details>
@@ -54,6 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.2.0 (2026-03-13)
 
+<csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
+
 ### Other
 
  - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
@@ -63,7 +112,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 13 commits contributed to the release.
- - 37 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -127,7 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release over the course of 1 calendar day.
- - 8 days passed between releases.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
