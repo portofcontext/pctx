@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.2.1 (2026-10-05)
+
+### Chore
+
+ - <csr-id-71ad4a4403ff0ffd7bf2d9086a34bc46f0507816/> use noop module loader
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Use noop module loader ([`71ad4a4`](https://github.com/portofcontext/pctx/commit/71ad4a4403ff0ffd7bf2d9086a34bc46f0507816))
+    - Merge pull request #170 from portofcontext/release/crates-2026-10 ([`40a0a99`](https://github.com/portofcontext/pctx/commit/40a0a991c61f4bc52b7f7efc697e0cd2380cc8cd))
+</details>
+
 ## 0.2.0 (2026-10-05)
 
 ### Documentation
@@ -19,7 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
+ - 2 commits contributed to the release.
  - 206 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -31,6 +56,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_deno_transpiler v0.2.0, pctx_type_check_runtime v0.2.0, pctx_code_execution_runtime v0.3.0, pctx_executor v0.3.0, pctx_codegen v0.3.4, pctx_code_mode v0.6.0, safety bump 3 crates ([`ed4020c`](https://github.com/portofcontext/pctx/commit/ed4020cfc5c1f9816de3d39a76d553c4d6b7c071))
     - Crate changelog notes for deno stack upgrade ([`78beae7`](https://github.com/portofcontext/pctx/commit/78beae77d3ad3eb05eabaa55ceaafffd7514acd7))
 </details>
 

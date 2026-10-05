@@ -4297,7 +4297,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_executor"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "deno_core",
  "deno_resolver",
@@ -4394,7 +4394,7 @@ dependencies = [
 
 [[package]]
 name = "pctx_type_check_runtime"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "deno_ast",
  "deno_core",
