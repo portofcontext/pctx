@@ -22,4 +22,5 @@ mod just_bash;
 mod mcp_client_usage;
 mod output_capture;
 mod runtime_execution;
+mod runtime_semantics;
 mod type_checking;
