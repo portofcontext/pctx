@@ -10,7 +10,7 @@ keywords = ["typescript", "transpiler", "deno", "pctx"]
 categories = ["development-tools"]
 
 [dependencies]
-deno_ast = { version = "0.52", features = ["transpiling"] }
+deno_ast = { version = "0.53.3", features = ["transpiling"] }
 thiserror = { workspace = true }
 
 [lints]

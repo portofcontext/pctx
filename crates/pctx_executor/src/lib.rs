@@ -402,7 +402,6 @@ async fn execute_code(
     debug!("Running event loop");
     let event_loop_future = js_runtime.run_event_loop(deno_core::PollEventLoopOptions {
         wait_for_inspector: false,
-        pump_v8_message_loop: true,
     });
 
     // Drive both futures together - wait for BOTH to complete

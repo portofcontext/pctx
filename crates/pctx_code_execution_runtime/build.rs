@@ -17,7 +17,7 @@ use deno_core::snapshot::create_snapshot;
 use rmcp::model::JsonObject;
 
 /// invoke a registered action
-#[deno_core::op2(async)]
+#[deno_core::op2]
 #[serde]
 #[allow(clippy::unused_async)]
 async fn op_invoke(
@@ -29,7 +29,7 @@ async fn op_invoke(
 }
 
 /// Sleep (stub for timers)
-#[deno_core::op2(async)]
+#[deno_core::op2]
 #[allow(clippy::unused_async)]
 async fn op_sleep(#[bigint] _delay_ms: u64) {}
 

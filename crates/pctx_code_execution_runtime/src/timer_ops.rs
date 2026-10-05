@@ -9,7 +9,7 @@ use std::time::Duration;
 ///
 /// This async op is used by the JavaScript layer to implement setTimeout and setInterval.
 /// It simply waits for the specified duration before resolving.
-#[op2(async)]
+#[op2]
 pub(crate) async fn op_sleep(#[bigint] delay_ms: u64) {
     tokio::time::sleep(Duration::from_millis(delay_ms)).await;
 }

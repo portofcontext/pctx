@@ -10,7 +10,7 @@ use std::rc::Rc;
 
 use pctx_registry::{PctxRegistry, RegistryError};
 
-#[op2(async)]
+#[op2]
 #[serde]
 pub(crate) async fn op_invoke(
     state: Rc<RefCell<OpState>>,

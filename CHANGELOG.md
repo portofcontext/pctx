@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Updated the Deno runtime stack to `deno_core 0.412`, `deno_ast 0.53.3`, and V8 150, moving Temporal support to `temporal_rs 0.2`.
+
 ### Fixed
 
 - Array items that are unions are now parenthesised: a nullable element generated `Foo | null[]`, binding the `[]` to `null`. ([#153](https://github.com/portofcontext/pctx/issues/153))
@@ -53,7 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Stack overflow in `pctx_codegen` when generating TypeScript signatures for recursive JSON Schema `$defs` that are not object-with-properties schemas. Recursive refs now stop expanding inline and use generated type aliases, while non-recursive refs keep the existing inline behavior.
-- Bound `execute_code` responses under the 16 MiB WebSocket frame limit: oversized responses (usually from a bloated trace, occasionally from a huge return value or stdout) previously exceeded the frame limit and silently failed to reach the client. The response is now shrunk before sending — dropping the trace first, then replacing the return value with a truncation marker if still too large. ***TEMPORARY FIX*** - long term suggested fix is planned in: `.plans/large-execution-payloads.md`
+- Bound `execute_code` responses under the 16 MiB WebSocket frame limit: oversized responses (usually from a bloated trace, occasionally from a huge return value or stdout) previously exceeded the frame limit and silently failed to reach the client. The response is now shrunk before sending — dropping the trace first, then replacing the return value with a truncation marker if still too large. **_TEMPORARY FIX_** - long term suggested fix is planned in: `.plans/large-execution-payloads.md`
 
 ## [v0.7.1] - 2026-03-27
 
@@ -64,6 +66,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
 ## [v0.7.0] - 2026-03-25
 
 ### Added
@@ -77,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
 ## [v0.6.0] - 2026-03-13
 
 ### Added
@@ -93,6 +97,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Various `pctx mcp dev` rendering issues.
+
 ## [v0.5.0] - 2026-02-14
 
 ### Added
