@@ -5,11 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.2.0 (2026-10-05)
+
+### Documentation
+
+ - <csr-id-78beae77d3ad3eb05eabaa55ceaafffd7514acd7/> crate changelog notes for deno stack upgrade
 
 ### Changed
 
  - Updates to `deno_core` 0.412 / `deno_ast` 0.53 (V8 150), matching `pctx_executor` 0.3 so both resolve a single V8.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 206 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Crate changelog notes for deno stack upgrade ([`78beae7`](https://github.com/portofcontext/pctx/commit/78beae77d3ad3eb05eabaa55ceaafffd7514acd7))
+</details>
 
 ## 0.1.3 (2026-03-13)
 
@@ -17,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 11 commits contributed to the release.
+ - 12 commits contributed to the release.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -28,6 +51,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_registry v0.1.0, pctx_code_execution_runtime v0.2.0, pctx_type_check_runtime v0.1.3, pctx_executor v0.2.0, pctx_code_mode v0.3.0 ([`ba88ffa`](https://github.com/portofcontext/pctx/commit/ba88ffa77be7331ff9bd18dea5fc4fadcd8578c7))
     - Release pctx_codegen v0.3.0, pctx_config v0.1.4, pctx_registry v0.1.0, pctx_code_execution_runtime v0.2.0, pctx_type_check_runtime v0.1.3, pctx_executor v0.2.0, pctx_code_mode v0.3.0 ([`f80514b`](https://github.com/portofcontext/pctx/commit/f80514b0057cbba2015fc059e08e98b9252eacbf))
     - Merge pull request #64 from portofcontext/ts-sidecar ([`aa7d8c8`](https://github.com/portofcontext/pctx/commit/aa7d8c8b1ef1ba2c6eac45810f3b3e9990252720))
     - Changelog + version bumps ([`a4b2bdf`](https://github.com/portofcontext/pctx/commit/a4b2bdf8d36bdd3cbee494565030e20ff07b1225))

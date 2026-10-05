@@ -5,13 +5,121 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.6.0 (2026-10-05)
+
+### Documentation
+
+ - <csr-id-78beae77d3ad3eb05eabaa55ceaafffd7514acd7/> crate changelog notes for deno stack upgrade
 
 ### Changed
 
  - Updates the Deno runtime stack (via `pctx_executor` 0.3) to `deno_core` 0.412 / V8 150 / `temporal_rs` 0.2. Crates that also depend on `deno_core` must move to 0.412 in lockstep.
 
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 65 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Crate changelog notes for deno stack upgrade ([`78beae7`](https://github.com/portofcontext/pctx/commit/78beae77d3ad3eb05eabaa55ceaafffd7514acd7))
+</details>
+
+## 0.5.0 (2026-07-31)
+
+### Bug Fixes
+
+ - <csr-id-6ec96875f8619e0a44f31f43db6108ef88b0bd2b/> report degraded tool types to the caller
+   Two follow-ups from review:
+   
+   - Codegen degradation to `any` only reached the logs, so a client
+     registering tools against a remotely deployed session server had no way
+     to learn its tool lost its types. `Tool` now records why each schema was
+     degraded, `CallbackReport` carries them as `warnings`, and
+     `/register/tools` returns them alongside `failed`.
+   - `with_callbacks` swallowed the `CallbackReport` from `add_callbacks`,
+     hiding both failures and warnings from the builder-style caller. It now
+     returns `(Self, CallbackReport)`. Breaking, and infallible: per-tool
+     isolation means the batch cannot fail, so the report is the only
+     outcome.
+ - <csr-id-d42790b14c54030d5588c920f05e72f7ab7f1901/> isolate per-tool registration failures
+   `/register/tools` failed the whole batch when a single tool's schema
+   couldn't be typed by our codegen (e.g. a recursive `$ref`). The portal
+   federates arbitrary upstream JSON Schema, so this fired constantly: in
+   prod each session degraded to ~135 sequential per-tool register calls
+   (~6.4s, ~274 daily 500s) instead of one batch call.
+   
+   Fix it at the layer that owns the problem:
+   
+   - Codegen never fails a tool over typing. `Tool::new` is infallible;
+     `generate_types` failures degrade to a permissive `any` signature
+     (with a warning) so the tool stays callable, just untyped.
+   - Registration isolates per-tool. `add_callbacks` returns a
+     `CallbackReport { registered, failed }` instead of bubbling the first
+     error; a genuinely bad tool (name clash, unparseable schema) is
+     skipped and reported, never aborts the batch. The handler returns 200
+     with the report.
+   
+   The portal's existing batch call now succeeds, so its per-tool fallback
+   never triggers — no portal change required to fix prod.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 11 commits contributed to the release.
+ - 9 days passed between releases.
+ - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_codegen v0.3.3, pctx_registry v0.1.3, pctx_code_execution_runtime v0.2.2, pctx_executor v0.2.2, pctx_code_mode v0.5.0, safety bump pctx v0.8.0 ([`0b4e9ec`](https://github.com/portofcontext/pctx/commit/0b4e9ec255a11ed81012a0ea88c4bb1b8b1f6473))
+    - Merge pull request #142 from portofcontext/fix/141-bash-output-stderr ([`2b8f701`](https://github.com/portofcontext/pctx/commit/2b8f701d7c46020336a27885d7b82b12ecfe3df1))
+    - Verbose flags global ([`a65c1c8`](https://github.com/portofcontext/pctx/commit/a65c1c84f97433ec19661546c3277f97d276cb6c))
+    - Slim logs ([`3989073`](https://github.com/portofcontext/pctx/commit/3989073b751b6a9817add6584f0ac1c6a57621dc))
+    - Fix Display for ExecuteBashOutput ([`76cdeab`](https://github.com/portofcontext/pctx/commit/76cdeab1706965540acbb06f28d5ba49191e3ff2))
+    - Merge pull request #137 from portofcontext/fix/concurrency ([`9710d8a`](https://github.com/portofcontext/pctx/commit/9710d8ab37b721bd354e82863659c9b70c8f0433))
+    - Merge branch 'main' into fix/concurrency ([`369d302`](https://github.com/portofcontext/pctx/commit/369d302e4ab37cc51a137991c2b6dd7b4100ab71))
+    - Reduce verbose info logs ([`bf064ac`](https://github.com/portofcontext/pctx/commit/bf064ac896ae05c202fbdcac6330c3c04126c3ae))
+    - Merge pull request #136 from portofcontext/fix/register-tools-per-tool-isolation ([`5269d81`](https://github.com/portofcontext/pctx/commit/5269d81884c64114607d42b459243e8d820db794))
+    - Report degraded tool types to the caller ([`6ec9687`](https://github.com/portofcontext/pctx/commit/6ec96875f8619e0a44f31f43db6108ef88b0bd2b))
+    - Isolate per-tool registration failures ([`d42790b`](https://github.com/portofcontext/pctx/commit/d42790b14c54030d5588c920f05e72f7ab7f1901))
+</details>
+
 ## 0.4.2 (2026-07-22)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 1 commit contributed to the release.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_codegen v0.3.2, pctx_code_mode v0.4.2 ([`cee9b86`](https://github.com/portofcontext/pctx/commit/cee9b86add007cf68f0eaf06dece1f0ca00ece63))
+</details>
 
 ## 0.4.1 (2026-07-16)
 
@@ -20,7 +128,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 113 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -73,7 +180,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 25 commits contributed to the release.
- - 37 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -148,7 +254,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
- - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -194,7 +299,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 7 commits contributed to the release.
- - 7 days passed between releases.
+ - 6 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
