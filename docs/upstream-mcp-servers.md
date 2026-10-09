@@ -119,3 +119,8 @@ pctx mcp start --stdio
 When running as a stdio MCP server (e.g. configured in Claude Desktop's `mcpServers`), the entire process lifetime is treated as a single session. A global session ID is assigned at startup, and all `execute_typescript` calls share one connection pool for the life of the process.
 
 This means upstream MCP servers (like an LSP) connect once when first used and stay connected until `pctx` exits.
+
+## Runnable examples
+
+- [Parallel Search](../examples/parallel-search/README.md): free web search and page
+  fetching through Code Mode without a Parallel account or API key.
