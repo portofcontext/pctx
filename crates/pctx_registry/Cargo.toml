@@ -19,6 +19,11 @@ tokio = { workspace = true }
 deno_error = { workspace = true }
 serde = { workspace = true }
 
+[dev-dependencies]
+axum = { workspace = true }
+rmcp = { workspace = true, features = ["server", "transport-streamable-http-server"] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+url = "2"
 
 [lints]
 workspace = true
