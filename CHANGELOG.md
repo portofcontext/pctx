@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+## [v0.7.7] - 2026-10-10
+
+### Added
+
+### Changed
+
+### Fixed
+
 - MCP tool results with `isError: true` now include the server's error content in the error message instead of a bare `Tool call "<name>" failed`.
 
 ## [v0.7.6] - 2026-10-05
