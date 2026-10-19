@@ -16,7 +16,7 @@ pub(crate) mod color {
     pub(crate) const DIMMED: Style = anstyle::Style::new().dimmed();
 }
 
-pub(crate) fn get_styles() -> clap::builder::Styles {
+pub fn get_styles() -> clap::builder::Styles {
     clap::builder::styling::Styles::styled()
         .header(color::GREEN_BOLD)
         .usage(color::GREEN_BOLD)

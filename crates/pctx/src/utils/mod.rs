@@ -7,3 +7,5 @@ pub(crate) mod telemetry;
 
 pub(crate) static CHECK: &str = "✔";
 pub(crate) static MARK: &str = "✘";
+
+pub use styles::get_styles;
