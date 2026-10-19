@@ -5,10 +5,10 @@ pub(crate) mod list;
 pub(crate) mod remove;
 pub(crate) mod start;
 
-pub(crate) use add::AddCmd;
+pub use add::{AddCmd, ClapHeader};
 
-pub(crate) use dev::DevCmd;
-pub(crate) use init::InitCmd;
-pub(crate) use list::ListCmd;
-pub(crate) use remove::RemoveCmd;
-pub(crate) use start::StartCmd;
+pub use dev::DevCmd;
+pub use init::InitCmd;
+pub use list::ListCmd;
+pub use remove::RemoveCmd;
+pub use start::StartCmd;

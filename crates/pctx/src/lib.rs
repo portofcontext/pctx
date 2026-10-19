@@ -154,7 +154,7 @@ pub enum Commands {
     #[command(
         long_about = "Starts PCTX server with no pre-configured tools. Use a client library like `pip install pctx-client` to create sessions, register tools, and expose code-mode tools to agent libraries."
     )]
-    Start(commands::start::StartCmd),
+    Start(commands::StartCmd),
 
     /// MCP server commands (with pctx.json configuration)
     #[command(subcommand)]

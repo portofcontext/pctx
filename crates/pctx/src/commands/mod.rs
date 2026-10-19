@@ -1,4 +1,4 @@
-pub(crate) mod mcp;
+pub mod mcp;
 pub(crate) mod start;
 
 pub use start::StartCmd;
