@@ -148,7 +148,7 @@ mod tests {
 }
 
 #[derive(Debug, Subcommand)]
-#[command(styles=utils::styles::get_styles())]
+#[command(styles=utils::get_styles())]
 pub enum Commands {
     /// Start PCTX server for code mode sessions
     #[command(

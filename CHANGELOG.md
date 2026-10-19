@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The command structs are public (`pctx::commands::StartCmd`, and `AddCmd`, `DevCmd`, `InitCmd`, `ListCmd`, `RemoveCmd` and `StartCmd` under `pctx::commands::mcp`), so another CLI can embed them beside its own subcommands.
+- `pctx::utils::get_styles` is public, so a CLI that embeds the commands can give its help the same colors.
 
 ### Changed
 
