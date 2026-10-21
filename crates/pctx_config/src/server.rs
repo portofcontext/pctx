@@ -16,7 +16,47 @@ use tokio::process::Command;
 
 pub use rmcp::ServiceError;
 
-use super::auth::AuthConfig;
+use super::auth::{AuthConfig, SecretString};
+use crate::oauth2::{self, TokenBundle};
+
+/// Load the OAuth token bundle from the keychain, refreshing it (and writing
+/// the new bundle back) if it's expired or about to expire.
+async fn resolve_oauth_access_token(token_ref: &str) -> Result<String, McpConnectionError> {
+    let bundle =
+        TokenBundle::load(token_ref).map_err(|e| McpConnectionError::Failed(e.to_string()))?;
+
+    if !bundle.is_expired() {
+        return Ok(bundle.access_token);
+    }
+
+    tracing::debug!("OAuth access token expired, refreshing (token_ref={token_ref})");
+    let refreshed = oauth2::refresh(&bundle)
+        .await
+        .map_err(|e| McpConnectionError::Failed(format!("OAuth refresh failed: {e}")))?;
+    refreshed
+        .save(token_ref)
+        .map_err(|e| McpConnectionError::Failed(e.to_string()))?;
+    Ok(refreshed.access_token)
+}
+
+/// Force a refresh of the OAuth token bundle for `token_ref`, regardless of
+/// expiry. Used by the connection pool when a cached connection returns an
+/// auth error mid-session.
+///
+/// # Errors
+/// Returns an error if the keychain entry is missing, the refresh request
+/// fails, or the new bundle cannot be persisted back to the keychain.
+pub async fn force_refresh_oauth_token(token_ref: &str) -> Result<(), McpConnectionError> {
+    let bundle =
+        TokenBundle::load(token_ref).map_err(|e| McpConnectionError::Failed(e.to_string()))?;
+    let refreshed = oauth2::refresh(&bundle)
+        .await
+        .map_err(|e| McpConnectionError::Failed(format!("OAuth refresh failed: {e}")))?;
+    refreshed
+        .save(token_ref)
+        .map_err(|e| McpConnectionError::Failed(e.to_string()))?;
+    Ok(())
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerConfig {
@@ -97,6 +137,20 @@ impl ServerConfig {
         }
     }
 
+    /// If this is an HTTP server configured with OAuth, returns the
+    /// `token_ref` [`SecretString`] that resolves to the keychain key holding
+    /// its [`crate::oauth2::TokenBundle`]. Returns `None` for stdio servers,
+    /// unauthenticated HTTP servers, or HTTP servers using bearer / header auth.
+    pub fn oauth_token_ref(&self) -> Option<&SecretString> {
+        match &self.transport {
+            ServerTransport::Http(http_cfg) => match http_cfg.auth.as_ref()? {
+                AuthConfig::OAuth { token_ref, .. } => Some(token_ref),
+                _ => None,
+            },
+            ServerTransport::Stdio(_) => None,
+        }
+    }
+
     pub fn display_target(&self) -> String {
         match &self.transport {
             ServerTransport::Http(cfg) => cfg.url.to_string(),
@@ -158,6 +212,18 @@ impl ServerConfig {
                                         .map_err(|e| McpConnectionError::Failed(e.to_string()))?,
                                 );
                             }
+                        }
+                        AuthConfig::OAuth { token_ref, .. } => {
+                            let resolved_ref = token_ref
+                                .resolve()
+                                .await
+                                .map_err(|e| McpConnectionError::Failed(e.to_string()))?;
+                            let access = resolve_oauth_access_token(&resolved_ref).await?;
+                            default_headers.append(
+                                http::header::AUTHORIZATION,
+                                HeaderValue::from_str(&format!("Bearer {access}"))
+                                    .map_err(|e| McpConnectionError::Failed(e.to_string()))?,
+                            );
                         }
                     }
                 }

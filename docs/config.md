@@ -121,7 +121,7 @@ await slack.sendMessage({ channel: "#general", text: "hi" });
 
 ## Authentication
 
-The `auth` field supports two types of authentication `BearerToken | Custom`:
+The `auth` field supports three types of authentication: `bearer`, `headers`, and `oauth`.
 
 ### Bearer Token Authentication
 
@@ -161,6 +161,69 @@ This adds an `Authorization: Bearer <token>` header to all requests.
 ```
 
 Use this for API key authentication or any custom header requirements.
+
+### OAuth 2.1 Authentication
+
+`pctx` supports OAuth 2.1 Authorization Code + PKCE for upstream MCP servers
+that advertise OAuth metadata via [RFC 9728](https://datatracker.ietf.org/doc/html/rfc9728)
+(`/.well-known/oauth-protected-resource`), [RFC 8414](https://datatracker.ietf.org/doc/html/rfc8414)
+(`/.well-known/oauth-authorization-server`), or OpenID Connect Discovery
+(`/.well-known/openid-configuration`).
+
+The recommended way to set up OAuth is to let `pctx mcp add` drive the flow:
+
+```bash
+pctx mcp add my-server https://mcp.example.com/sse
+```
+
+When the URL is reachable, `pctx` automatically tries OAuth discovery. If the
+server advertises OAuth metadata, `pctx`:
+
+1. Performs RFC 7591 dynamic client registration if the auth server supports
+   it (otherwise prompts you for a pre-registered `client_id`).
+2. Spins up a one-shot localhost callback listener and opens your browser to
+   the authorization endpoint.
+3. Exchanges the resulting code (with PKCE) for access + refresh tokens.
+4. Stores the token bundle in your **system keychain** under a stable
+   `token_ref`. Nothing secret is ever written to `pctx.json`.
+
+You can force the OAuth flow with `--oauth` even if you've already configured
+another auth type, and it overrides any auto-detection.
+
+| Field       | Type            | Required | Description                                                                                                                |
+| ----------- | --------------- | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `type`      | `"oauth"`       | Yes      | Constant designating this object as an OAuth config                                                                        |
+| `token_ref` | `string`        | Yes      | Opaque keychain entry name where pctx stores the access / refresh token bundle for this server                             |
+| `scopes`    | `array[string]` | No       | Scopes that were granted at authorization time (informational; pctx writes this so the granted access is visible in-file) |
+
+**Example `pctx.json` excerpt:**
+
+```json
+{
+  "name": "my-server",
+  "url": "https://mcp.example.com/sse",
+  "auth": {
+    "type": "oauth",
+    "token_ref": "oauth:my-server",
+    "scopes": ["read", "write"]
+  }
+}
+```
+
+At connection time, `pctx`:
+
+- Loads the bundle from the keychain entry named in `token_ref`.
+- Refreshes the access token automatically if it has expired (or is within
+  60 seconds of expiry), persisting the new bundle back to the keychain.
+- Sends the access token as `Authorization: Bearer <token>` on every request
+  to the upstream MCP server.
+
+If a long-lived session sees an auth-shaped failure mid-stream, `pctx` will
+force-refresh the token once and retry the connection before surfacing the
+error.
+
+To re-authorize (e.g. after revocation or scope changes), re-run
+`pctx mcp add my-server <url> --oauth --force`.
 
 ## Logger Configuration
 

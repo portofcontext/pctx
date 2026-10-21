@@ -95,6 +95,7 @@ impl InitCmd {
                         force: false,
                         bearer: None,
                         header: None,
+                        oauth: false,
                     }
                 } else {
                     // stdio
@@ -146,6 +147,7 @@ impl InitCmd {
                         force: false,
                         bearer: None,
                         header: None,
+                        oauth: false,
                     }
                 };
 

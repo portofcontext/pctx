@@ -2,10 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 
 use rmcp::{RoleClient, model::InitializeRequestParams, service::RunningService};
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use crate::error::RegistryError;
-use pctx_config::server::ServerConfig;
+use pctx_config::server::{self, ServerConfig};
 
 type PooledClient = Arc<RunningService<RoleClient, InitializeRequestParams>>;
 
@@ -70,6 +70,54 @@ impl McpConnectionPool {
         }
         connections.insert(cfg.name.clone(), new_client.clone());
         Ok((new_client, false))
+    }
+
+    /// Force an OAuth token refresh for `cfg`, evict any cached connection
+    /// for it, and re-establish the connection with the new access token.
+    ///
+    /// This is the recovery path for OAuth-authed upstream MCPs whose access
+    /// token has expired mid-session: callers (executor / tool dispatchers)
+    /// should invoke this once after they observe an auth-shaped failure
+    /// from a cached connection, then retry the original request with the
+    /// returned client. For non-OAuth servers this is a no-op that returns
+    /// `Ok(None)`, signalling that no refresh recovery is possible.
+    ///
+    /// Refresh is intentionally targeted (only OAuth servers) so that bearer
+    /// / header configurations keep their existing failure semantics — we
+    /// don't want to mask a real misconfiguration as a transient blip.
+    ///
+    /// # Errors
+    /// Returns an error if the OAuth refresh request fails or if the
+    /// follow-up reconnect fails.
+    pub async fn refresh_oauth_and_reconnect(
+        &self,
+        cfg: &ServerConfig,
+    ) -> Result<Option<PooledClient>, RegistryError> {
+        let Some(token_ref_secret) = cfg.oauth_token_ref() else {
+            return Ok(None);
+        };
+        let token_ref = token_ref_secret
+            .resolve()
+            .await
+            .map_err(|e| RegistryError::Connection(e.to_string()))?;
+
+        debug!(server = %cfg.name, "Forcing OAuth token refresh and reconnect");
+        if let Err(e) = server::force_refresh_oauth_token(&token_ref).await {
+            warn!(server = %cfg.name, error = %e, "OAuth refresh failed");
+            return Err(RegistryError::from(e));
+        }
+
+        // Evict any cached connection so the next get_or_connect rebuilds
+        // the transport with the freshly-issued access token.
+        {
+            let mut connections = self.connections.write().await;
+            if let Some(prev) = connections.remove(&cfg.name) {
+                prev.cancellation_token().cancel();
+            }
+        }
+
+        let (client, _cached) = self.get_or_connect(cfg).await?;
+        Ok(Some(client))
     }
 
     /// Cancels and removes all active upstream connections.

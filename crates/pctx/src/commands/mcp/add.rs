@@ -7,14 +7,15 @@ use tracing::info;
 use crate::{
     commands::USER_CANCELLED,
     utils::{
-        prompts,
+        oauth_flow, prompts,
         spinner::Spinner,
-        styles::{fmt_bold, fmt_cyan_bold, fmt_good_check},
+        styles::{fmt_bold, fmt_cyan_bold, fmt_dimmed, fmt_good_check},
     },
 };
 use pctx_config::{
     Config,
     auth::{AuthConfig, SecretString},
+    oauth2,
     server::{McpConnectionError, ServerConfig},
 };
 
@@ -54,10 +55,32 @@ pub struct AddCmd {
     #[arg(long, short = 'H', conflicts_with = "command")]
     pub header: Option<Vec<ClapHeader>>,
 
+    /// Authenticate using OAuth 2.1 (Authorization Code + PKCE).
+    ///
+    /// Forces the OAuth browser flow even if the server doesn't advertise
+    /// OAuth metadata at a well-known endpoint. By default `pctx mcp add`
+    /// auto-detects OAuth-protected servers via RFC 9728 / RFC 8414
+    /// discovery, so you only need this flag to override detection.
+    #[arg(long, conflicts_with_all = ["bearer", "header", "command"])]
+    pub oauth: bool,
+
     /// Overrides any existing server under the same name &
     /// skips testing connection to the MCP server
     #[arg(long, short)]
     pub force: bool,
+}
+
+fn prompt_manual_auth(server_name: &str) -> Result<Option<AuthConfig>> {
+    let add_auth = inquire::Confirm::new("Do you want to add authentication interactively?")
+        .with_default(false)
+        .with_help_message(
+            "you can also manually update the auth configuration later in the config",
+        );
+    if add_auth.prompt()? {
+        Ok(Some(prompts::prompt_auth(server_name)?))
+    } else {
+        Ok(None)
+    }
 }
 
 fn parse_env_var(s: &str) -> Result<(String, String), String> {
@@ -100,8 +123,9 @@ impl AddCmd {
             }
         }
 
-        // apply authentication for HTTP servers only (clap ensures bearer & header are mutually exclusive)
-        if server.http().is_some() {
+        // apply authentication for HTTP servers only (clap ensures bearer/header/oauth are mutually exclusive)
+        if let Some(http_cfg) = server.http() {
+            let server_url = http_cfg.url.clone();
             let auth = if let Some(bearer) = &self.bearer {
                 Some(AuthConfig::Bearer {
                     token: bearer.clone(),
@@ -113,18 +137,35 @@ impl AddCmd {
                         .map(|h| (h.name.clone(), h.value.clone()))
                         .collect(),
                 })
+            } else if self.oauth {
+                // Explicit opt-in: run the OAuth flow without discovery gating.
+                Some(oauth_flow::run_interactive_flow(&server.name, &server_url).await?)
+            } else if self.force {
+                None
             } else {
-                let add_auth = inquire::Confirm::new(
-                    "Do you want to add authentication interactively?",
-                )
-                .with_default(false)
-                .with_help_message(
-                    "you can also manually update the auth configuration later in the config",
-                );
-                if !self.force && add_auth.prompt()? {
-                    Some(prompts::prompt_auth(&server.name)?)
+                // Auto-detect OAuth via RFC 9728 / RFC 8414 / OIDC discovery
+                // before falling back to the manual bearer/headers prompt.
+                let mut sp = Spinner::new("Checking for OAuth metadata...");
+                let discovered = oauth2::discover(&server_url).await.ok().flatten();
+                if discovered.is_some() {
+                    sp.stop_success("Detected OAuth-protected MCP server");
+                    let use_oauth = inquire::Confirm::new(
+                        "Authorize pctx with this server using OAuth 2.1 (browser flow)?",
+                    )
+                    .with_default(true)
+                    .with_help_message(
+                        "Tokens will be stored in your system keychain; nothing secret is written to pctx.json",
+                    )
+                    .prompt()?;
+                    if use_oauth {
+                        Some(oauth_flow::run_interactive_flow(&server.name, &server_url).await?)
+                    } else {
+                        prompt_manual_auth(&server.name)?
+                    }
                 } else {
-                    None
+                    sp.stop_and_persist("·", "No OAuth metadata advertised");
+                    info!("{}", fmt_dimmed("Falling back to manual auth setup."));
+                    prompt_manual_auth(&server.name)?
                 }
             };
             server.set_auth(auth);
@@ -244,6 +285,7 @@ mod tests {
             env: vec![],
             bearer: None,
             header: None,
+            oauth: false,
             force: true,
         };
 
@@ -269,6 +311,7 @@ mod tests {
             env: vec![("NODE_ENV".to_string(), "test".to_string())],
             bearer: None,
             header: None,
+            oauth: false,
             force: true,
         };
 
@@ -295,6 +338,7 @@ mod tests {
             env: vec![],
             bearer: None,
             header: None,
+            oauth: false,
             force: true,
         };
 

@@ -49,6 +49,8 @@ chrono = { workspace = true, features = ["serde"] }
 notify = "8"
 arboard = "3"
 shlex = { workspace = true }
+tiny_http = "0.12"
+webbrowser = "1"
 
 # Logging and Telemetry
 tracing = { workspace = true }
