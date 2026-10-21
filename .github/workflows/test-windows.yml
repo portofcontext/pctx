@@ -15,7 +15,7 @@ jobs:
           git config --global core.longpaths true
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: recursive
 
@@ -29,7 +29,7 @@ jobs:
         shell: pwsh
 
       - name: Cache Rust dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             ~/.cargo/bin/
