@@ -23,7 +23,7 @@ use pctx_config::Config;
 use ratatui::{Terminal, backend::CrosstermBackend, style::Color};
 use tokio::sync::mpsc;
 
-use crate::commands::mcp::start::StartCmd;
+use crate::commands::code_mode::start::StartCmd;
 use app::{App, AppMessage, FocusPanel};
 use pctx_mcp_server::PctxMcpServer;
 
@@ -67,7 +67,9 @@ pub struct DevCmd {
 impl DevCmd {
     pub(crate) async fn handle(&self, cfg: Config) -> Result<Config> {
         if self.stdio {
-            anyhow::bail!("Dev mode does not support stdio. Use `pctx mcp start --stdio` instead.");
+            anyhow::bail!(
+                "Dev mode does not support stdio. Use `pctx code-mode start --stdio` instead."
+            );
         }
 
         // Set up terminal
@@ -531,7 +533,7 @@ fn spawn_server_task(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::commands::mcp::dev::log_entry::{LogEntry, LogEntryFields};
+    use crate::commands::code_mode::dev::log_entry::{LogEntry, LogEntryFields};
 
     use super::*;
     // use crate::commands::dev::log_entry::{LogEntry, LogEntryFields};

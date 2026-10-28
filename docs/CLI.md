@@ -6,13 +6,13 @@ This document contains the help content for the `pctx` command-line program.
 
 * [`pctx`↴](#pctx)
 * [`pctx start`↴](#pctx-start)
-* [`pctx mcp`↴](#pctx-mcp)
-* [`pctx mcp init`↴](#pctx-mcp-init)
-* [`pctx mcp list`↴](#pctx-mcp-list)
-* [`pctx mcp add`↴](#pctx-mcp-add)
-* [`pctx mcp remove`↴](#pctx-mcp-remove)
-* [`pctx mcp start`↴](#pctx-mcp-start)
-* [`pctx mcp dev`↴](#pctx-mcp-dev)
+* [`pctx code-mode`↴](#pctx-code-mode)
+* [`pctx code-mode init`↴](#pctx-code-mode-init)
+* [`pctx code-mode list`↴](#pctx-code-mode-list)
+* [`pctx code-mode add`↴](#pctx-code-mode-add)
+* [`pctx code-mode remove`↴](#pctx-code-mode-remove)
+* [`pctx code-mode start`↴](#pctx-code-mode-start)
+* [`pctx code-mode dev`↴](#pctx-code-mode-dev)
 
 ## `pctx`
 
@@ -24,16 +24,16 @@ EXAMPLES:
   # Code Mode sessions
   pctx start
   # Code Mode MCP
-  pctx mcp init 
-  pctx mcp add my-server https://mcp.example.com
-  pctx mcp dev
+  pctx code-mode init 
+  pctx code-mode add my-server https://mcp.example.com
+  pctx code-mode dev
 
   
 
 ###### **Subcommands:**
 
 * `start` — Start PCTX server for code mode sessions
-* `mcp` — MCP server commands (with pctx.json configuration)
+* `code-mode` — Code Mode MCP server commands (with pctx.json configuration)
 
 ###### **Options:**
 
@@ -67,11 +67,11 @@ Starts PCTX server with no pre-configured tools. Use a client library like `pip 
 
 
 
-## `pctx mcp`
+## `pctx code-mode`
 
-MCP server commands (with pctx.json configuration)
+Code Mode MCP server commands (with pctx.json configuration)
 
-**Usage:** `pctx mcp <COMMAND>`
+**Usage:** `pctx code-mode <COMMAND>`
 
 ###### **Subcommands:**
 
@@ -84,11 +84,11 @@ MCP server commands (with pctx.json configuration)
 
 
 
-## `pctx mcp init`
+## `pctx code-mode init`
 
 Initialize pctx.json configuration file.
 
-**Usage:** `pctx mcp init [OPTIONS]`
+**Usage:** `pctx code-mode init [OPTIONS]`
 
 ###### **Options:**
 
@@ -96,19 +96,19 @@ Initialize pctx.json configuration file.
 
 
 
-## `pctx mcp list`
+## `pctx code-mode list`
 
 Lists configured MCP servers and tests the connection to each.
 
-**Usage:** `pctx mcp list`
+**Usage:** `pctx code-mode list`
 
 
 
-## `pctx mcp add`
+## `pctx code-mode add`
 
 Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-based servers via the --command flag.
 
-**Usage:** `pctx mcp add [OPTIONS] <NAME> [URL]`
+**Usage:** `pctx code-mode add [OPTIONS] <NAME> [URL]`
 
 ###### **Arguments:**
 
@@ -130,11 +130,11 @@ Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-
 
 
 
-## `pctx mcp remove`
+## `pctx code-mode remove`
 
 Remove an MCP server from the configuration.
 
-**Usage:** `pctx mcp remove <NAME>`
+**Usage:** `pctx code-mode remove <NAME>`
 
 ###### **Arguments:**
 
@@ -142,11 +142,11 @@ Remove an MCP server from the configuration.
 
 
 
-## `pctx mcp start`
+## `pctx code-mode start`
 
 Start the PCTX MCP server (exposes /mcp endpoint).
 
-**Usage:** `pctx mcp start [OPTIONS]`
+**Usage:** `pctx code-mode start [OPTIONS]`
 
 ###### **Options:**
 
@@ -162,11 +162,11 @@ Start the PCTX MCP server (exposes /mcp endpoint).
 
 
 
-## `pctx mcp dev`
+## `pctx code-mode dev`
 
 Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging.
 
-**Usage:** `pctx mcp dev [OPTIONS]`
+**Usage:** `pctx code-mode dev [OPTIONS]`
 
 ###### **Options:**
 

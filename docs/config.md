@@ -680,7 +680,7 @@ pctx add my-server https://mcp.example.com \
 
 ### Missing config in stdio mode
 
-When starting with `pctx mcp start --stdio`, a missing or unreadable config file
+When starting with `pctx code-mode start --stdio`, a missing or unreadable config file
 returns a JSON-RPC error on stdout and then exits. Ensure `pctx.json` exists or
 pass the correct path with `-c`.
 

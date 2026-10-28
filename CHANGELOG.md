@@ -9,10 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The command structs are public (`pctx::commands::StartCmd`, and `AddCmd`, `DevCmd`, `InitCmd`, `ListCmd`, `RemoveCmd` and `StartCmd` under `pctx::commands::mcp`), so another CLI can embed them beside its own subcommands.
+- The command structs are public (`pctx::commands::StartCmd`, and `AddCmd`, `DevCmd`, `InitCmd`, `ListCmd`, `RemoveCmd` and `StartCmd` under `pctx::commands::code_mode`), so another CLI can embed them beside its own subcommands.
 - `pctx::utils::get_styles` is public, so a CLI that embeds the commands can give its help the same colors.
 
 ### Changed
+
+- **Breaking:** `pctx mcp` is now `pctx code-mode`: `pctx code-mode init`, `list`, `add`, `remove`, `start` and `dev`. The old `pctx mcp …` spellings are gone; update scripts, MCP client configs (e.g. `pctx code-mode start --stdio`) and CI.
+- **Breaking:** for crates embedding the CLI, `pctx::McpCommands` is `pctx::CodeModeCommands`, `Commands::Mcp` is `Commands::CodeMode`, and `pctx::commands::mcp` is `pctx::commands::code_mode`.
 
 ### Fixed
 

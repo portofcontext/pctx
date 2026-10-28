@@ -104,7 +104,7 @@ execute_bash() → execute_typescript({ code })
 
 ### `sidecar` mode
 
-_Currently only supported in the unified MCP server with `pctx mcp start`_
+_Currently only supported in the unified MCP server with `pctx code-mode start`_
 
 Upstream tool descriptions are surfaced directly as MCP tools with the addition of `execute_typescript`; the agent calls `execute_typescript` to invoke them without a separate discovery step.
 

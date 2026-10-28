@@ -54,7 +54,7 @@ jobs:
           path: target/release/pctx
           retention-days: 1
 
-  # CLI integration tests - tests pctx mcp start command
+  # CLI integration tests - tests pctx code-mode start command
   cli-tests:
     needs: build
     runs-on: ubuntu-latest

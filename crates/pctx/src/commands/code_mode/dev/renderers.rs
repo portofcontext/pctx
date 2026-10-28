@@ -181,7 +181,7 @@ fn render_tools_panel(f: &mut Frame, app: &mut App, area: Rect) {
             )]),
             Line::from(""),
             Line::from(vec![Span::styled(
-                "    pctx mcp add <NAME> [URL]",
+                "    pctx code-mode add <NAME> [URL]",
                 Style::default().fg(Color::LightBlue),
             )]),
         ];

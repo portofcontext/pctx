@@ -71,7 +71,7 @@ Create a pctx configuration file with telemetry enabled. Here's an example confi
 Start the pctx MCP server with your configuration file:
 
 ```bash
-pctx mcp start --config path/to/your/pctx.json
+pctx code-mode start --config path/to/your/pctx.json
 ```
 
 **_Note: you can also configure the pctx session server (`pctx start` to export OpenTelemetry) with the same config, just `servers` will be ignored_**

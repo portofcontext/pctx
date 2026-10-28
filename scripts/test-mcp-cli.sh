@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# CLI Integration Test Script for pctx mcp start
+# CLI Integration Test Script for pctx code-mode start
 # Tests the full CLI with both stdio and HTTP MCP servers
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -60,7 +60,7 @@ EOF
 PCTX_CMD="${PCTX_CMD:-cargo run --bin pctx --}"
 
 cd "$PROJECT_ROOT"
-$PCTX_CMD mcp start \
+$PCTX_CMD code-mode start \
     --config "$TEST_DIR/pctx-test.json" \
     --no-banner \
     > "$TEST_DIR/pctx-test.log" 2>&1 &
