@@ -26,7 +26,7 @@ rustflags = [
 
 [alias]
 pctx = "run -p pctx --"
-# Hot reload: rebuild and restart `pctx start` on source changes
+# Hot reload: rebuild and restart `pctx code-mode serve` on source changes
 dev = [
     "watch",
     "-w",
@@ -36,7 +36,7 @@ dev = [
     "-w",
     "Cargo.lock",
     "-x",
-    "run -p pctx -- start",
+    "run -p pctx -- code-mode serve",
 ]
 dev-v = [
     "watch",
@@ -47,7 +47,7 @@ dev-v = [
     "-w",
     "Cargo.lock",
     "-x",
-    "run -p pctx -- start -v",
+    "run -p pctx -- code-mode serve -v",
 ]
 dev-vv = [
     "watch",
@@ -58,5 +58,5 @@ dev-vv = [
     "-w",
     "Cargo.lock",
     "-x",
-    "run -p pctx -- start -vv",
+    "run -p pctx -- code-mode serve -vv",
 ]

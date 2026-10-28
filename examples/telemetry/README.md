@@ -74,7 +74,7 @@ Start the pctx MCP server with your configuration file:
 pctx code-mode start --config path/to/your/pctx.json
 ```
 
-**_Note: you can also configure the pctx session server (`pctx start` to export OpenTelemetry) with the same config, just `servers` will be ignored_**
+**_Note: you can also configure the pctx session server (`pctx code-mode serve` to export OpenTelemetry) with the same config, just `servers` will be ignored_**
 
 ### 4. View Telemetry Data
 

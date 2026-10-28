@@ -54,7 +54,7 @@ export OPENROUTER_API_KEY=*****
 3. Start the Code Mode server
 
 ```bash
-pctx start
+pctx code-mode serve
 ```
 
 4. Define and run `main.py`

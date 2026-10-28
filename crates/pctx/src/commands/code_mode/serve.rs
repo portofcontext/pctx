@@ -18,10 +18,10 @@ use url::Url;
 
 use crate::utils::styles::fmt_dimmed;
 
-const LOGO: &str = include_str!("../../../../assets/ascii-logo.txt");
+const LOGO: &str = include_str!("../../../../../assets/ascii-logo.txt");
 
 #[derive(Debug, Clone, Parser)]
-pub struct StartCmd {
+pub struct ServeCmd {
     /// Port to listen on
     #[arg(short, long, default_value = "8080")]
     pub port: u16,
@@ -47,7 +47,7 @@ pub struct StartCmd {
     pub no_banner: bool,
 }
 
-impl StartCmd {
+impl ServeCmd {
     pub(crate) async fn handle(&self) -> Result<()> {
         let state = AppState::new_local();
 

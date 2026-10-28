@@ -38,11 +38,11 @@ npm i -g @portofcontext/pctx
 
 ## Core Functionality
 
-pctx can be run as a stateless HTTP server for Code Mode sessions or as a unified MCP server that exposes Code Mode functionality for registered upstream MCP servers.
+pctx can be run as a scalable session server for Code Mode or as a lightweight unified MCP server that exposes Code Mode functionality for registered upstream MCP servers.
 
 ```bash
-# Start Code Mode for Python SDK
-pctx start
+# Start the Code Mode session server for the Python SDK
+pctx code-mode serve
 
 # Start Code Mode as a unified MCP server
 pctx code-mode init

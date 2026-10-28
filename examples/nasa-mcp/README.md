@@ -75,7 +75,7 @@ node nasa-mcp-server.js
 
 In another terminal, start pctx:
 ```bash
-pctx start --port 8080 --config pctx.json
+pctx code-mode start --port 8080 --config pctx.json
 ```
 
 ## Testing

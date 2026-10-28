@@ -457,14 +457,14 @@ fn run_ui(
 async fn load_code_mode_for_dev(cfg: &Config) -> Result<pctx_code_mode::CodeMode> {
     if cfg.servers.is_empty() {
         tracing::warn!(
-            "No MCP servers configured, add servers with 'pctx add <name> <url>' and PCTX Dev Mode will refresh"
+            "No MCP servers configured, add servers with 'pctx code-mode add <name> <url>' and PCTX Dev Mode will refresh"
         );
         Ok(pctx_code_mode::CodeMode::default())
     } else {
         let loaded = StartCmd::load_code_mode(cfg).await?;
         if loaded.tool_sets().is_empty() {
             tracing::warn!(
-                "Failed loading all configured MCP servers, add servers with 'pctx add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
+                "Failed loading all configured MCP servers, add servers with 'pctx code-mode add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
                 cfg.path()
             );
         }

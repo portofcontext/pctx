@@ -28,8 +28,8 @@ async def test_server_connection():
             f"Failed to connect to pctx server at http://localhost:8080.\n"
             f"Error: {str(e)}\n\n"
             f"Please ensure the pctx server is running at the default location.\n"
-            f"Start the server with: pctx server start\n"
-            f"Or run: cargo run --bin pctx -- server start"
+            f"Start the server with: pctx code-mode serve\n"
+            f"Or run: cargo run --bin pctx -- code-mode serve"
         )
     except Exception as e:
         # Catch other unexpected errors
@@ -60,7 +60,7 @@ async def test_list_functions():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -120,7 +120,7 @@ async def test_search_functions():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -156,7 +156,7 @@ async def test_execute_simple_code():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -185,7 +185,7 @@ async def test_execute_with_error():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -224,7 +224,7 @@ async def test_multiple_sequential_executions():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -243,7 +243,7 @@ async def test_connection_with_custom_url():
             f"Failed to connect to pctx server at default location (http://localhost:8080).\n"
             f"Error: {str(e)}\n\n"
             f"Please ensure the pctx server is running.\n"
-            f"Start the server with: pctx server start"
+            f"Start the server with: pctx code-mode serve"
         )
 
 
@@ -285,7 +285,7 @@ async def test_markdown_output_formatting():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -429,7 +429,7 @@ async def test_local_python_tool_registration_and_calling():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -477,7 +477,7 @@ async def test_async_local_python_tool():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -541,7 +541,7 @@ async def test_http_mcp_server_registration(http_mcp_server):
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -615,7 +615,7 @@ async def test_stdio_mcp_server_registration():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -696,7 +696,7 @@ async def test_execute_bash_virtual_filesystem():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -740,7 +740,7 @@ async def test_bash_then_typescript_workflow():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -797,7 +797,7 @@ async def test_mixed_tools_and_mcp_servers():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -870,7 +870,7 @@ async def test_concurrent_async_tool_calls_run_in_parallel():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )
 
 
@@ -944,5 +944,5 @@ async def test_concurrent_sync_tool_calls_run_in_parallel():
         pytest.fail(
             "Failed to connect to pctx server at http://localhost:8080.\n"
             "Please ensure the pctx server is running.\n"
-            "Start the server with: pctx server start"
+            "Start the server with: pctx code-mode serve"
         )

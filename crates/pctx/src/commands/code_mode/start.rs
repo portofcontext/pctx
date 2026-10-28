@@ -49,7 +49,7 @@ impl StartCmd {
     pub(crate) async fn handle(&self, cfg: Config) -> Result<Config> {
         if cfg.servers.is_empty() {
             anyhow::bail!(
-                "No upstream MCP servers configured. Add servers with 'pctx add <name> <url>'"
+                "No upstream MCP servers configured. Add servers with 'pctx code-mode add <name> <url>'"
             );
         }
 

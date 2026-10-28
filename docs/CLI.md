@@ -5,7 +5,6 @@ This document contains the help content for the `pctx` command-line program.
 **Command Overview:**
 
 * [`pctx`↴](#pctx)
-* [`pctx start`↴](#pctx-start)
 * [`pctx code-mode`↴](#pctx-code-mode)
 * [`pctx code-mode init`↴](#pctx-code-mode-init)
 * [`pctx code-mode list`↴](#pctx-code-mode-list)
@@ -13,16 +12,17 @@ This document contains the help content for the `pctx` command-line program.
 * [`pctx code-mode remove`↴](#pctx-code-mode-remove)
 * [`pctx code-mode start`↴](#pctx-code-mode-start)
 * [`pctx code-mode dev`↴](#pctx-code-mode-dev)
+* [`pctx code-mode serve`↴](#pctx-code-mode-serve)
 
 ## `pctx`
 
-Use PCTX to expose code mode either as a session based server or by aggregating multiple MCP servers into a single code mode MCP server.
+Use PCTX to run Code Mode as a session server for client SDKs, or as an MCP server that aggregates multiple MCP servers.
 
 **Usage:** `pctx [OPTIONS] <COMMAND>`
 
 EXAMPLES:
   # Code Mode sessions
-  pctx start
+  pctx code-mode serve
   # Code Mode MCP
   pctx code-mode init 
   pctx code-mode add my-server https://mcp.example.com
@@ -32,7 +32,6 @@ EXAMPLES:
 
 ###### **Subcommands:**
 
-* `start` — Start PCTX server for code mode sessions
 * `code-mode` — Code Mode MCP server commands (with pctx.json configuration)
 
 ###### **Options:**
@@ -42,28 +41,6 @@ EXAMPLES:
   Default value: `pctx.json`
 * `-q`, `--quiet` — No logging except for errors
 * `-v`, `--verbose` — Verbose logging (-v) or trace logging (-vv)
-
-
-
-## `pctx start`
-
-Starts PCTX server with no pre-configured tools. Use a client library like `pip install pctx-client` to create sessions, register tools, and expose code-mode tools to agent libraries.
-
-**Usage:** `pctx start [OPTIONS]`
-
-###### **Options:**
-
-* `-p`, `--port <PORT>` — Port to listen on
-
-  Default value: `8080`
-* `--host <HOST>` — Host address to bind to (use 0.0.0.0 for external access)
-
-  Default value: `127.0.0.1`
-* `--session-dir <SESSION_DIR>` — Path to session storage directory
-
-  Default value: `.pctx/sessions`
-* `--allowed-origin <ALLOWED_ORIGINS>` — Allowed CORS origins. Can be specified multiple times. Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]). Specify your own origins to override the default (can include or exclude localhost). Origins without explicit ports will match any port. Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
-* `--no-banner` — Don't show the server banner
 
 
 
@@ -79,8 +56,9 @@ Code Mode MCP server commands (with pctx.json configuration)
 * `list` — List MCP servers and test connections
 * `add` — Add an MCP server to configuration (HTTP or stdio)
 * `remove` — Remove an MCP server from configuration
-* `start` — Start the PCTX MCP server
+* `start` — Start the PCTX MCP server (lightweight)
 * `dev` — Start the PCTX MCP server with terminal UI
+* `serve` — Start the Code Mode session server (scalable, used by the pctx-client SDK)
 
 
 
@@ -144,7 +122,7 @@ Remove an MCP server from the configuration.
 
 ## `pctx code-mode start`
 
-Start the PCTX MCP server (exposes /mcp endpoint).
+Start the PCTX MCP server (exposes /mcp endpoint). The lightweight way to try Code Mode; use `serve` to run it at scale.
 
 **Usage:** `pctx code-mode start [OPTIONS]`
 
@@ -181,6 +159,28 @@ Start the PCTX MCP server in development mode with an interactive terminal UI wi
   Default value: `pctx-dev.jsonl`
 * `--stdio` — Serve MCP over stdio instead of HTTP
 * `--stateful-http` — Use stateful HTTP sessions (incompatible with --stdio)
+
+
+
+## `pctx code-mode serve`
+
+Start the Code Mode session server with no pre-configured tools. Clients like `pip install pctx-client` create sessions, register tools, and expose code-mode tools to agent libraries.
+
+**Usage:** `pctx code-mode serve [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--port <PORT>` — Port to listen on
+
+  Default value: `8080`
+* `--host <HOST>` — Host address to bind to (use 0.0.0.0 for external access)
+
+  Default value: `127.0.0.1`
+* `--session-dir <SESSION_DIR>` — Path to session storage directory
+
+  Default value: `.pctx/sessions`
+* `--allowed-origin <ALLOWED_ORIGINS>` — Allowed CORS origins. Can be specified multiple times. Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]). Specify your own origins to override the default (can include or exclude localhost). Origins without explicit ports will match any port. Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
+* `--no-banner` — Don't show the server banner
 
 
 

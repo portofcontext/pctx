@@ -125,7 +125,7 @@ jobs:
       - name: Start pctx server
         run: |
           # Start server in background with no banner
-          ./target/release/pctx start --no-banner > pctx-server.log 2>&1 &
+          ./target/release/pctx code-mode serve --no-banner > pctx-server.log 2>&1 &
           echo $! > pctx-server.pid
           # Wait for server to be ready
           for i in {1..30}; do

@@ -33,6 +33,7 @@ setTimeout(() => {
       'run',
       '--bin', 'pctx',
       '--',
+      'code-mode',
       'start',
       '--port', PCTX_PORT,
       '--config', path.resolve(__dirname, 'pctx.json')
@@ -46,6 +47,7 @@ setTimeout(() => {
     console.log('\nStarting pctx on port', PCTX_PORT);
     pctxCommand = 'pctx';
     pctxArgs = [
+      'code-mode',
       'start',
       '--port', PCTX_PORT,
       '--config', 'pctx.json'

@@ -74,7 +74,7 @@ Some upstream MCP servers are stateful — they maintain internal state across m
 
 How the pool is scoped depends on which PCTX command you use.
 
-### `pctx start` (session server)
+### `pctx code-mode serve` (session server)
 
 The session server is used by the Python SDK. Upstream connections are scoped to a **code mode session**.
 

@@ -17,11 +17,11 @@ use pctx_config::Config;
 #[command(version)]
 #[command(about = "PCTX - Code Mode")]
 #[command(
-    long_about = "Use PCTX to expose code mode either as a session based server or by aggregating multiple MCP servers into a single code mode MCP server."
+    long_about = "Use PCTX to run Code Mode as a session server for client SDKs, or as an MCP server that aggregates multiple MCP servers."
 )]
 #[command(after_help = "EXAMPLES:\n  \
     # Code Mode sessions\n  \
-    pctx start\n  \
+    pctx code-mode serve\n  \
     # Code Mode MCP\n  \
     pctx code-mode init \n  \
     pctx code-mode add my-server https://mcp.example.com\n  \
@@ -68,7 +68,9 @@ impl Cli {
             Commands::CodeMode(CodeModeCommands::Start(start_cmd)) => {
                 init_telemetry(cfg, None, start_cmd.stdio, level).await
             }
-            Commands::Start(_) => init_telemetry(cfg, None, false, level).await,
+            Commands::CodeMode(CodeModeCommands::Serve(_)) => {
+                init_telemetry(cfg, None, false, level).await
+            }
         }
     }
 
@@ -88,7 +90,6 @@ impl Cli {
         self.init_logging(cfg.as_ref().unwrap_or(&fallback)).await?;
 
         match &self.command {
-            Commands::Start(start_cmd) => start_cmd.handle().await,
             Commands::CodeMode(code_mode_cmd) => self.handle_code_mode(code_mode_cmd, cfg).await,
         }
     }
@@ -105,6 +106,8 @@ impl Cli {
             CodeModeCommands::Remove(cmd) => cmd.handle(cfg?)?,
             CodeModeCommands::Start(cmd) => cmd.handle(cfg?).await?,
             CodeModeCommands::Dev(cmd) => cmd.handle(cfg?).await?,
+            // The session server takes no pctx.json, so a missing config doesn't stop it
+            CodeModeCommands::Serve(cmd) => return cmd.handle().await,
         };
 
         Ok(())
@@ -151,12 +154,6 @@ mod tests {
 #[derive(Debug, Subcommand)]
 #[command(styles=utils::get_styles())]
 pub enum Commands {
-    /// Start PCTX server for code mode sessions
-    #[command(
-        long_about = "Starts PCTX server with no pre-configured tools. Use a client library like `pip install pctx-client` to create sessions, register tools, and expose code-mode tools to agent libraries."
-    )]
-    Start(commands::StartCmd),
-
     /// Code Mode MCP server commands (with pctx.json configuration)
     #[command(subcommand)]
     CodeMode(CodeModeCommands),
@@ -182,12 +179,20 @@ pub enum CodeModeCommands {
     #[command(long_about = "Remove an MCP server from the configuration.")]
     Remove(commands::code_mode::RemoveCmd),
 
-    /// Start the PCTX MCP server
-    #[command(long_about = "Start the PCTX MCP server (exposes /mcp endpoint).")]
+    /// Start the PCTX MCP server (lightweight)
+    #[command(
+        long_about = "Start the PCTX MCP server (exposes /mcp endpoint). The lightweight way to try Code Mode; use `serve` to run it at scale."
+    )]
     Start(commands::code_mode::StartCmd),
     /// Start the PCTX MCP server with terminal UI
     #[command(
         long_about = "Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging."
     )]
     Dev(commands::code_mode::DevCmd),
+
+    /// Start the Code Mode session server (scalable, used by the pctx-client SDK)
+    #[command(
+        long_about = "Start the Code Mode session server with no pre-configured tools. Clients like `pip install pctx-client` create sessions, register tools, and expose code-mode tools to agent libraries."
+    )]
+    Serve(commands::code_mode::ServeCmd),
 }

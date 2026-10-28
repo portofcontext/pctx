@@ -67,7 +67,7 @@ impl InitCmd {
                     .with_default(true)
                     .with_help_message(&format!(
                         "You can also do this later with {}",
-                        fmt_bold("pctx add <NAME> <MCP_URL>")
+                        fmt_bold("pctx code-mode add <NAME> <MCP_URL>")
                     ))
                     .prompt()?;
 

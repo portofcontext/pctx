@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Breaking:** `pctx mcp` is now `pctx code-mode`: `pctx code-mode init`, `list`, `add`, `remove`, `start` and `dev`. The old `pctx mcp …` spellings are gone; update scripts, MCP client configs (e.g. `pctx code-mode start --stdio`) and CI.
 - **Breaking:** for crates embedding the CLI, `pctx::McpCommands` is `pctx::CodeModeCommands`, `Commands::Mcp` is `Commands::CodeMode`, and `pctx::commands::mcp` is `pctx::commands::code_mode`.
+- **Breaking:** `pctx start` (the session server `pctx-client` talks to) is now `pctx code-mode serve`, with the same flags. Embedders: `pctx::commands::StartCmd` is `pctx::commands::code_mode::ServeCmd`, and `Commands::Start` is removed (`CodeModeCommands::Serve` replaces it).
 
 ### Fixed
 
