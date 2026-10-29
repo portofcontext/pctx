@@ -8,7 +8,7 @@ help:
 	@echo ""
 	@echo "Available targets:"
 	@echo "  make docs           - Generate CLI, OpenAPI, and Python documentation"
-	@echo "  make test-cli       - Run CLI integration tests (pctx mcp start)"
+	@echo "  make test-cli       - Run CLI integration tests (pctx code-mode start)"
 	@echo "  make release        - Interactive release script (bump version, update changelog)"
 	@echo "  make publish-crates - Publish pctx_code_mode + dependencies to crates.io (runs locally)"
 	@echo ""

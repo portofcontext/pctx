@@ -23,4 +23,4 @@ for i in {1..30}; do
 done
 
 echo "Starting pctx on port ${PCTX_PORT}..."
-exec pctx --config /app/pctx.json start --port ${PCTX_PORT} --host 0.0.0.0
+exec pctx --config /app/pctx.json code-mode start --port ${PCTX_PORT} --host 0.0.0.0

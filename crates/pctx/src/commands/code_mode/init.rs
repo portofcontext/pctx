@@ -5,7 +5,7 @@ use pctx_config::Config;
 use tracing::{info, warn};
 
 use crate::{
-    commands::{USER_CANCELLED, mcp::add::AddCmd},
+    commands::{USER_CANCELLED, code_mode::add::AddCmd},
     utils::{
         prompts,
         styles::{fmt_bold, fmt_cyan_bold, fmt_dimmed, fmt_good_check},
@@ -67,7 +67,7 @@ impl InitCmd {
                     .with_default(true)
                     .with_help_message(&format!(
                         "You can also do this later with {}",
-                        fmt_bold("pctx add <NAME> <MCP_URL>")
+                        fmt_bold("pctx code-mode add <NAME> <MCP_URL>")
                     ))
                     .prompt()?;
 

@@ -143,7 +143,7 @@ class Pctx:
                 raise ConnectionError(
                     f"Failed to connect to PCTX server at {self._client.base_url}. "
                     "Please ensure the server is running.\n"
-                    "Start the server with: pctx server start"
+                    "Start the server with: pctx code-mode serve"
                 ) from e
             # Re-raise other errors as-is
             raise

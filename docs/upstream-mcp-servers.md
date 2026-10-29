@@ -74,7 +74,7 @@ Some upstream MCP servers are stateful — they maintain internal state across m
 
 How the pool is scoped depends on which PCTX command you use.
 
-### `pctx start` (session server)
+### `pctx code-mode serve` (session server)
 
 The session server is used by the Python SDK. Upstream connections are scoped to a **code mode session**.
 
@@ -84,14 +84,14 @@ The session server is used by the Python SDK. Upstream connections are scoped to
 
 Each active session has its own isolated pool; two concurrent sessions never share upstream connections.
 
-### `pctx mcp start` (unified MCP server)
+### `pctx code-mode start` (unified MCP server)
 
 The unified MCP server is what AI clients like Claude Desktop connect to directly. It supports three modes with different session scoping:
 
 #### HTTP (default — stateless)
 
 ```bash
-pctx mcp start
+pctx code-mode start
 ```
 
 Each request gets a fresh connection pool. Upstream connections are dropped after the request completes. Use this when your upstream MCPs are stateless or when you don't need to preserve state across code mode tool calls.
@@ -99,7 +99,7 @@ Each request gets a fresh connection pool. Upstream connections are dropped afte
 #### HTTP with stateful sessions (`--stateful-http`)
 
 ```bash
-pctx mcp start --stateful-http
+pctx code-mode start --stateful-http
 ```
 
 Upstream connections are scoped to an **HTTP session**, identified by the `mcp-session-id` header that the MCP client sends. This is part of the [MCP streamable HTTP spec](https://modelcontextprotocol.io/specification/2025-03-26/basic/transports#streamable-http).
@@ -113,7 +113,7 @@ Use this mode when connecting to stateful upstream MCPs over HTTP and your clien
 #### Stdio (`--stdio`)
 
 ```bash
-pctx mcp start --stdio
+pctx code-mode start --stdio
 ```
 
 When running as a stdio MCP server (e.g. configured in Claude Desktop's `mcpServers`), the entire process lifetime is treated as a single session. A global session ID is assigned at startup, and all `execute_typescript` calls share one connection pool for the life of the process.

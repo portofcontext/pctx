@@ -1,6 +1,3 @@
-pub mod mcp;
-pub(crate) mod start;
-
-pub use start::StartCmd;
+pub mod code_mode;
 
 pub static USER_CANCELLED: &str = "User cancelled";

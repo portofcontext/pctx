@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "start:nasa": "node nasa-mcp-server.js",
-    "start:pctx": "pctx start --port ${PCTX_PORT:-8080}",
+    "start:pctx": "pctx code-mode start --port ${PCTX_PORT:-8080}",
     "start": "node start-local.js",
     "test:nasa": "curl -X POST http://127.0.0.1:3000/mcp -H 'Content-Type: application/json' -H 'Authorization: Bearer test' -d '{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{},\"id\":1}'",
     "test:pctx": "curl -X POST http://127.0.0.1:8080/mcp -H 'Content-Type: application/json' -d '{\"jsonrpc\":\"2.0\",\"method\":\"initialize\",\"params\":{},\"id\":1}'"

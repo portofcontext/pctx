@@ -26,7 +26,7 @@ impl ListCmd {
             info!("");
             info!(
                 "Run {cmd} to add some to your configuration",
-                cmd = fmt_cyan_bold("pctx add <NAME> <MCP_URL>")
+                cmd = fmt_cyan_bold("pctx code-mode add <NAME> <MCP_URL>")
             );
             return Ok(cfg);
         }

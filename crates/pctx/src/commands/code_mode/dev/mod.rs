@@ -23,7 +23,7 @@ use pctx_config::Config;
 use ratatui::{Terminal, backend::CrosstermBackend, style::Color};
 use tokio::sync::mpsc;
 
-use crate::commands::mcp::start::StartCmd;
+use crate::commands::code_mode::start::StartCmd;
 use app::{App, AppMessage, FocusPanel};
 use pctx_mcp_server::PctxMcpServer;
 
@@ -67,7 +67,9 @@ pub struct DevCmd {
 impl DevCmd {
     pub(crate) async fn handle(&self, cfg: Config) -> Result<Config> {
         if self.stdio {
-            anyhow::bail!("Dev mode does not support stdio. Use `pctx mcp start --stdio` instead.");
+            anyhow::bail!(
+                "Dev mode does not support stdio. Use `pctx code-mode start --stdio` instead."
+            );
         }
 
         // Set up terminal
@@ -455,14 +457,14 @@ fn run_ui(
 async fn load_code_mode_for_dev(cfg: &Config) -> Result<pctx_code_mode::CodeMode> {
     if cfg.servers.is_empty() {
         tracing::warn!(
-            "No MCP servers configured, add servers with 'pctx add <name> <url>' and PCTX Dev Mode will refresh"
+            "No MCP servers configured, add servers with 'pctx code-mode add <name> <url>' and PCTX Dev Mode will refresh"
         );
         Ok(pctx_code_mode::CodeMode::default())
     } else {
         let loaded = StartCmd::load_code_mode(cfg).await?;
         if loaded.tool_sets().is_empty() {
             tracing::warn!(
-                "Failed loading all configured MCP servers, add servers with 'pctx add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
+                "Failed loading all configured MCP servers, add servers with 'pctx code-mode add <name> <url>' or edit {} and PCTX Dev Mode will refresh",
                 cfg.path()
             );
         }
@@ -531,7 +533,7 @@ fn spawn_server_task(
 mod tests {
     use std::collections::HashMap;
 
-    use crate::commands::mcp::dev::log_entry::{LogEntry, LogEntryFields};
+    use crate::commands::code_mode::dev::log_entry::{LogEntry, LogEntryFields};
 
     use super::*;
     // use crate::commands::dev::log_entry::{LogEntry, LogEntryFields};

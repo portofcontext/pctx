@@ -5,35 +5,34 @@ This document contains the help content for the `pctx` command-line program.
 **Command Overview:**
 
 * [`pctx`↴](#pctx)
-* [`pctx start`↴](#pctx-start)
-* [`pctx mcp`↴](#pctx-mcp)
-* [`pctx mcp init`↴](#pctx-mcp-init)
-* [`pctx mcp list`↴](#pctx-mcp-list)
-* [`pctx mcp add`↴](#pctx-mcp-add)
-* [`pctx mcp remove`↴](#pctx-mcp-remove)
-* [`pctx mcp start`↴](#pctx-mcp-start)
-* [`pctx mcp dev`↴](#pctx-mcp-dev)
+* [`pctx code-mode`↴](#pctx-code-mode)
+* [`pctx code-mode init`↴](#pctx-code-mode-init)
+* [`pctx code-mode list`↴](#pctx-code-mode-list)
+* [`pctx code-mode add`↴](#pctx-code-mode-add)
+* [`pctx code-mode remove`↴](#pctx-code-mode-remove)
+* [`pctx code-mode start`↴](#pctx-code-mode-start)
+* [`pctx code-mode dev`↴](#pctx-code-mode-dev)
+* [`pctx code-mode serve`↴](#pctx-code-mode-serve)
 
 ## `pctx`
 
-Use PCTX to expose code mode either as a session based server or by aggregating multiple MCP servers into a single code mode MCP server.
+Use PCTX to run Code Mode as a session server for client SDKs, or as an MCP server that aggregates multiple MCP servers.
 
 **Usage:** `pctx [OPTIONS] <COMMAND>`
 
 EXAMPLES:
   # Code Mode sessions
-  pctx start
+  pctx code-mode serve
   # Code Mode MCP
-  pctx mcp init 
-  pctx mcp add my-server https://mcp.example.com
-  pctx mcp dev
+  pctx code-mode init 
+  pctx code-mode add my-server https://mcp.example.com
+  pctx code-mode dev
 
   
 
 ###### **Subcommands:**
 
-* `start` — Start PCTX server for code mode sessions
-* `mcp` — MCP server commands (with pctx.json configuration)
+* `code-mode` — Code Mode MCP server commands (with pctx.json configuration)
 
 ###### **Options:**
 
@@ -45,33 +44,11 @@ EXAMPLES:
 
 
 
-## `pctx start`
+## `pctx code-mode`
 
-Starts PCTX server with no pre-configured tools. Use a client library like `pip install pctx-client` to create sessions, register tools, and expose code-mode tools to agent libraries.
+Code Mode MCP server commands (with pctx.json configuration)
 
-**Usage:** `pctx start [OPTIONS]`
-
-###### **Options:**
-
-* `-p`, `--port <PORT>` — Port to listen on
-
-  Default value: `8080`
-* `--host <HOST>` — Host address to bind to (use 0.0.0.0 for external access)
-
-  Default value: `127.0.0.1`
-* `--session-dir <SESSION_DIR>` — Path to session storage directory
-
-  Default value: `.pctx/sessions`
-* `--allowed-origin <ALLOWED_ORIGINS>` — Allowed CORS origins. Can be specified multiple times. Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]). Specify your own origins to override the default (can include or exclude localhost). Origins without explicit ports will match any port. Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
-* `--no-banner` — Don't show the server banner
-
-
-
-## `pctx mcp`
-
-MCP server commands (with pctx.json configuration)
-
-**Usage:** `pctx mcp <COMMAND>`
+**Usage:** `pctx code-mode <COMMAND>`
 
 ###### **Subcommands:**
 
@@ -79,16 +56,17 @@ MCP server commands (with pctx.json configuration)
 * `list` — List MCP servers and test connections
 * `add` — Add an MCP server to configuration (HTTP or stdio)
 * `remove` — Remove an MCP server from configuration
-* `start` — Start the PCTX MCP server
+* `start` — Start the PCTX MCP server (lightweight)
 * `dev` — Start the PCTX MCP server with terminal UI
+* `serve` — Start the Code Mode session server (scalable, used by the pctx-client SDK)
 
 
 
-## `pctx mcp init`
+## `pctx code-mode init`
 
 Initialize pctx.json configuration file.
 
-**Usage:** `pctx mcp init [OPTIONS]`
+**Usage:** `pctx code-mode init [OPTIONS]`
 
 ###### **Options:**
 
@@ -96,19 +74,19 @@ Initialize pctx.json configuration file.
 
 
 
-## `pctx mcp list`
+## `pctx code-mode list`
 
 Lists configured MCP servers and tests the connection to each.
 
-**Usage:** `pctx mcp list`
+**Usage:** `pctx code-mode list`
 
 
 
-## `pctx mcp add`
+## `pctx code-mode add`
 
 Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-based servers via the --command flag.
 
-**Usage:** `pctx mcp add [OPTIONS] <NAME> [URL]`
+**Usage:** `pctx code-mode add [OPTIONS] <NAME> [URL]`
 
 ###### **Arguments:**
 
@@ -130,11 +108,11 @@ Add a new MCP server to the configuration. Supports both HTTP(S) URLs and stdio-
 
 
 
-## `pctx mcp remove`
+## `pctx code-mode remove`
 
 Remove an MCP server from the configuration.
 
-**Usage:** `pctx mcp remove <NAME>`
+**Usage:** `pctx code-mode remove <NAME>`
 
 ###### **Arguments:**
 
@@ -142,11 +120,11 @@ Remove an MCP server from the configuration.
 
 
 
-## `pctx mcp start`
+## `pctx code-mode start`
 
-Start the PCTX MCP server (exposes /mcp endpoint).
+Start the PCTX MCP server (exposes /mcp endpoint). The lightweight way to try Code Mode; use `serve` to run it at scale.
 
-**Usage:** `pctx mcp start [OPTIONS]`
+**Usage:** `pctx code-mode start [OPTIONS]`
 
 ###### **Options:**
 
@@ -162,11 +140,11 @@ Start the PCTX MCP server (exposes /mcp endpoint).
 
 
 
-## `pctx mcp dev`
+## `pctx code-mode dev`
 
 Start the PCTX MCP server in development mode with an interactive terminal UI with data and logging.
 
-**Usage:** `pctx mcp dev [OPTIONS]`
+**Usage:** `pctx code-mode dev [OPTIONS]`
 
 ###### **Options:**
 
@@ -181,6 +159,28 @@ Start the PCTX MCP server in development mode with an interactive terminal UI wi
   Default value: `pctx-dev.jsonl`
 * `--stdio` — Serve MCP over stdio instead of HTTP
 * `--stateful-http` — Use stateful HTTP sessions (incompatible with --stdio)
+
+
+
+## `pctx code-mode serve`
+
+Start the Code Mode session server with no pre-configured tools. Clients like `pip install pctx-client` create sessions, register tools, and expose code-mode tools to agent libraries.
+
+**Usage:** `pctx code-mode serve [OPTIONS]`
+
+###### **Options:**
+
+* `-p`, `--port <PORT>` — Port to listen on
+
+  Default value: `8080`
+* `--host <HOST>` — Host address to bind to (use 0.0.0.0 for external access)
+
+  Default value: `127.0.0.1`
+* `--session-dir <SESSION_DIR>` — Path to session storage directory
+
+  Default value: `.pctx/sessions`
+* `--allowed-origin <ALLOWED_ORIGINS>` — Allowed CORS origins. Can be specified multiple times. Defaults to localhost only (<http://localhost>, <http://127.0.0.1>, http://[`::1`]). Specify your own origins to override the default (can include or exclude localhost). Origins without explicit ports will match any port. Example: --allowed-origin <http://localhost> --allowed-origin <https://app.example.com>
+* `--no-banner` — Don't show the server banner
 
 
 
