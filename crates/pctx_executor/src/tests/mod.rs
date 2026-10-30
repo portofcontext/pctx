@@ -24,4 +24,5 @@ mod module_loading;
 mod output_capture;
 mod runtime_execution;
 mod runtime_semantics;
+mod timeout;
 mod type_checking;

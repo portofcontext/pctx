@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- A script that never finished, such as a loop that never yields or an `await` that never settles, held the executor forever and blocked every later run in the process. Runs now stop after 2 minutes with `Execution exceeded 120s and was stopped`; set a different limit with `ExecuteOptions::with_timeout`. Crates that build `ExecuteOptions` with a struct literal need the new `timeout` field.
+
 ## [v0.7.7] - 2026-10-10
 
 ### Added

@@ -23,6 +23,7 @@ pctx_type_check_runtime = { version = "^0.2.1", path = "../pctx_type_check_runti
 tempfile = "3"
 regex = "1"
 thiserror = { workspace = true }
+tokio = { workspace = true, features = ["time"] }
 tracing = { workspace = true }
 futures = "0.3"
 
