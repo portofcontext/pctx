@@ -8,7 +8,13 @@ use pctx_registry::PctxRegistry;
 pub use pctx_type_check_runtime::{CheckResult, Diagnostic, is_relevant_error};
 use pctx_type_check_runtime::{init_v8_platform, type_check};
 use serde::{Deserialize, Serialize};
-use std::{rc::Rc, time::SystemTime};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::{RecvTimeoutError, channel};
+use std::{
+    rc::Rc,
+    time::{Duration, SystemTime},
+};
 use thiserror::Error;
 use tracing::{debug, warn};
 
@@ -28,15 +34,29 @@ static V8_MUTEX: std::sync::LazyLock<Mutex<()>> = std::sync::LazyLock::new(|| {
 
 pub type Result<T> = std::result::Result<T, DenoExecutorError>;
 
-#[derive(Clone, Default)]
+/// How long a script may run before it is stopped.
+pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+
+#[derive(Clone)]
 pub struct ExecuteOptions {
     pub registry: PctxRegistry,
+    pub timeout: Duration,
+}
+
+impl Default for ExecuteOptions {
+    fn default() -> Self {
+        Self {
+            registry: PctxRegistry::default(),
+            timeout: DEFAULT_TIMEOUT,
+        }
+    }
 }
 
 impl std::fmt::Debug for ExecuteOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ExecuteOptions")
             .field("registry", &self.registry.ids())
+            .field("timeout", &self.timeout)
             .finish()
     }
 }
@@ -52,6 +72,13 @@ impl ExecuteOptions {
     #[must_use]
     pub fn with_registry(mut self, registry: PctxRegistry) -> Self {
         self.registry = registry;
+        self
+    }
+
+    /// Stop the script after `timeout` (default [`DEFAULT_TIMEOUT`]).
+    #[must_use]
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = timeout;
         self
     }
 }
@@ -398,6 +425,23 @@ async fn execute_code(
         }
     };
 
+    // A script that never finishes would hold V8_MUTEX, and with it every later
+    // execution in this process, forever. Only another thread can stop a script
+    // that never yields, so a watchdog terminates it at the deadline.
+    let timeout = options.timeout;
+    let isolate = js_runtime.v8_isolate().thread_safe_handle();
+    let terminated = Arc::new(AtomicBool::new(false));
+    let (finished, finished_rx) = channel::<()>();
+    let watchdog = {
+        let terminated = terminated.clone();
+        std::thread::spawn(move || {
+            if finished_rx.recv_timeout(timeout) == Err(RecvTimeoutError::Timeout) {
+                terminated.store(true, Ordering::SeqCst);
+                isolate.terminate_execution();
+            }
+        })
+    };
+
     // Evaluate the module
     debug!("Evaluating module");
     let eval_future = js_runtime.mod_evaluate(mod_id);
@@ -408,8 +452,33 @@ async fn execute_code(
         wait_for_inspector: false,
     });
 
-    // Drive both futures together - wait for BOTH to complete
-    let (eval_result, event_loop_result) = futures::join!(eval_future, event_loop_future);
+    // Drive both futures together - wait for BOTH to complete. A script waiting
+    // on something that never settles leaves V8 idle, with nothing for the
+    // watchdog to terminate, so the timer ends that case.
+    let joined = tokio::time::timeout(timeout, async {
+        futures::join!(eval_future, event_loop_future)
+    })
+    .await;
+    drop(finished);
+    let _ = watchdog.join();
+
+    let (eval_result, event_loop_result) = match joined {
+        Ok(results) if !terminated.load(Ordering::SeqCst) => results,
+        _ => {
+            warn!(timeout_s = timeout.as_secs(), "Execution timed out");
+            return Ok(InternalExecuteResult {
+                success: false,
+                output: None,
+                error: Some(ExecutionError {
+                    message: format!("Execution exceeded {}s and was stopped", timeout.as_secs()),
+                    stack: None,
+                }),
+                stdout: String::new(),
+                stderr: String::new(),
+                registry: options.registry,
+            });
+        }
+    };
     debug!("Eval and event loop futures resolved");
 
     process_execution_results(
