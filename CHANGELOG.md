@@ -5,11 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [UNRELEASED] - YYYY-MM-DD
+## [v1.0.0] - 2026-10-30
 
 ### Added
 
-- The command structs are public (`pctx::commands::StartCmd`, and `AddCmd`, `DevCmd`, `InitCmd`, `ListCmd`, `RemoveCmd` and `StartCmd` under `pctx::commands::code_mode`), so another CLI can embed them beside its own subcommands.
+- The command structs are public (`AddCmd`, `DevCmd`, `InitCmd`, `ListCmd`, `RemoveCmd`, `ServeCmd` and `StartCmd` under `pctx::commands::code_mode`), so another CLI can embed them beside its own subcommands.
 - `pctx::utils::get_styles` is public, so a CLI that embeds the commands can give its help the same colors.
 
 ### Changed
@@ -313,6 +313,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial public release
 
 [Unreleased]: https://github.com/portofcontext/pctx/compare/v0.7.4...HEAD
+[v1.0.0]: https://github.com/portofcontext/pctx/compare/v0.7.7...v1.0.0
+[v0.7.7]: https://github.com/portofcontext/pctx/compare/v0.7.6...v0.7.7
+[v0.7.6]: https://github.com/portofcontext/pctx/compare/v0.7.5...v0.7.6
+[v0.7.5]: https://github.com/portofcontext/pctx/compare/v0.7.4...v0.7.5
 [v0.7.4]: https://github.com/portofcontext/pctx/compare/v0.7.3...v0.7.4
 [v0.7.3]: https://github.com/portofcontext/pctx/compare/v0.7.2...v0.7.3
 [v0.7.2]: https://github.com/portofcontext/pctx/compare/v0.7.1...v0.7.2
