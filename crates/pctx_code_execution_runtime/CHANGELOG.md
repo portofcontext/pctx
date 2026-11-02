@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
+ - 3 commits contributed to the release.
  - 28 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_registry v0.1.4, pctx_code_execution_runtime v0.3.1, pctx_executor v0.4.0, pctx_code_mode v0.7.0 ([`9d158c0`](https://github.com/portofcontext/pctx/commit/9d158c09b150cebabe2c9ae5101bfb750410e48a))
     - Release pctx_registry v0.1.4, pctx_executor v0.4.0, pctx_code_mode v0.7.0, safety bump pctx_code_mode v0.7.0 ([`cfac27b`](https://github.com/portofcontext/pctx/commit/cfac27bc5b92636287f33e22c21031f613a15779))
     - Merge pull request #170 from portofcontext/release/crates-2026-10 ([`40a0a99`](https://github.com/portofcontext/pctx/commit/40a0a991c61f4bc52b7f7efc697e0cd2380cc8cd))
 </details>
