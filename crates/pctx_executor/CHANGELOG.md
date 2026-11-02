@@ -5,17 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## 0.3.1 (2026-10-05)
+## 0.4.0 (2026-11-02)
 
-### Chore
+### Bug Fixes
 
- - <csr-id-71ad4a4403ff0ffd7bf2d9086a34bc46f0507816/> use noop module loader
+ - <csr-id-c1c7348bdc3c0530faa0daddb65a8a3789ea62f0/> stop a script that runs past its time limit
+   A script that never finished held V8_MUTEX forever, so every later run
+   in the process waited behind it. In a hosted session server that took a
+   whole instance down until restart.
+   
+   Runs now stop after ExecuteOptions::timeout (default 120s): a watchdog
+   thread terminates a script stuck in JavaScript, and a timer ends one
+   waiting on something that never settles.
 
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 25 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -26,6 +34,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Merge pull request #192 from portofcontext/fix/stop-runaway-executions ([`ba135d1`](https://github.com/portofcontext/pctx/commit/ba135d10c3d2431be3fdd113cf881068f30201ab))
+    - Stop a script that runs past its time limit ([`c1c7348`](https://github.com/portofcontext/pctx/commit/c1c7348bdc3c0530faa0daddb65a8a3789ea62f0))
+</details>
+
+## 0.3.1 (2026-10-05)
+
+### Chore
+
+ - <csr-id-71ad4a4403ff0ffd7bf2d9086a34bc46f0507816/> use noop module loader
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_type_check_runtime v0.2.1, pctx_executor v0.3.1 ([`d56ca0f`](https://github.com/portofcontext/pctx/commit/d56ca0f56dd5c9f6ec703800c8be681dbb360140))
     - Use noop module loader ([`71ad4a4`](https://github.com/portofcontext/pctx/commit/71ad4a4403ff0ffd7bf2d9086a34bc46f0507816))
     - Merge pull request #170 from portofcontext/release/crates-2026-10 ([`40a0a99`](https://github.com/portofcontext/pctx/commit/40a0a991c61f4bc52b7f7efc697e0cd2380cc8cd))
 </details>
@@ -35,34 +69,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-id-88fd00f339e10f30f0cad212c148aa885bfd7e16/>
 <csr-id-96d4ab6cd4ac2cba1ba9ef56f08bccfa213388db/>
 
-### Chore
-
- - <csr-id-88fd00f339e10f30f0cad212c148aa885bfd7e16/> bump deno stack to deno_core 0.412 / deno_ast 0.53
-   Moves to v8 150 and temporal_rs 0.2 so downstream workspaces can use
-   icu_calendar 2.3. op2(async) becomes op2 (async ops are eager by default)
-   and PollEventLoopOptions::pump_v8_message_loop is gone.
-
-### Test
-
- - <csr-id-96d4ab6cd4ac2cba1ba9ef56f08bccfa213388db/> re-enable unit tests and add runtime semantics guards
-   The `#[cfg(test)] mod tests;` declaration was dropped from
-   pctx_executor/src/lib.rs in 52efa39, so every test under src/tests/
-   (including concurrent_v8_stress) stopped compiling or running. All 51
-   still pass once re-enabled.
-   
-   Adds runtime_semantics.rs to pin behaviour that a deno_core / V8 bump
-   can silently change: tool-call (op_invoke) and timer (op_sleep)
-   scheduling relative to microtasks, parallel vs sequential tool calls,
-   tool error propagation, event loop draining after module evaluation,
-   unhandled rejections, error stacks, ICU-backed Intl, Temporal, sync and
-   async WebAssembly, and multi-threaded execution with async ops.
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 5 commits contributed to the release.
- - 65 days passed between releases.
+ - 66 days passed between releases.
  - 2 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -87,7 +99,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
- - 127 days passed between releases.
+ - 128 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -132,15 +144,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
 
-### Other
-
- - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 13 commits contributed to the release.
+ - 37 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -204,7 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release over the course of 1 calendar day.
- - 7 days passed between releases.
+ - 8 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 

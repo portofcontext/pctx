@@ -5,11 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## 0.7.0 (2026-11-02)
+
+### Documentation
+
+ - <csr-id-6a671466d9eec614234633b8c94c5086f74d5dc9/> crate changelog notes for tool error content
 
 ### Bug Fixes
 
  - MCP tool results with `isError: true` now include the server's error content in the error message instead of a bare `Tool call "<name>" failed`.
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 3 commits contributed to the release over the course of 25 calendar days.
+ - 25 days passed between releases.
+ - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Crate changelog notes for tool error content ([`6a67146`](https://github.com/portofcontext/pctx/commit/6a671466d9eec614234633b8c94c5086f74d5dc9))
+    - Release pctx_type_check_runtime v0.2.1, pctx_executor v0.3.1 ([`d56ca0f`](https://github.com/portofcontext/pctx/commit/d56ca0f56dd5c9f6ec703800c8be681dbb360140))
+    - Merge pull request #170 from portofcontext/release/crates-2026-10 ([`40a0a99`](https://github.com/portofcontext/pctx/commit/40a0a991c61f4bc52b7f7efc697e0cd2380cc8cd))
+</details>
 
 ## 0.6.0 (2026-10-05)
 
@@ -25,8 +50,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 1 commit contributed to the release.
- - 65 days passed between releases.
+ - 2 commits contributed to the release.
+ - 66 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -37,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_deno_transpiler v0.2.0, pctx_type_check_runtime v0.2.0, pctx_code_execution_runtime v0.3.0, pctx_executor v0.3.0, pctx_codegen v0.3.4, pctx_code_mode v0.6.0, safety bump 3 crates ([`ed4020c`](https://github.com/portofcontext/pctx/commit/ed4020cfc5c1f9816de3d39a76d553c4d6b7c071))
     - Crate changelog notes for deno stack upgrade ([`78beae7`](https://github.com/portofcontext/pctx/commit/78beae77d3ad3eb05eabaa55ceaafffd7514acd7))
 </details>
 
@@ -48,15 +74,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Two follow-ups from review:
    
    - Codegen degradation to `any` only reached the logs, so a client
-     registering tools against a remotely deployed session server had no way
-     to learn its tool lost its types. `Tool` now records why each schema was
-     degraded, `CallbackReport` carries them as `warnings`, and
-     `/register/tools` returns them alongside `failed`.
+   registering tools against a remotely deployed session server had no way
+   to learn its tool lost its types. `Tool` now records why each schema was
+   degraded, `CallbackReport` carries them as `warnings`, and
+   `/register/tools` returns them alongside `failed`.
    - `with_callbacks` swallowed the `CallbackReport` from `add_callbacks`,
-     hiding both failures and warnings from the builder-style caller. It now
-     returns `(Self, CallbackReport)`. Breaking, and infallible: per-tool
-     isolation means the batch cannot fail, so the report is the only
-     outcome.
+   hiding both failures and warnings from the builder-style caller. It now
+   returns `(Self, CallbackReport)`. Breaking, and infallible: per-tool
+   isolation means the batch cannot fail, so the report is the only
+   outcome.
  - <csr-id-d42790b14c54030d5588c920f05e72f7ab7f1901/> isolate per-tool registration failures
    `/register/tools` failed the whole batch when a single tool's schema
    couldn't be typed by our codegen (e.g. a recursive `$ref`). The portal
@@ -67,13 +93,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
    Fix it at the layer that owns the problem:
    
    - Codegen never fails a tool over typing. `Tool::new` is infallible;
-     `generate_types` failures degrade to a permissive `any` signature
-     (with a warning) so the tool stays callable, just untyped.
+   `generate_types` failures degrade to a permissive `any` signature
+   (with a warning) so the tool stays callable, just untyped.
    - Registration isolates per-tool. `add_callbacks` returns a
-     `CallbackReport { registered, failed }` instead of bubbling the first
-     error; a genuinely bad tool (name clash, unparseable schema) is
-     skipped and reported, never aborts the batch. The handler returns 200
-     with the report.
+   `CallbackReport { registered, failed }` instead of bubbling the first
+   error; a genuinely bad tool (name clash, unparseable schema) is
+   skipped and reported, never aborts the batch. The handler returns 200
+   with the report.
    
    The portal's existing batch call now succeeds, so its per-tool fallback
    never triggers — no portal change required to fix prod.
@@ -114,6 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 1 commit contributed to the release.
+ - 6 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -134,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 113 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -186,6 +214,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 25 commits contributed to the release.
+ - 37 days passed between releases.
  - 3 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -260,6 +289,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -305,7 +335,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 7 commits contributed to the release.
- - 6 days passed between releases.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
