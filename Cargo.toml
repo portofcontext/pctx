@@ -30,7 +30,7 @@ reqwest = { version = "0.13.2", default-features = false }
 # Logging & Telemetry
 tracing = "0.1"
 opentelemetry = "0.31"
-opentelemetry_sdk = "0.31"
+opentelemetry_sdk = "0.32"
 opentelemetry-otlp = "0.31"
 tracing-opentelemetry = "0.32"
 
