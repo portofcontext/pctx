@@ -1,0 +1,16 @@
+{
+  "name": "parallel-search-example",
+  "description": "Anonymous web search and page fetching through Code Mode",
+  "servers": [
+    {
+      "name": "parallel",
+      "url": "https://search.parallel.ai/mcp",
+      "auth": {
+        "type": "headers",
+        "headers": {
+          "User-Agent": "pctx-parallel-search-example/1.0 (https://github.com/portofcontext/pctx)"
+        }
+      }
+    }
+  ]
+}
