@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## 0.3.1 (2026-11-02)
+
+### Commit Statistics
+
+<csr-read-only-do-not-edit/>
+
+ - 2 commits contributed to the release.
+ - 28 days passed between releases.
+ - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
+ - 0 issues like '(#ID)' were seen in commit messages
+
+### Commit Details
+
+<csr-read-only-do-not-edit/>
+
+<details><summary>view details</summary>
+
+ * **Uncategorized**
+    - Release pctx_registry v0.1.4, pctx_executor v0.4.0, pctx_code_mode v0.7.0, safety bump pctx_code_mode v0.7.0 ([`cfac27b`](https://github.com/portofcontext/pctx/commit/cfac27bc5b92636287f33e22c21031f613a15779))
+    - Merge pull request #170 from portofcontext/release/crates-2026-10 ([`40a0a99`](https://github.com/portofcontext/pctx/commit/40a0a991c61f4bc52b7f7efc697e0cd2380cc8cd))
+</details>
+
 ## 0.3.0 (2026-10-05)
 
 ### Chore
@@ -18,8 +40,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-read-only-do-not-edit/>
 
- - 2 commits contributed to the release.
- - 65 days passed between releases.
+ - 3 commits contributed to the release.
+ - 66 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -30,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <details><summary>view details</summary>
 
  * **Uncategorized**
+    - Release pctx_deno_transpiler v0.2.0, pctx_type_check_runtime v0.2.0, pctx_code_execution_runtime v0.3.0, pctx_executor v0.3.0, pctx_codegen v0.3.4, pctx_code_mode v0.6.0, safety bump 3 crates ([`ed4020c`](https://github.com/portofcontext/pctx/commit/ed4020cfc5c1f9816de3d39a76d553c4d6b7c071))
     - Merge pull request #167 from BezotCorp/modernize-deno-stack ([`4603698`](https://github.com/portofcontext/pctx/commit/460369836fc592f4dfd2b361dfdd6a7e81bd6046))
     - Bump deno stack to deno_core 0.412 / deno_ast 0.53 ([`88fd00f`](https://github.com/portofcontext/pctx/commit/88fd00f339e10f30f0cad212c148aa885bfd7e16))
 </details>
@@ -41,6 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 3 commits contributed to the release.
+ - 15 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -63,6 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 125 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -81,15 +106,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/>
 
-### Other
-
- - <csr-id-12e0b624c08fb8a4cb8a87e73de6fb64ffb5a862/> unified registry
-
 ### Commit Statistics
 
 <csr-read-only-do-not-edit/>
 
  - 10 commits contributed to the release.
+ - 44 days passed between releases.
  - 1 commit was understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -119,6 +141,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 2 commits contributed to the release.
+ - 1 day passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 
@@ -140,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 <csr-read-only-do-not-edit/>
 
  - 4 commits contributed to the release over the course of 1 calendar day.
- - 6 days passed between releases.
+ - 7 days passed between releases.
  - 0 commits were understood as [conventional](https://www.conventionalcommits.org).
  - 0 issues like '(#ID)' were seen in commit messages
 

@@ -17,7 +17,7 @@ deno_resolver = { workspace = true }
 node_resolver = { workspace = true }
 sys_traits = { workspace = true }
 pctx_deno_transpiler = { version = "^0.2.0", path = "../pctx_deno_transpiler" }
-pctx_code_execution_runtime = { version = "^0.3.0", path = "../pctx_code_execution_runtime" }
+pctx_code_execution_runtime = { version = "^0.3.1", path = "../pctx_code_execution_runtime" }
 pctx_registry = { version = "^0.1.4", path = "../pctx_registry" }
 pctx_type_check_runtime = { version = "^0.2.1", path = "../pctx_type_check_runtime" }
 tempfile = "3"
